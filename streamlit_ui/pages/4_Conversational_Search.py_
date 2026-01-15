@@ -1,0 +1,187 @@
+import datetime
+import json
+
+import pandas as pd
+import streamlit as st
+
+from pages.src.constants import (
+    session_config,
+    sse_api_engine,
+    SSL_CONNECTION,
+    RUN_SERVER_LOCALHOST,
+)
+from pages.src.ui_utils import prepare_collection_to_choose, prepare_search_params
+
+if SSL_CONNECTION or RUN_SERVER_LOCALHOST:
+    from streamlit_mic_recorder import speech_to_text
+
+
+def prepare_chat(search_options, answer_options, collection_of_documents):
+    chat_column, options_column = st.columns([5, 3])
+    messages = chat_column.container(border=True, height=500)
+    options = options_column.container(border=True, height=450)
+    options_container = options_column.container(border=False, height=50)
+    gen_time, options_tts, options_clear = options_container.columns([2, 1, 1])
+
+    input_message_text = None
+    if SSL_CONNECTION or RUN_SERVER_LOCALHOST:
+        with options_tts:
+            input_message_text = speech_to_text(
+                language="pl", use_container_width=True, just_once=True, key="STT"
+            )
+
+    chat_id = session_config.get_session_chat_id()
+    if (
+        last_user_prompt := st.chat_input("Say something")
+        or input_message_text is not None
+    ):
+        if input_message_text is not None:
+            last_user_prompt = input_message_text
+
+        if chat_id is None:
+            chat_id = sse_api_engine.new_chat(
+                token=session_config.get_session_token(),
+                collection_name=collection_of_documents,
+                options=answer_options,
+                search_options=search_options,
+            )
+        for message in session_config.get_session_chat():
+            if message["role"] == "assistant":
+                if message["text_translated"] is None or not len(
+                    message["text_translated"].strip()
+                ):
+                    messages.chat_message("assistant").write(message["text"])
+                else:
+                    messages.chat_message("assistant").write(
+                        message["text_translated"]
+                    )
+            elif message["role"] == "user":
+                messages.chat_message("user").write(message["text"])
+        messages.chat_message("user").write(last_user_prompt)
+
+        with st.spinner("The assistant is typing..."):
+            api_response = sse_api_engine.add_user_message_to_chat(
+                token=session_config.get_session_token(),
+                chat_id=chat_id,
+                user_message=last_user_prompt,
+                options=answer_options,
+                search_options=search_options,
+                collection_name=collection_of_documents,
+            )
+
+            # options.write(api_response)
+
+            whole_chat = api_response["history"]
+            last_state = api_response["last_state"]
+            generation_time = datetime.timedelta(
+                seconds=float(api_response["generation_time"])
+            )
+
+            gen_time.write(f"**Gen. time**: {generation_time}")
+
+            session_config.set_session_chat_chat_id(chat_id=chat_id, chat=whole_chat)
+
+            # messages.chat_message("assistant").write(whole_chat[-1]["text"])
+            if whole_chat[-1]["text_translated"] is None or not len(
+                whole_chat[-1]["text_translated"].strip()
+            ):
+                messages.chat_message("assistant").write(whole_chat[-1]["text"])
+            else:
+                messages.chat_message("assistant").write(
+                    whole_chat[-1]["text_translated"]
+                )
+
+            if last_state is not None and len(last_state):
+                last_state = last_state[0]
+
+                if (
+                    "content_supervisor_state" in last_state
+                    and last_state["content_supervisor_state"] is not None
+                    and len(last_state["content_supervisor_state"])
+                ):
+                    cs_state_exp = options.expander("Content supervisor state")
+                    cs_state_exp.write(last_state["content_supervisor_state"])
+
+                if (
+                    "rag_message_state" in last_state
+                    and last_state["rag_message_state"] is not None
+                ):
+                    session_config.set_session_cs_rag(
+                        detected_question=last_state["rag_message_state"][
+                            "extracted_query"
+                        ],
+                        general_stats=last_state["rag_message_state"][
+                            "sse_response"
+                        ]["general_stats_json"],
+                        detailed_results=last_state["rag_message_state"][
+                            "sse_response"
+                        ]["detailed_results_json"],
+                    )
+
+    (
+        detected_question_str,
+        general_stats,
+        detailed_stats,
+    ) = session_config.get_session_cs_rag()
+    if detected_question_str is not None:
+        options.write(f"Detected question: **{detected_question_str}**")
+        options.write(f"Percentage rank: {answer_options['percentage_rank_mass']}")
+
+    if general_stats is not None:
+        doc_respo = options.expander("Documents used to generate response")
+        if type(general_stats) in [str]:
+            general_stats = json.loads(general_stats)
+        stats_pd = pd.DataFrame.transpose(
+            pd.DataFrame.from_dict(general_stats)
+        ).sort_values("score_weighted", ascending=False)
+        doc_respo.write(stats_pd)
+
+    if detailed_stats is not None:
+        det_res = options.expander("Detailed search results")
+        if type(detailed_stats) in [str]:
+            detailed_stats = json.loads(detailed_stats)
+        search_results_pd = pd.DataFrame.transpose(
+            pd.DataFrame(detailed_stats)
+        ).sort_values("score", ascending=False)
+        det_res.write(search_results_pd)
+
+    if options_clear.button("Clear chat"):
+        session_config.set_session_chat_chat_id(chat_id=None, chat=[])
+        session_config.set_session_cs_rag(
+            detected_question=None, general_stats=None, detailed_results=None
+        )
+
+
+def home():
+    st.set_page_config(
+        page_title="Conversational Semantic Search bot",
+        page_icon="🧊",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+    st.title("Conversational search bot")
+
+
+def main():
+    if session_config.get_session_token() is None:
+        st.switch_page("pages/0_Login.py")
+    home()
+
+    collection_of_documents = prepare_collection_to_choose(
+        token=session_config.get_session_token()
+    )
+    if collection_of_documents is None:
+        return
+
+    search_options, answer_options, run_models_options = prepare_search_params(
+        collection_name=collection_of_documents,
+        force_generative=True,
+        show_content_supervisor=True,
+        show_rag_supervisor=True,
+    )
+
+    prepare_chat(search_options, answer_options, collection_of_documents)
+
+
+if __name__ == "__main__":
+    main()
