@@ -103,7 +103,7 @@ def prepare_search_params(
         st.error("Generative models cannot be retrieved!")
         st.write(generative_models)
     else:
-        generative_models = generative_models["body"]["models"]
+        generative_models = list(generative_models["body"].keys())
 
     use_gen_qa = True
     if not force_generative:
@@ -131,13 +131,8 @@ def prepare_search_params(
             on_change=set_on_change_state,
         )
 
-        translate_output = False
-        if "openai" not in qa_gen_model.lower():
-            translate_output = search_container.toggle(
-                "Translate answer", value=False, on_change=set_on_change_state
-            )
-
         lang_options = None
+        translate_output = False
         if translate_output:
             lang_options = search_container.selectbox(
                 f"Generated answer target language",
