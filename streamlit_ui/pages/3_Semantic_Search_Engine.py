@@ -30,23 +30,9 @@ def home():
 
     questions_container = st.container(border=True)
     questions_container.write("<b>Przykładowe pytania:</b>", unsafe_allow_html=True)
-    questions_container.write(
-        "Jak logika wsparcia utrzymania infrastruktury B+R (Panda) "
-        "odpowiada na problemy sektora nauki w Polsce?"
-    )
-    questions_container.write(
-        "Identyfikacja branż węzłowych w ramach "
-        "Mazowieckiego Systemu Innowacji/Pokrewne obszary technologiczne"
-    )
-    questions_container.write(
-        "Wnioski na temat różnorodności branź i pokrewnych obszarów "
-        "badawczych w ramach Regionalnych Startegii Innowacji Dla "
-        "Mazowsza/Branże izolowane"
-    )
-    questions_container.write(
-        "Jak zmiana modelu współpracy z uczelniami w POIR "
-        "wpłynęła na efektywność realizacji projektów B+R?"
-    )
+    questions_container.write("Sample question.....")
+    questions_container.write("Sample question.....")
+    questions_container.write("Sample question.....")
 
     if "answer_state" not in st.session_state:
         st.session_state["answer_state"] = False
