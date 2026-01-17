@@ -128,7 +128,14 @@ def visualise_search_results(
     # Generative QA answer
     if qa_gen_results and len(qa_gen_results):
         gen_tab.write(f"Generation time: {qa_gen_results_time}")
-        gen_tab.write(qa_gen_results)
+
+        gen_tab.divider()
+        gen_tab.write(qa_gen_results.get("answer", ""))
+
+        gen_tab.divider()
+
+        gen_tab_exp = gen_tab.expander(label="Show json", expanded=False)
+        gen_tab_exp.write(qa_gen_results)
 
 
 #
