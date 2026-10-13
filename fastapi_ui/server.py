@@ -5,10 +5,12 @@ Pages of the Streamlit app mapped to routes:
 
     streamlit_ui/Home.py                            -> /home
     streamlit_ui/pages/0_Login.py                   -> /login, /logout
-    streamlit_ui/pages/1_New_Collection.py          -> /collections/new
+    streamlit_ui/pages/1_New_Collection.py          -> /collections (list + new)
     streamlit_ui/pages/2_Upload_Documents.py        -> /documents/upload
     streamlit_ui/pages/3_Semantic_Search_Engine.py  -> /search, /search/rate
-    streamlit_ui/pages/4_Conversational_Search.py   -> /chat, /chat/message, /chat/clear
+
+    The Streamlit conversational search page (4_Conversational_Search.py) has
+    no counterpart: the Chat tab is intentionally absent from this UI.
 
 Run with:
     cd fastapi_ui && bash run.sh
@@ -26,14 +28,15 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 from starlette.datastructures import FormData
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from core import constants
 from core.api import SemanticSearchEngineAPI
-from core.env_utils import bool_env_value
-from core.state_store import CHAT, CHAT_ID, CS_RAG, LAST_QUERY_RESPONSE_ID
+from core.markdown import render_markdown
+from core.state_store import LAST_QUERY_RESPONSE_ID
 from core.state_store import clear_state, get_state, set_state
 
 logging.basicConfig(
@@ -62,10 +65,9 @@ app.mount(
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "app", "templates"))
 templates.env.globals["constants"] = constants
 
-# Voice input (the Streamlit app showed streamlit_mic_recorder when it was
-# served over HTTPS or on localhost; browsers allow the Web Speech API only in
-# secure contexts, hence the same rule here).
-templates.env.globals["speech_input"] = bool_env_value("UI_SPEECH_INPUT")
+# Engine answers arrive as Markdown; render_markdown() escapes raw HTML, so the
+# result can be marked safe (see core/markdown.py).
+templates.env.filters["markdown"] = lambda text: Markup(render_markdown(text))
 
 # Single API client shared by all routes (mirrors pages/src/constants.py)
 sse_api_engine = SemanticSearchEngineAPI(config_path=CONFIG_PATH)
@@ -95,20 +97,9 @@ def require_login(request: Request) -> RedirectResponse | None:
     return None
 
 
-def clear_chat_session(request: Request) -> None:
+def clear_session_state(request: Request) -> None:
+    """Drop the per-session engine state (id of the last generated answer)."""
     clear_state(request)
-
-
-def get_chat(request: Request) -> list:
-    return get_state(request).get(CHAT) or []
-
-
-def get_chat_id(request: Request):
-    return get_state(request).get(CHAT_ID)
-
-
-def get_cs_rag(request: Request) -> dict:
-    return get_state(request).get(CS_RAG) or {}
 
 
 def get_last_response_id(request: Request):
@@ -186,6 +177,54 @@ def fetch_collections(token: str) -> dict:
     return sse_api_engine.list_user_collections(token=token)
 
 
+def format_created_on(value) -> str:
+    """Engine timestamps are ISO strings; the date is all the list shows."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        return datetime.datetime.fromisoformat(text).strftime("%Y-%m-%d")
+    except ValueError:
+        return text
+
+
+def collection_row(entry) -> dict | None:
+    """One entry of ``collections`` as a table row.
+
+    Same fields as ``sse_lib.models.Collection``, i.e. what
+    ``SSEClient.list_collections()`` of ../semantic-search-engine/sse_lib
+    returns; entries without a name are skipped.
+    """
+    if not isinstance(entry, dict):
+        entry = {"name": entry}
+    name = str(entry.get("name") or "").strip()
+    if not name:
+        return None
+    return {
+        "id": entry.get("id"),
+        "name": name,
+        "display_name": str(entry.get("display_name") or "").strip() or name,
+        "description": str(entry.get("description") or "").strip(),
+        "created_on": format_created_on(entry.get("created_on")),
+    }
+
+
+def fetch_collection_rows(token: str) -> dict:
+    """Collections of the user (and of its organisation) prepared for display.
+
+    Wraps ``GET api/collections`` - the call behind
+    ``sse_lib.SSEClient.list_collections()`` - and keeps the order returned by
+    the engine (own collections first, then the organisational ones).
+    """
+    result = fetch_collections(token)
+    if "status" in result and not result["status"]:
+        return {"error": result}
+    body = result.get("body") or {}
+    entries = body.get("collections") if isinstance(body, dict) else []
+    rows = [row for row in (collection_row(entry) for entry in entries or []) if row]
+    return {"collections": rows}
+
+
 def fetch_collection_filters(token: str, collection_name: str) -> dict:
     """Categories and documents of a single collection (sidebar filters)."""
     categories: list = []
@@ -222,7 +261,7 @@ def fetch_generative_models(token: str) -> list:
 
 
 def fetch_page_context(token: str, collection_name: str = "") -> dict:
-    """All data required to render the search/chat pages."""
+    """All data required to render the search page."""
     result = fetch_collections(token)
     if "status" in result and not result["status"]:
         return {"error": result}
@@ -235,7 +274,7 @@ def fetch_page_context(token: str, collection_name: str = "") -> dict:
     return context
 
 
-def parse_search_form(form: FormData, force_generative: bool = False) -> dict:
+def parse_search_form(form: FormData) -> dict:
     """Build (search_options, answer_options, run_models_options) from the HTML
     form. Mirrors streamlit ui_utils.prepare_search_params."""
     results_count = int(form.get("results_count") or constants.DEFAULT_MAX_RESULTS)
@@ -249,7 +288,7 @@ def parse_search_form(form: FormData, force_generative: bool = False) -> dict:
         use_rag_supervisor = True
     return_with_factored_fields = form.get("return_with_factored_fields") is not None
     use_qa_extractive = form.get("use_qa_extractive") is not None
-    use_gen_qa = force_generative or form.get("use_qa_generative") is not None
+    use_gen_qa = form.get("use_qa_generative") is not None
     use_doc_names_in_response = form.get("use_doc_names_in_response") is not None
     qa_gen_model = form.get("qa_gen_model") or ""
     perc_rank_to_gen_qa = int(
@@ -393,34 +432,54 @@ def login_submit(
 
     request.session["sse_token"] = token
     request.session["sse_login"] = username
-    clear_chat_session(request)
+    clear_session_state(request)
     return RedirectResponse(url="/search", status_code=303)
 
 
 @app.get("/logout", include_in_schema=False)
 def logout(request: Request):
-    clear_chat_session(request)
+    clear_session_state(request)
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
 
 
-# --- New collection (streamlit_ui/pages/1_New_Collection.py) ---------------- #
-@app.get("/collections/new", include_in_schema=False)
-def new_collection_page(request: Request):
-    redirect = require_login(request)
-    if redirect is not None:
-        return redirect
-
-    embedders = sse_api_engine.embedders(token=get_token(request))
+# --- Collections (streamlit_ui/pages/1_New_Collection.py) ------------------- #
+def render_collections_page(request: Request, **context) -> HTMLResponse:
+    """List of the collections plus the form that creates a new one."""
+    token = get_token(request)
+    embedders = sse_api_engine.embedders(token=token)
     if not isinstance(embedders, list):
         return render_api_error(request, embedders)
-    rerankers = sse_api_engine.rerankers(token=get_token(request))
+    rerankers = sse_api_engine.rerankers(token=token)
     if not isinstance(rerankers, list):
         return render_api_error(request, rerankers)
 
+    data = fetch_collection_rows(token)
+    if "error" in data:
+        return render_api_error(request, data["error"])
+
     return render_page(
-        request, "new_collection.html", embedders=embedders, rerankers=rerankers
+        request,
+        "collections.html",
+        embedders=embedders,
+        rerankers=rerankers,
+        collections=data["collections"],
+        **context,
     )
+
+
+@app.get("/collections", include_in_schema=False)
+def collections_page(request: Request):
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+    return render_collections_page(request)
+
+
+@app.get("/collections/new", include_in_schema=False)
+def new_collection_page(request: Request):
+    """Old address of the form, which now lives on the Collections page."""
+    return RedirectResponse(url="/collections#new-collection", status_code=303)
 
 
 @app.post("/collections/new", include_in_schema=False)
@@ -450,17 +509,10 @@ def new_collection_submit(request: Request, form: FormData = Depends(parsed_form
     if not result.get("status"):
         return render_api_error(request, result)
 
-    return render_page(
+    return render_collections_page(
         request,
-        "new_collection.html",
-        embedders=sse_api_engine.embedders(token=token),
-        rerankers=sse_api_engine.rerankers(token=token),
-        success=(
-            f"Collection {collection_params['collection_name']} has been created! "
-            f"Go to 'Upload Documents' and choose "
-            f"{collection_params['collection_name']} to add documents to collection!"
-        ),
-        result_json=json.dumps(result, indent=2),
+        success="Collection has been created. Add documents to start searching.",
+        created=collection_params,
     )
 
 
@@ -471,10 +523,13 @@ def upload_documents_page(request: Request):
     if redirect is not None:
         return redirect
 
-    data = fetch_page_context(get_token(request))
+    collection_name = request.query_params.get("collection_name", "")
+    data = fetch_page_context(get_token(request), collection_name)
     if "error" in data:
         return render_api_error(request, data["error"])
-    return render_page(request, "upload_documents.html", **data)
+    return render_page(
+        request, "upload_documents.html", selected_collection=collection_name, **data
+    )
 
 
 @app.post("/documents/upload", include_in_schema=False)
@@ -522,17 +577,19 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
         indexing_options=indexing_options,
     )
     if upload_response is None or upload_response.get("status") is False:
-        return page(
-            error="Problem while uploading files to engine backend",
-            result_json=json.dumps(upload_response, indent=2),
-        )
+        return page(error="Problem while uploading files to engine backend")
 
     return page(
         success=(
-            "Files are uploaded and indexed! Go to `Semantic Search Engine` "
-            "and test ask about knowledge from the indexed documents!"
+            "Files are uploaded and indexed! Go to the Search Engine page and "
+            "ask about knowledge from the indexed documents."
         ),
-        result_json=json.dumps(upload_response, indent=2),
+        uploaded={
+            "collection_name": collection_name,
+            "files": f"{len(uploaded_files)} file(s)",
+            "max_tokens_in_chunk": indexing_options["max_tokens_in_chunk"],
+            "number_of_overlap_tokens": indexing_options["number_of_overlap_tokens"],
+        },
     )
 
 
@@ -543,10 +600,13 @@ def search_page(request: Request):
     if redirect is not None:
         return redirect
 
-    data = fetch_page_context(get_token(request))
+    collection_name = request.query_params.get("collection_name", "")
+    data = fetch_page_context(get_token(request), collection_name)
     if "error" in data:
         return render_api_error(request, data["error"])
-    return render_page(request, "search.html", **data)
+    return render_page(
+        request, "search.html", selected_collection=collection_name, **data
+    )
 
 
 @app.post("/search", include_in_schema=False)
@@ -666,136 +726,6 @@ def rate_submit(request: Request, form: FormData = Depends(parsed_form)):
     logger.info("Starring with %s for response %s", rate_value, last_response_id)
     set_state(request, **{LAST_QUERY_RESPONSE_ID: None})
     return RedirectResponse(url="/search", status_code=303)
-
-
-# --- Conversational search (streamlit_ui/pages/4_Conversational_Search.py) -- #
-@app.get("/chat", include_in_schema=False)
-def chat_page(request: Request):
-    redirect = require_login(request)
-    if redirect is not None:
-        return redirect
-
-    data = fetch_page_context(get_token(request))
-    if "error" in data:
-        return render_api_error(request, data["error"])
-
-    cs_rag = get_cs_rag(request)
-    return render_page(
-        request,
-        "chat.html",
-        chat=get_chat(request),
-        chat_id=get_chat_id(request),
-        cs_rag=cs_rag,
-        general_stats=prepare_optional_stats(cs_rag.get("general_stats")),
-        detailed_stats=prepare_optional_stats(
-            cs_rag.get("detailed_results"), detailed=True
-        ),
-        **data,
-    )
-
-
-@app.post("/chat/message", include_in_schema=False)
-def chat_message(request: Request, form: FormData = Depends(parsed_form)):
-    redirect = require_login(request)
-    if redirect is not None:
-        return redirect
-
-    token = get_token(request)
-    user_message = (form.get("message") or "").strip()
-    collection_name = form.get("collection_name", "")
-
-    if not len(user_message):
-        return RedirectResponse(url="/chat", status_code=303)
-
-    options = parse_search_form(form, force_generative=True)
-    search_options = options["search_options"]
-    answer_options = options["answer_options"]
-
-    chat_id = get_chat_id(request)
-    if chat_id is None:
-        chat_id = sse_api_engine.new_chat(
-            token=token,
-            collection_name=collection_name,
-            options=answer_options,
-            search_options=search_options,
-        )
-
-    api_response = sse_api_engine.add_user_message_to_chat(
-        token=token,
-        chat_id=chat_id,
-        user_message=user_message,
-        options=answer_options,
-        search_options=search_options,
-        collection_name=collection_name,
-    )
-
-    whole_chat = api_response["history"]
-    last_state = api_response["last_state"]
-
-    cs_rag = {}
-    if last_state is not None and len(last_state):
-        last_state = last_state[0]
-        rag_message_state = last_state.get("rag_message_state")
-        if rag_message_state is not None:
-            sse_response = rag_message_state.get("sse_response") or {}
-            cs_rag = {
-                "extracted_query": rag_message_state.get("extracted_query"),
-                "general_stats": sse_response.get("general_stats_json"),
-                "detailed_results": sse_response.get("detailed_results_json"),
-            }
-        content_supervisor_state = last_state.get("content_supervisor_state")
-        if content_supervisor_state:
-            cs_rag["content_supervisor_state"] = content_supervisor_state
-
-    set_state(
-        request,
-        **{
-            CHAT: whole_chat,
-            CHAT_ID: chat_id,
-            CS_RAG: cs_rag,
-        },
-    )
-
-    data = fetch_page_context(token, collection_name)
-    if "error" in data:
-        return render_api_error(request, data["error"])
-
-    return render_page(
-        request,
-        "chat.html",
-        chat=whole_chat,
-        chat_id=chat_id,
-        cs_rag=cs_rag,
-        general_stats=prepare_optional_stats(cs_rag.get("general_stats")),
-        detailed_stats=prepare_optional_stats(
-            cs_rag.get("detailed_results"), detailed=True
-        ),
-        generation_time=format_generation_time(api_response.get("generation_time")),
-        percentage_rank_mass=answer_options["percentage_rank_mass"],
-        selected_collection=collection_name,
-        **data,
-    )
-
-
-@app.post("/chat/clear", include_in_schema=False)
-def chat_clear(request: Request):
-    redirect = require_login(request)
-    if redirect is not None:
-        return redirect
-    clear_chat_session(request)
-    return RedirectResponse(url="/chat", status_code=303)
-
-
-def prepare_optional_stats(stats, detailed: bool = False) -> list | None:
-    if not stats:
-        return None
-    try:
-        if detailed:
-            return prepare_detailed_results_dataframe(stats)
-        return prepare_stats_dataframe(stats)
-    except Exception:  # noqa: BLE001
-        logger.exception("Cannot prepare RAG stats table")
-        return None
 
 
 # --- JSON endpoints (used by the page JS, no Streamlit counterpart) --------- #

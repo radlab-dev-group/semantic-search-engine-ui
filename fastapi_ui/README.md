@@ -32,7 +32,6 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 | `UI_SECRET_KEY` | `change-me-in-production` | klucz podpisujący ciasteczko sesji (**zmień w produkcji**) |
 | `UI_MAX_UPLOAD_SIZE_MB` | `6000` | limit rozmiaru pojedynczego pliku przy uploadzie, odpowiednik `STREAMLIT_SERVER_MAX_UPLOAD_SIZE` |
 | `UI_MAX_UPLOAD_FILES` | `500` | maksymalna liczba plików w jednym żądaniu uploadu |
-| `UI_SPEECH_INPUT` | `false` | dyktowanie głosem w czacie (Web Speech API), odpowiednik `STREAMLIT_SSL_CONNECTION`/`STREAMLIT_RUN_SERVER_LOCALHOST` |
 
 Konfiguracja hostów/endpointów backendu to ten sam plik co w wersji Streamlit:
 `configs/ui-configuration.json` (skopiowany z `streamlit_ui/configs/`).
@@ -43,22 +42,21 @@ Konfiguracja hostów/endpointów backendu to ten sam plik co w wersji Streamlit:
 | --- | --- | --- |
 | `Home.py` | `GET /home` | Strona główna z opisem projektu |
 | `pages/0_Login.py` | `GET/POST /login`, `GET /logout` | Logowanie (token Django `Authorization: Token ...`) |
-| `pages/1_New_Collection.py` | `GET/POST /collections/new` | Tworzenie kolekcji (embedder, reranker, typ indeksu) |
+| `pages/1_New_Collection.py` | `GET /collections`, `POST /collections/new` | **Lista kolekcji** (`GET api/collections`, odpowiednik `SSEClient.list_collections()`) + tworzenie kolekcji (embedder, reranker, typ indeksu) |
 | `pages/2_Upload_Documents.py` | `GET/POST /documents/upload` | Upload `pdf/docx/txt/zip` + opcje indeksowania |
 | `pages/3_Semantic_Search_Engine.py` | `GET/POST /search`, `POST /search/rate` | Wyszukiwanie + odpowiedź generatywna + ocenianie (gwiazdki) |
-| `pages/4_Conversational_Search.py` | `GET /chat`, `POST /chat/message`, `POST /chat/clear` | Wyszukiwanie konwersacyjne (RAG, supervisorowie, stan RAG) |
+| `pages/4_Conversational_Search.py` | — | **Wycofane**: zakładka Chat nie istnieje w tej aplikacji |
 | `pages/src/api.py` | `core/api.py` | Klient REST API (bez zależności od Streamlita) |
-| `pages/src/config.py` (`SessionConfig`) | `server.py` (`get_token`, `get_username`, `clear_chat_session`) | Stan sesji użytkownika |
+| `pages/src/config.py` (`SessionConfig`) | `server.py` (`get_token`, `get_username`, `clear_session_state`) | Stan sesji użytkownika |
 | `pages/src/constants.py` | `core/constants.py` | Stałe, wartości domyślne formularzy |
 | `pages/src/ui_utils.py` | `server.py` (`fetch_*`, `parse_search_form`, `prepare_*_dataframe`) | Przygotowanie danych do widoków |
-| `pages/src/env_utils.py` | `core/env_utils.py` | Parsowanie flag z otoczenia |
 
 Dodatkowo (poza oryginałem):
 
 - `GET /api/options?collection_name=...` — JSON z kategoriami i dokumentami
   kolekcji; używany przez `app/static/js/app.js` do odświeżania filtrów po zmianie
   kolekcji (zastępuje automatyczny rerun Streamlita). Filtry (kategorie i
-  dokumenty) są — tak jak w oryginale — na stronie wyszukiwania i na stronie czatu.
+  dokumenty) są — tak jak w oryginale — na stronie wyszukiwania.
 - `GET /healthz` — endpoint kontrolny (health check).
 - `GET /docs` — wbudowana dokumentacja OpenAPI.
 
@@ -89,11 +87,10 @@ Kody błędów są renderowane na stronie `error.html`, odpowiednik
 - W wersji Streamlit wybór języka tłumaczenia odpowiedzi był martwym kodem
   (`translate_output = False`); w FastAPI suwak/zaznaczenie „Translate generated
   answer” jest w pełni funkcjonalne i wysyła `translate_answer` + `answer_language`.
-- Strona `4_Conversational_Search.py` jest w Streamlicie wyłączana przez
-  przezwisko pliku (`.py_`); tutaj jest zawsze dostępna pod `/chat`.
-  `st.chat_input` zastępuje pole tekstowe, a `streamlit_mic_recorder` — przycisk
-  „🎤 Dictate” oparty o Web Speech API (język `pl`), włączany flagą
-  `UI_SPEECH_INPUT`; przeglądarki wymagają HTTPS albo `localhost`.
+- Zakładka **Chat** (`pages/4_Conversational_Search.py`) została usunięta z tej
+  aplikacji: nie ma tras `/chat*`, ani powiązane z nimi opcje
+  (dyktowanie głosem `UI_SPEECH_INPUT`, stan RAG/supervisorów w sesji).
+  Wersja Streamlit nadal ją zawiera pod `streamlit_ui/`.
 - Ocena odpowiedzi (zamiast `st-star-rating`) to suwak 1-5 gwiazdek.
 - Tabele wyników (`pandas`) są renderowane jako HTML — sortowanie
   `score_weighted` / `score` bez zmian.
@@ -116,10 +113,18 @@ fontów z sieci — działa offline, ikony są w inline SVG).
   przełącznikach i nawigacji, respektowane `prefers-reduced-motion`, styl do
   druku.
 - **UX**: zakładki wyników jako segmentowany kontroler, sticky-header tabel,
-  rozwijane sekcje (JSON, opcje generacji, stan supervisora), pasek postępu
+  rozwijane sekcje (JSON, opcje generacji), pasek postępu
   uploadu, spinner na przyciskach formularzy, podświetlanie aktywnej pozycji w
-  nawigacji, `Ctrl/Cmd + Enter` wysyła wiadomość w czacie, a filtry kategorii i
-  dokumentów odświeżają się bez przeładowania po zmianie kolekcji.
+  nawigacji, a filtry kategorii i dokumenty odświeżają się bez przeładowania po
+  zmianie kolekcji.
+- **Komunikaty** (`app/templates/partials/messages.html`): jeden styl alertów
+  (ikona SVG + `alert__content`) dla `error` / `warning` / `success` oraz dla
+  błędów zwróconych przez silnik. Po utworzeniu kolekcji i po indexowaniu
+  zamiast zrzutu słownika API renderowane jest podsumowanie (`dl.kv` z nazwą
+  kolekcji, modelem, typem indeksu, liczbą plików…) oraz przycisk przejścia do
+  następnego kroku — `GET /documents/upload` i `GET /search` przyjmują
+  `?collection_name=`, więc kolekcja jest już wybrana. Surowy JSON zostaje
+  tylko tam, gdzie ma sens: w `error.html` i sekcjach „Show json".
 
 ## Testy
 
@@ -127,12 +132,12 @@ Smoke test odpala aplikację FastAPI wraz z **mockowanym backendem SSE**
 (`tests/mock_sse_backend.py` odwzorowuje kształty odpowiedzi
 `radlab-semantic-search-engine`), przechodzi całą ścieżkę: logowanie, tworzenie
 kolekcji, upload plików, wyszukiwanie z odpowiedzią generatywną, ocenianie,
-czat RAG i wylogowanie. Nie wymaga prawdziwego backendu ani bazy wektorów.
+wylogowanie. Nie wymaga prawdziwego backendu ani bazy wektorów.
 
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py   # 53 checki, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py   # 60 checków, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów
@@ -147,14 +152,13 @@ fastapi_ui/
 ├── core/
 │   ├── api.py             # klient REST API SSE (port streamlit_ui/pages/src/api.py)
 │   ├── constants.py
-│   ├── env_utils.py
-│   └── state_store.py     # stan sesji (czat, stan RAG) — odpowiednik st.session_state
+│   └── state_store.py     # stan sesji (id ostatniej odpowiedzi) — odpowiednik st.session_state
 ├── tests/
 │   ├── mock_sse_backend.py # atrapa REST API silnika (uruchamiana lokalnie)
 │   └── smoke_test.py       # test end-to-end wszystkich stron
 ├── app/
-│   ├── templates/         # Jinja2: base, home, login, error, new_collection,
-│   │   │                  #        upload_documents, search, chat
+│   ├── templates/         # Jinja2: base, home, login, error, collections,
+│   │   │                  #        upload_documents, search
 │   │   └── partials/      # search_params.html, table.html, messages.html
 │   └── static/
 │       ├── css/style.css

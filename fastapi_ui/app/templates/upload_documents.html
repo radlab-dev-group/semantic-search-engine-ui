@@ -14,16 +14,34 @@
 
     {% include "partials/messages.html" %}
 
+    {% if uploaded %}
+      <p class="section-title">Indexing summary</p>
+      <dl class="kv">
+        <dt>Collection</dt>
+        <dd class="mono">{{ uploaded.collection_name }}</dd>
+        <dt>Files</dt>
+        <dd>{{ uploaded.files }}</dd>
+        <dt>Tokens per chunk</dt>
+        <dd>{{ uploaded.max_tokens_in_chunk }}</dd>
+        <dt>Overlap tokens</dt>
+        <dd>{{ uploaded.number_of_overlap_tokens }}</dd>
+      </dl>
+
+      <div class="btn-row">
+        <a class="btn btn-primary btn--sm" href="/search?collection_name={{ uploaded.collection_name | urlencode }}">Search in this collection</a>
+      </div>
+    {% endif %}
+
     {% if not collections or collections | length == 0 %}
       <div class="empty-state">
         <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
         <p>You do not have any collections of documents yet — create one to start indexing.</p>
         <div class="btn-row btn-row--center">
-          <a class="btn btn-primary" href="/collections/new">Create a new collection</a>
+          <a class="btn btn-primary" href="/collections">Create a new collection</a>
         </div>
       </div>
     {% else %}
-      <form method="post" action="/documents/upload" enctype="multipart/form-data" data-upload-form>
+      <form method="post" action="/documents/upload" enctype="multipart/form-data" data-busy-form>
         <div class="grid-2">
           <div class="card card--subtle">
             <p class="section-title">Target collection</p>
@@ -83,7 +101,6 @@
           <button type="submit" class="btn btn-primary" data-loading-label="Uploading and indexing…">Start indexing</button>
           <a class="btn" href="/search">Go to search engine</a>
         </div>
-        <p class="muted">Uploading and indexing files to the engine backend — take a ☕ and wait calmly.</p>
         <div class="progress hidden" id="upload-progress"><div class="progress__bar"></div></div>
       </form>
     {% endif %}

@@ -44,8 +44,6 @@ config = {
                 "generative_answer": "api/generative_answer",
                 "rate_generative_answer": "api/rate_generative_answer",
                 "upload_and_index_files": "api/upload_and_index_files",
-                "new_chat": "api/new_chat",
-                "add_user_message": "api/add_user_message",
             },
         },
     }
@@ -129,7 +127,44 @@ def main() -> int:
             str(response.status_code),
         )
 
-        # --- New collection ------------------------------------------------ #
+        # --- Collections ---------------------------------------------------- #
+        response = client.get("/collections")
+        check(
+            "collections page lists collections from the engine",
+            response.status_code == 200
+            and "user_col" in response.text
+            and "user_kol" in response.text
+            and "Moje dokumenty" in response.text,
+            str(response.status_code),
+        )
+        check(
+            "collections list shows description and creation date",
+            "Kolekcja użytkownika" in response.text
+            and "2026-09-30" in response.text,
+            "",
+        )
+        check(
+            "collections list links to upload and search of a collection",
+            'href="/documents/upload?collection_name=user_col"' in response.text
+            and 'href="/search?collection_name=user_col"' in response.text,
+            "",
+        )
+        check(
+            "navigation tab is named Collections",
+            ">Collections</a>" in response.text
+            and ">New collection</a>" not in response.text
+            and "nav__link is-active" in response.text,
+            "",
+        )
+
+        response = client.get("/collections/new", follow_redirects=False)
+        check(
+            "old new collection address redirects to /collections",
+            response.status_code == 303
+            and "/collections" in response.headers["location"],
+            str(response.headers),
+        )
+
         response = client.get("/collections/new")
         check(
             "new collection form",
@@ -167,6 +202,19 @@ def main() -> int:
                 "Opis kolekcji"
             ),
             str(sent.get("body")),
+        )
+        check(
+            "collection success is a styled alert with a summary",
+            '<div class="alert alert-success" role="status">' in response.text
+            and "Collection details" in response.text
+            and 'href="/documents/upload?collection_name=user_moje_dokumenty"'
+            in response.text,
+            response.text[:400],
+        )
+        check(
+            "collection success does not dump the raw API payload",
+            "collection_id" not in response.text and "{'" not in response.text,
+            "",
         )
 
         # --- Upload documents ---------------------------------------------- #
@@ -228,6 +276,30 @@ def main() -> int:
             and '"max_tokens_in_chunk": 300' in sent.get("raw_text", ""),
             str(sent.get("body")),
         )
+        check(
+            "upload success shows an alert with an indexing summary",
+            '<div class="alert alert-success" role="status">' in response.text
+            and "Indexing summary" in response.text
+            and "2 file(s)" in response.text,
+            response.text[:400],
+        )
+        check(
+            "upload success does not dump the raw API payload",
+            "indexed_chunks" not in response.text and "{'" not in response.text,
+            "",
+        )
+        response = client.get("/documents/upload?collection_name=user_col")
+        check(
+            "upload page preselects the collection from the query string",
+            '<option value="user_col" selected>' in response.text,
+            "",
+        )
+        response = client.get("/search?collection_name=user_col")
+        check(
+            "search page preselects the collection from the query string",
+            '<option value="user_col" selected>' in response.text,
+            "",
+        )
 
         response = client.post(
             "/documents/upload", data={"collection_name": "user_col"}
@@ -288,6 +360,39 @@ def main() -> int:
         check(
             "detailed table shows result ids",
             "fragment B" in response.text and "result_id" in response.text,
+            "",
+        )
+        check(
+            "generative answer is rendered as Markdown",
+            "<h4>Podsumowanie</h4>" in response.text
+            and "<strong>To jest odpowiedź.</strong>" in response.text
+            and "<ul>" in response.text
+            and 'id="answer-body"' in response.text,
+            "",
+        )
+        check(
+            "markdown links are safe and table alignment uses classes",
+            'href="https://example.com/docs" rel="noopener noreferrer nofollow"'
+            in response.text
+            and 'class="cell-right"' in response.text,
+            "",
+        )
+        check(
+            "results are tabbed with ARIA and exactly one visible panel",
+            'role="tablist"' in response.text
+            and 'id="tab-generative" aria-selected="true"' not in response.text
+            and response.text.count('class="tab-panel is-active"') == 1
+            and 'aria-selected="true"' in response.text,
+            str(response.text.count('class="tab-panel is-active"')),
+        )
+        check(
+            "score columns render bars",
+            'data-score="0.87"' in response.text and 'class="score"' in response.text,
+            "",
+        )
+        check(
+            "results page renders without inline styles",
+            'style="' not in response.text,
             "",
         )
         check(
@@ -411,89 +516,6 @@ def main() -> int:
             "",
         )
 
-        # --- Conversational search ----------------------------------------- #
-        response = client.get("/chat")
-        check(
-            "chat page",
-            response.status_code == 200
-            and "Conversational search bot" in response.text,
-            str(response.status_code),
-        )
-        check(
-            "chat page has supervisor switches and filters",
-            'name="use_content_supervisor"' in response.text
-            and 'name="use_rag_supervisor"' in response.text
-            and 'name="categories"' in response.text,
-            "",
-        )
-
-        response = client.post(
-            "/chat/message",
-            data={
-                "collection_name": "user_col",
-                "message": "Cześć",
-                "results_count": "20",
-                "use_content_supervisor": "on",
-                "use_rag_supervisor": "on",
-                "qa_gen_model": "qwen-7b",
-                "perc_rank_to_gen_qa": "60",
-            },
-        )
-        chat_sent = last_request("POST", "api/new_chat")
-        msg_sent = last_request("POST", "api/add_user_message")
-        check(
-            "chat message rendered",
-            response.status_code == 200 and "Cześć! W czym pomóc?" in response.text,
-            str(response.status_code),
-        )
-        check(
-            "new chat created",
-            chat_sent.get("body", {}).get("collection_name") == "user_col",
-            str(chat_sent.get("body")),
-        )
-        check(
-            "chat message sent",
-            msg_sent.get("body", {}).get("user_message") == "Cześć",
-            str(msg_sent.get("body")),
-        )
-        check(
-            "rag state rendered",
-            "Detected question" in response.text
-            and "jakieś pytanie" in response.text,
-            "",
-        )
-        check(
-            "content supervisor state rendered",
-            "Content supervisor state" in response.text,
-            "",
-        )
-
-        check("voice input is off by default", "speech-btn" not in response.text, "")
-        server.templates.env.globals["speech_input"] = True
-        try:
-            response = client.get("/chat")
-            check(
-                "voice input can be enabled (UI_SPEECH_INPUT)",
-                "speech-btn" in response.text
-                and "SpeechRecognition" in response.text,
-                "",
-            )
-        finally:
-            server.templates.env.globals["speech_input"] = False
-
-        response = client.post("/chat/clear", follow_redirects=False)
-        check(
-            "chat cleared",
-            response.status_code == 303 and "/chat" in response.headers["location"],
-            str(response.headers),
-        )
-        response = client.get("/chat")
-        check(
-            "chat history gone after clear",
-            "Cześć! W czym pomóc?" not in response.text,
-            "",
-        )
-
         # --- JSON options endpoint + static + logout ------------------------ #
         response = client.get("/api/options?collection_name=user_col")
         payload = response.json()
@@ -514,6 +536,23 @@ def main() -> int:
             str(response.status_code),
         )
 
+        # --- Markdown renderer --------------------------------------------- #
+        unsafe = server.render_markdown(
+            "<script>alert(1)</script> <img src=x onerror=alert(1)>\n"
+            "[click](javascript:alert(1))\n\n- item\n"
+        )
+        check(
+            "markdown escapes raw HTML",
+            "<script" not in unsafe and "&lt;script&gt;" in unsafe,
+            unsafe,
+        )
+        check(
+            "markdown never links to a dangerous scheme",
+            '<a href="javascript' not in unsafe and "<a " not in unsafe,
+            unsafe,
+        )
+        check("markdown still renders lists", "<ul>" in unsafe, unsafe)
+
         # --- UI shell (theme, navigation, no inline styling) ---------------- #
         page_html = client.get("/search").text
         check(
@@ -530,20 +569,12 @@ def main() -> int:
                 for url in [
                     "/home",
                     "/search",
-                    "/chat",
                     "/collections/new",
                     "/documents/upload",
                 ]
             ),
             "",
         )
-        check(
-            "chat wires the message to the parameters form",
-            'form="chat-message-form"' in client.get("/chat").text
-            and 'formaction="/chat/clear"' in client.get("/chat").text,
-            "",
-        )
-
         response = client.get("/healthz")
         check(
             "healthz",

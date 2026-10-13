@@ -13,6 +13,21 @@ from urllib.parse import parse_qs, urlparse
 
 VALID_CREDENTIALS = {"user": "pass"}
 
+# Generative models answer with Markdown, so the fake backend does the same.
+GENEATIVE_ANSWER = """## Podsumowanie
+
+**To jest odpowiedź.** Wynika ona z dwóch dokumentów:
+
+- `doc-a.pdf` — opis procesu
+- `doc-b.pdf` — wyniki pomiarów
+
+| Dokument | Score |
+| --- | ---: |
+| doc-a.pdf | 0.87 |
+
+Więcej w [dokumentacji](https://example.com/docs).
+"""
+
 SEARCH_RESPONSE = {
     "query_response_id": 42,
     "results": {
@@ -27,33 +42,23 @@ SEARCH_RESPONSE = {
     },
 }
 
-CHAT_RESPONSE = {
-    "history": [
-        {"role": "user", "text": "Cześć", "text_translated": None},
-        {
-            "role": "assistant",
-            "text": "Cześć! W czym pomóc?",
-            "text_translated": None,
-        },
-    ],
-    "last_state": [
-        {
-            "content_supervisor_state": {"status": "ok"},
-            "rag_message_state": {
-                "extracted_query": "jakieś pytanie",
-                "sse_response": {
-                    "general_stats_json": json.dumps(
-                        {"doc-a.pdf": {"score_weighted": 0.5, "pages": 1}}
-                    ),
-                    "detailed_results_json": json.dumps(
-                        {"1": {"score": 0.5, "text": "fragment", "page": 1}}
-                    ),
-                },
-            },
-        }
-    ],
-    "generation_time": 1.25,
-}
+# CollectionOfDocumentsSerializer: id, name, display_name, description, created_on
+COLLECTIONS = [
+    {
+        "id": 1,
+        "name": "user_col",
+        "display_name": "Moje dokumenty",
+        "description": "Kolekcja użytkownika",
+        "created_on": "2026-09-30T11:20:33.123456+02:00",
+    },
+    {
+        "id": 2,
+        "name": "user_kol",
+        "display_name": "",
+        "description": "",
+        "created_on": None,
+    },
+]
 
 REQUEST_LOG = []
 
@@ -113,9 +118,7 @@ class MockHandler(BaseHTTPRequestHandler):
         path, _body = self._route()
         ep = path.split("/")[-1]
         if ep == "collections":
-            return self._send(
-                _ok({"collections": [{"name": "user_col"}, {"name": "user_kol"}]})
-            )
+            return self._send(_ok({"collections": COLLECTIONS}))
         if ep == "generative_models":
             return self._send(
                 _ok({"llama-8b": {"ctx": 4096}, "qwen-7b": {"ctx": 8192}})
@@ -163,17 +166,13 @@ class MockHandler(BaseHTTPRequestHandler):
                 _ok(
                     {
                         "response_id": 99,
-                        "answer": "To jest odpowiedź.",
+                        "answer": GENEATIVE_ANSWER,
                         "generation_time": 2.5,
                     }
                 )
             )
         if ep == "rate_generative_answer":
             return self._send(_ok({"rated": True}))
-        if ep == "new_chat":
-            return self._send(_ok({"chat": {"id": 5}}))
-        if ep == "add_user_message":
-            return self._send(_ok(CHAT_RESPONSE))
         return self._send(_ok({}))
 
 

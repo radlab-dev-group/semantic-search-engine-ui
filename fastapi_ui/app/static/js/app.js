@@ -42,17 +42,98 @@ function initNavToggle() {
 }
 
 /* ------------------------------------------------------------------ tabs */
+// ARIA tabs: a [data-tabs] list of [role="tab"] buttons, each controlling the
+// panel referenced by aria-controls. Only one panel is visible at a time.
 function initTabs() {
-  document.querySelectorAll("[data-tabs]").forEach((tabBar) => {
-    tabBar.querySelectorAll("button").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const scope = tabBar.dataset.tabs;
-        document.querySelectorAll(`[data-tab-group="${scope}"] button`).forEach((b) => b.classList.remove("active"));
-        document.querySelectorAll(`[data-tab-group="${scope}"] .tab-pane`).forEach((pane) => pane.classList.remove("active"));
-        btn.classList.add("active");
-        const pane = document.querySelector(`[data-tab-id="${btn.dataset.target}"]`);
-        if (pane) pane.classList.add("active");
+  document.querySelectorAll("[data-tabs]").forEach((tabList) => {
+    const tabs = Array.from(tabList.querySelectorAll('[role="tab"]'));
+    const panels = tabs
+      .map((tab) => document.getElementById(tab.getAttribute("aria-controls")))
+      .filter(Boolean);
+    if (!tabs.length) return;
+
+    const activate = (tab, moveFocus) => {
+      const target = tab.getAttribute("aria-controls");
+      tabs.forEach((candidate) => {
+        const selected = candidate === tab;
+        candidate.classList.toggle("is-active", selected);
+        candidate.setAttribute("aria-selected", String(selected));
+        candidate.tabIndex = selected ? 0 : -1;
       });
+      panels.forEach((panel) => panel.classList.toggle("is-active", panel.id === target));
+      if (moveFocus) tab.focus();
+    };
+
+    tabs.forEach((tab, position) => {
+      tab.addEventListener("click", () => activate(tab, false));
+      tab.addEventListener("keydown", (event) => {
+        const steps = { ArrowRight: 1, ArrowLeft: -1 };
+        if (event.key in steps) {
+          event.preventDefault();
+          activate(tabs[(position + steps[event.key] + tabs.length) % tabs.length], true);
+        } else if (event.key === "Home") {
+          event.preventDefault();
+          activate(tabs[0], true);
+        } else if (event.key === "End") {
+          event.preventDefault();
+          activate(tabs[tabs.length - 1], true);
+        }
+      });
+    });
+  });
+}
+
+/* --------------------------------------------------- expandable table text */
+function initClamps() {
+  document.querySelectorAll("[data-clamp]").forEach((element) => {
+    const toggle = () => {
+      const opened = element.classList.toggle("is-open");
+      element.setAttribute("aria-expanded", String(opened));
+    };
+    element.addEventListener("click", toggle);
+    element.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggle();
+      }
+    });
+  });
+}
+
+/* ------------------------------------------------ score bars (0..1 values) */
+function initScoreBars() {
+  document.querySelectorAll("[data-score]").forEach((bar) => {
+    const value = Number(bar.dataset.score);
+    if (!Number.isFinite(value)) return;
+    const ratio = value > 1 ? value / 100 : value;
+    bar.style.setProperty("--score", `${Math.max(0, Math.min(1, ratio)) * 100}%`);
+  });
+}
+
+/* ---------------------------------------------------------- copy buttons */
+function initCopyButtons() {
+  document.querySelectorAll("[data-copy]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const target = document.getElementById(button.dataset.copy);
+      if (!target) return;
+      const text = target.innerText.trim();
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        const area = document.createElement("textarea");
+        area.value = text;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      const label = button.textContent;
+      button.textContent = "Copied";
+      button.disabled = true;
+      window.setTimeout(() => {
+        button.textContent = label;
+        button.disabled = false;
+      }, 1500);
     });
   });
 }
@@ -117,9 +198,17 @@ function initConditionalFields() {
 
 /* ------------------------------------------------------- busy form states */
 function initFormBusyStates() {
+  function busyButtonFor(event) {
+    if (event.submitter) return event.submitter;
+    const form = event.target;
+    return form.querySelector("button[type='submit'], button:not([type])");
+  }
+
   document.querySelectorAll("form").forEach((form) => {
-    form.addEventListener("submit", () => {
-      const button = form.querySelector("button[type='submit'], button:not([type])");
+    form.addEventListener("submit", (event) => {
+      // Buttons can live outside the form (linked via the form attribute),
+      // so resolve the actually submitted control first.
+      const button = busyButtonFor(event);
       if (!button || button.dataset.busy === "true") return;
 
       button.dataset.busy = "true";
@@ -147,31 +236,6 @@ function initFormBusyStates() {
   });
 }
 
-/* ------------------------------------------------------------ chat log */
-function initChatLog() {
-  const chatLog = document.getElementById("chat-log");
-  if (!chatLog) return;
-  chatLog.scrollTop = chatLog.scrollHeight;
-
-  // Ctrl/Cmd + Enter sends the message.
-  const message = document.getElementById("message");
-  let form = null;
-  if (message) {
-    // The textarea may live outside the <form> (linked with the form attribute).
-    form = message.form instanceof HTMLFormElement
-      ? message.form
-      : document.getElementById(message.form);
-  }
-  if (message && form) {
-    message.addEventListener("keydown", (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-        event.preventDefault();
-        form.requestSubmit();
-      }
-    });
-  }
-}
-
 /* ---------------------------------------------------------------- init */
 document.addEventListener("DOMContentLoaded", () => {
   initThemeToggle();
@@ -180,7 +244,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initSliders();
   initConditionalFields();
   initFormBusyStates();
-  initChatLog();
+  initClamps();
+  initScoreBars();
+  initCopyButtons();
 });
 
 /* ------------------------- refresh category/document filters on demand */

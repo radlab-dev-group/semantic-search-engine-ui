@@ -22,7 +22,7 @@
         <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6"/><path d="M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3"/></svg></span>
         <p>You do not have any collections of documents. Create one and upload files first.</p>
         <div class="btn-row btn-row--center">
-          <a class="btn btn-primary" href="/collections/new">Create a new collection</a>
+          <a class="btn btn-primary" href="/collections">Create a new collection</a>
         </div>
       </div>
     {% else %}
@@ -44,9 +44,9 @@
             </div>
           </div>
 
-          <div class="card card--subtle">
+          <div class="examples">
             <p class="section-title">Examples</p>
-            <ul class="list-clean">
+            <ul>
               <li>Sample question.....</li>
               <li>Sample question.....</li>
               <li>Sample question.....</li>
@@ -58,101 +58,135 @@
   </div>
 
   {% if stats is defined %}
-  <div class="card">
-    <div class="card__header">
-      <div>
-        <p class="card__eyebrow">Results</p>
-        <h2>What the engine found</h2>
-      </div>
-      <div class="badge-row">
-        <span class="badge">Documents <span class="badge__value">{{ stats | length }}</span></span>
-        <span class="badge">Snippets <span class="badge__value">{{ detailed | length }}</span></span>
-        {% if qa_gen_results %}
-          <span class="badge">Gen. time <span class="badge__value">{{ qa_gen_results_time }}</span></span>
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="tabs" data-tabs="search">
-      <button data-tab-group="search" data-target="search-stats" class="active">Search statistics</button>
-      <button data-tab-group="search" data-target="search-results">Search results</button>
-      <button data-tab-group="search" data-target="search-extractive">Answers (extractive QA)</button>
-      <button data-tab-group="search" data-target="search-generative">Answers (generative QA)</button>
-    </div>
-
-    <div class="tab-pane active" data-tab-group="search" data-tab-id="search-stats">
-      {% if stats %}
-        {% set rows = stats %}
-        {% include "partials/table.html" %}
-      {% else %}
-        <p class="muted">No statistics available.</p>
-      {% endif %}
-    </div>
-
-    <div class="tab-pane" data-tab-group="search" data-tab-id="search-results">
-      {% if detailed %}
-        {% set rows = detailed %}
-        {% include "partials/table.html" %}
-      {% else %}
-        <p class="muted">No detailed results available.</p>
-      {% endif %}
-    </div>
-
-    <div class="tab-pane" data-tab-group="search" data-tab-id="search-extractive">
-      {% if qa_results %}
-        {% set rows = qa_results %}
-        {% include "partials/table.html" %}
-      {% else %}
-        <p class="muted">No extractive QA results. Extractive QA runs on the engine side
-          (it was commented out in the Streamlit UI as well).</p>
-      {% endif %}
-    </div>
-
-    <div class="tab-pane" data-tab-group="search" data-tab-id="search-generative">
-      {% if qa_gen_results %}
-        <p class="answer-text">{{ qa_gen_results.get('answer', '') }}</p>
-        <details class="expander">
-          <summary>Show json</summary>
-          <div class="expander-body">
-            <pre class="json"><code>{{ qa_gen_results | tojson(indent=2) }}</code></pre>
-          </div>
-        </details>
-      {% else %}
-        <p class="muted">No generative QA answer. Enable “Run Generative QA” to get one.</p>
-      {% endif %}
-    </div>
-  </div>
-
-    {% if last_response_id is not none %}
-    <div class="card">
+    {% set answer = qa_gen_results.get('answer', '') if qa_gen_results else '' %}
+    {% set active_tab = 'search-generative' if answer else 'search-stats' %}
+    <section class="card results">
       <div class="card__header">
         <div>
-          <p class="card__eyebrow">Feedback</p>
-          <h2>Rate the generated answer</h2>
+          <p class="card__eyebrow">Results</p>
+          <h2>What the engine found</h2>
+          {% if question %}
+            <p class="subtitle">Question: “{{ question }}”</p>
+          {% endif %}
+        </div>
+        <div class="badge-row">
+          <span class="badge">Documents <span class="badge__value">{{ stats | length }}</span></span>
+          <span class="badge">Snippets <span class="badge__value">{{ detailed | length }}</span></span>
+          {% if answer %}
+            <span class="badge">Gen. time <span class="badge__value">{{ qa_gen_results_time }}</span></span>
+          {% endif %}
         </div>
       </div>
-      <form method="post" action="/search/rate">
-        <div class="grid-2">
-          <div class="card card--subtle">
-            <p class="section-title">Set the number of stars</p>
-            <div class="field-slider">
-              <span>Stars</span>
-              <input type="range" id="rate_value" name="rate_value" min="1" max="{{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }}" value="{{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }}">
-              <output>{{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }}</output>
+
+      <div class="tabs" role="tablist" aria-label="Search results" data-tabs>
+        <button type="button" class="tabs__btn {% if active_tab == 'search-stats' %}is-active{% endif %}"
+                role="tab" aria-selected="{% if active_tab == 'search-stats' %}true{% else %}false{% endif %}"
+                aria-controls="panel-stats" id="tab-stats">
+          Search statistics <span class="tabs__count">{{ stats | length }}</span>
+        </button>
+        <button type="button" class="tabs__btn {% if active_tab == 'search-results' %}is-active{% endif %}"
+                role="tab" aria-selected="{% if active_tab == 'search-results' %}true{% else %}false{% endif %}"
+                aria-controls="panel-results" id="tab-results">
+          Search results <span class="tabs__count">{{ detailed | length }}</span>
+        </button>
+        <button type="button" class="tabs__btn {% if active_tab == 'search-extractive' %}is-active{% endif %}"
+                role="tab" aria-selected="{% if active_tab == 'search-extractive' %}true{% else %}false{% endif %}"
+                aria-controls="panel-extractive" id="tab-extractive">
+          Answers (extractive QA) <span class="tabs__count">{{ qa_results | length if qa_results else 0 }}</span>
+        </button>
+        <button type="button" class="tabs__btn {% if active_tab == 'search-generative' %}is-active{% endif %}"
+                role="tab" aria-selected="{% if active_tab == 'search-generative' %}true{% else %}false{% endif %}"
+                aria-controls="panel-generative" id="tab-generative">
+          Answers (generative QA) <span class="tabs__count">{% if answer %}1{% else %}0{% endif %}</span>
+        </button>
+      </div>
+
+      <div class="tab-panel {% if active_tab == 'search-stats' %}is-active{% endif %}" role="tabpanel"
+           id="panel-stats" aria-labelledby="tab-stats" tabindex="0">
+        {% if stats %}
+          {% set rows = stats %}
+          {% include "partials/table.html" %}
+        {% else %}
+          <p class="muted">No statistics available.</p>
+        {% endif %}
+      </div>
+
+      <div class="tab-panel {% if active_tab == 'search-results' %}is-active{% endif %}" role="tabpanel"
+           id="panel-results" aria-labelledby="tab-results" tabindex="0">
+        {% if detailed %}
+          {% set rows = detailed %}
+          {% include "partials/table.html" %}
+        {% else %}
+          <p class="muted">No detailed results available.</p>
+        {% endif %}
+      </div>
+
+      <div class="tab-panel {% if active_tab == 'search-extractive' %}is-active{% endif %}" role="tabpanel"
+           id="panel-extractive" aria-labelledby="tab-extractive" tabindex="0">
+        {% if qa_results %}
+          {% set rows = qa_results %}
+          {% include "partials/table.html" %}
+        {% else %}
+          <p class="muted">No extractive QA results. Extractive QA runs on the engine side
+            (it was commented out in the Streamlit UI as well).</p>
+        {% endif %}
+      </div>
+
+      <div class="tab-panel {% if active_tab == 'search-generative' %}is-active{% endif %}" role="tabpanel"
+           id="panel-generative" aria-labelledby="tab-generative" tabindex="0">
+        {% if answer %}
+          <article class="answer">
+            <div class="answer__header">
+              <p class="section-title">Answer from the model</p>
+              <button type="button" class="btn btn--ghost btn--sm" data-copy="answer-body">Copy answer</button>
             </div>
-            <p class="muted">1 — useless, {{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }} — exactly what I needed.</p>
+            <div class="markdown" id="answer-body">{{ answer | markdown }}</div>
+            <details class="expander">
+              <summary>Show json</summary>
+              <div class="expander-body">
+                <pre class="json"><code>{{ qa_gen_results | tojson(indent=2) }}</code></pre>
+              </div>
+            </details>
+          </article>
+        {% else %}
+          <p class="muted">No generative QA answer. Enable “Run Generative QA” to get one.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if last_response_id is not none %}
+      <section class="card">
+        <div class="card__header">
+          <div>
+            <p class="card__eyebrow">Feedback</p>
+            <h2>Rate the generated answer</h2>
+            <p class="subtitle">Your rating is stored with the answer so the model can be evaluated.</p>
           </div>
-          <div class="card card--subtle">
-            <p class="section-title">Comment</p>
-            <label for="rate_comment">Please leave your comment</label>
-            <textarea id="rate_comment" name="rate_comment" placeholder="What could be better?"></textarea>
+          <span class="badge">Response <span class="badge__value">{{ last_response_id }}</span></span>
+        </div>
+
+        <form method="post" action="/search/rate">
+          <div class="grid-2">
+            <div class="card card--subtle">
+              <p class="section-title">Set the number of stars</p>
+              <div class="field-slider">
+                <span>Stars</span>
+                <input type="range" id="rate_value" name="rate_value" min="1" max="{{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }}" value="{{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }}">
+                <output>{{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }}</output>
+              </div>
+              <p class="muted">1 — useless, {{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }} — exactly what I needed.</p>
+            </div>
+            <div class="card card--subtle">
+              <p class="section-title">Comment</p>
+              <label for="rate_comment">Please leave your comment</label>
+              <textarea id="rate_comment" name="rate_comment" placeholder="What could be better?"></textarea>
+            </div>
           </div>
-        </div>
-        <div class="btn-row">
-          <button type="submit" class="btn btn-primary" data-loading-label="Sending…">Send your feedback!</button>
-        </div>
-      </form>
-    </div>
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary" data-loading-label="Sending…">Send your feedback!</button>
+          </div>
+        </form>
+      </section>
     {% endif %}
   {% endif %}
 {% endblock %}

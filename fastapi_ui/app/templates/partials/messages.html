@@ -1,14 +1,20 @@
+{# Shared feedback block: form errors/warnings, success callout, API errors. #}
 {% if error %}
-  <div class="alert alert-error" role="alert">{{ error }}</div>
+  <div class="alert alert-error" role="alert">
+    <div class="alert__content">{{ error }}</div>
+  </div>
 {% endif %}
 {% if warning %}
-  <div class="alert alert-warning" role="alert">{{ warning }}</div>
+  <div class="alert alert-warning" role="alert">
+    <div class="alert__content">{{ warning }}</div>
+  </div>
 {% endif %}
 {% if success %}
-  <div class="alert alert-success" role="status">{{ success }}</div>
-{% endif %}
-{% if info %}
-  <div class="alert alert-info" role="status">{{ info }}</div>
+  <div class="alert alert-success" role="status">
+    <div class="alert__content">
+      {{ success }}
+    </div>
+  </div>
 {% endif %}
 {% if errors and errors is iterable and errors is not string %}
   <div class="alert alert-error" role="alert">
@@ -19,10 +25,4 @@
       {% endfor %}
     </div>
   </div>
-{% endif %}
-{% if result_json %}
-  <details class="expander">
-    <summary>Show raw API response</summary>
-    <div class="expander-body"><pre class="json"><code>{{ result_json }}</code></pre></div>
-  </details>
 {% endif %}
