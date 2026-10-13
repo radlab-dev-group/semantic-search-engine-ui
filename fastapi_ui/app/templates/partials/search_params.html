@@ -6,8 +6,10 @@
     show_content_supervisor (bool)
     show_rag_supervisor (bool)
 #}
-<div class="card" style="background:#f6f8fa;">
-  <b>Search parameters</b>
+<div class="card card--subtle">
+  <p class="card__eyebrow">Search parameters</p>
+
+  <div class="section-title">Collection</div>
 
   <label for="collection_name">Collection name</label>
   <select id="collection_name" name="collection_name" required>
@@ -17,8 +19,13 @@
     {% endfor %}
   </select>
 
-  <label for="results_count">Number of results (1-100)</label>
+  <label for="results_count">Number of results <span class="muted">(1–{{ constants.MAX_RESULTS_LIMIT }})</span></label>
   <input type="number" id="results_count" name="results_count" value="{{ constants.DEFAULT_MAX_RESULTS }}" min="1" max="{{ constants.MAX_RESULTS_LIMIT }}">
+
+  <div class="check-row">
+    <input type="checkbox" id="rerank_results" name="rerank_results">
+    <label for="rerank_results">Rerank results</label>
+  </div>
 
   {% if show_content_supervisor %}
     <div class="check-row">
@@ -34,10 +41,7 @@
     </div>
   {% endif %}
 
-  <div class="check-row">
-    <input type="checkbox" id="rerank_results" name="rerank_results">
-    <label for="rerank_results">Rerank results</label>
-  </div>
+  <div class="section-title">Models</div>
 
   {% if not force_generative %}
     <div class="check-row">
@@ -69,7 +73,7 @@
       {% endfor %}
     </select>
 
-    <label for="perc_rank_to_gen_qa">Percentage rank to generative QA (1-100)</label>
+    <label for="perc_rank_to_gen_qa">Percentage rank to generative QA <span class="muted">(1–100)</span></label>
     <input type="number" id="perc_rank_to_gen_qa" name="perc_rank_to_gen_qa" value="{{ constants.DEFAULT_PERC_RANK_TO_GEN_QA }}" min="1" max="100">
 
     <div class="check-row">
@@ -109,7 +113,7 @@
           <output>{{ constants.DEFAULT_TYPICAL_P }}</output>
         </div>
         <div class="field-slider">
-          <span>repetition penalty</span>
+          <span>repetition&nbsp;penalty</span>
           <input type="range" name="repetition_penalty" min="0.0" max="2.0" step="0.01" value="{{ constants.DEFAULT_REPETITION_PENALTY }}">
           <output>{{ constants.DEFAULT_REPETITION_PENALTY }}</output>
         </div>
@@ -125,6 +129,8 @@
       </div>
     </details>
   </div>
+
+  <div class="section-title">Filters</div>
 
   <label>Categories in collection (<span data-count-for="categories">{{ categories | length }}</span>)</label>
   <select name="categories" multiple size="5">

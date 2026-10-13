@@ -1,18 +1,25 @@
 {% extends "base.html" %}
 {% block title %}SSE - error{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 {% block content %}
   <div class="card">
-    <h1>Error</h1>
-    <div class="alert alert-error">
-      Error occurred while processing:
-      {% if errors %}
-        {% for err in errors %}
-          <pre class="json">{{ err | tojson(indent=2) }}</pre>
-        {% endfor %}
-      {% else %}
-        {{ error_result | tojson(indent=2) }}
-      {% endif %}
+    <p class="card__eyebrow">Something went wrong</p>
+    <h1>Engine error</h1>
+    <p class="subtitle">The semantic search engine rejected or failed to process this request.</p>
+
+    <div class="alert alert-error" role="alert">
+      <div class="alert__content">
+        <b>Error occurred while processing</b>
+        {% if errors %}
+          {% for err in errors %}
+            <pre class="json"><code>{{ err | tojson(indent=2) }}</code></pre>
+          {% endfor %}
+        {% else %}
+          <pre class="json"><code>{{ error_result | tojson(indent=2) }}</code></pre>
+        {% endif %}
+      </div>
     </div>
+
     <div class="btn-row">
       <a class="btn btn-primary" href="/search">Back to search</a>
       <a class="btn" href="/home">Home</a>

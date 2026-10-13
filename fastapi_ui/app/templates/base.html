@@ -1,31 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="auto">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1120">
   <title>{% block title %}Semantic search engine{% endblock %}</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧊</text></svg>">
   <link rel="stylesheet" href="/static/css/style.css">
+  <script>
+    // Applied before paint so there is no light-theme flash on load.
+    (function () {
+      const stored = localStorage.getItem("sse-theme") || "auto";
+      document.documentElement.dataset.theme = stored;
+    })();
+  </script>
   {% block head %}{% endblock %}
 </head>
 <body>
-  <nav class="navbar">
-    <a class="brand" href="{{ '/home' if is_logged_in else '/login' }}">🧊 Semantic search engine</a>
-    {% if is_logged_in %}
-      <a class="nav-link" href="/home">Home</a>
-      <a class="nav-link" href="/collections/new">New Collection</a>
-      <a class="nav-link" href="/documents/upload">Upload Documents</a>
-      <a class="nav-link" href="/search">Semantic Search Engine</a>
-      <a class="nav-link" href="/chat">Conversational Search</a>
-      <span class="spacer"></span>
-      <span class="user">Logged as <b>{{ username }}</b></span>
-      <a class="nav-link" href="/logout">Logout</a>
-    {% endif %}
-  </nav>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-  <main class="container {% block container_class %}{% endblock %}">
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="{{ '/home' if is_logged_in else '/login' }}">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5.5" rx="7.5" ry="3"/>
+            <path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/>
+            <path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3 1.3 0 2.5-.13 3.5-.35"/>
+            <path d="M17.5 17.5l3 3"/>
+            <circle cx="16" cy="16" r="3"/>
+          </svg>
+        </span>
+        <span class="brand__text">Semantic<strong>Search</strong></span>
+      </a>
+
+      {% if is_logged_in %}
+        <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="primary-nav">
+          <span></span><span></span><span></span>
+        </button>
+        <nav class="nav" id="primary-nav">
+          {% set path = request.url.path %}
+          <a class="nav__link {% if path == '/home' %}is-active{% endif %}" href="/home">Home</a>
+          <a class="nav__link {% if path == '/collections/new' %}is-active{% endif %}" href="/collections/new">New collection</a>
+          <a class="nav__link {% if path == '/documents/upload' %}is-active{% endif %}" href="/documents/upload">Upload documents</a>
+          <a class="nav__link {% if path.startswith('/search') %}is-active{% endif %}" href="/search">Search engine</a>
+          <a class="nav__link {% if path.startswith('/chat') %}is-active{% endif %}" href="/chat">Chat</a>
+        </nav>
+      {% endif %}
+
+      <div class="topbar__actions">
+        <button class="theme-toggle" type="button" aria-label="Switch colour theme" title="Switch colour theme">
+          <svg class="theme-toggle__icon theme-toggle__icon--auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>
+          <svg class="theme-toggle__icon theme-toggle__icon--light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+          <svg class="theme-toggle__icon theme-toggle__icon--dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+        </button>
+
+        {% if is_logged_in %}
+          <div class="user-chip" title="Signed in">
+            <span class="user-chip__avatar" aria-hidden="true">{{ (username or '?')[:1] | upper }}</span>
+            <span class="user-chip__name">{{ username }}</span>
+          </div>
+          <a class="btn btn--ghost btn--sm" href="/logout">Log out</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <main class="page {% block page_class %}{% endblock %}" id="main">
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="footer">
+    <span>RadLab Semantic Search Engine · FastAPI UI</span>
+    <span class="footer__dot" aria-hidden="true">•</span>
+    <a href="/docs" rel="noopener">API docs</a>
+  </footer>
 
   <script src="/static/js/app.js"></script>
   {% block scripts %}{% endblock %}

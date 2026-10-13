@@ -277,7 +277,7 @@ def main() -> int:
         )
         check(
             "generation time rendered",
-            "Generation time" in response.text and "0:00:02.500000" in response.text,
+            "Gen. time" in response.text and "0:00:02.500000" in response.text,
             "",
         )
         check(
@@ -508,8 +508,40 @@ def main() -> int:
         response = client.get("/static/css/style.css")
         check(
             "static css served",
-            response.status_code == 200 and "--accent" in response.text,
+            response.status_code == 200
+            and "--brand-500" in response.text
+            and "prefers-color-scheme: dark" in response.text,
             str(response.status_code),
+        )
+
+        # --- UI shell (theme, navigation, no inline styling) ---------------- #
+        page_html = client.get("/search").text
+        check(
+            "UI shell exposes theme toggle and active navigation",
+            'data-theme="auto"' in page_html
+            and "theme-toggle" in page_html
+            and "nav__link is-active" in page_html,
+            "",
+        )
+        check(
+            "templates render without inline styles",
+            all(
+                'style="' not in client.get(url).text
+                for url in [
+                    "/home",
+                    "/search",
+                    "/chat",
+                    "/collections/new",
+                    "/documents/upload",
+                ]
+            ),
+            "",
+        )
+        check(
+            "chat wires the message to the parameters form",
+            'form="chat-message-form"' in client.get("/chat").text
+            and 'formaction="/chat/clear"' in client.get("/chat").text,
+            "",
         )
 
         response = client.get("/healthz")

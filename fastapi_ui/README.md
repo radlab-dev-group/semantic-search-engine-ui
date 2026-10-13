@@ -98,6 +98,29 @@ Kody błędów są renderowane na stronie `error.html`, odpowiednik
 - Tabele wyników (`pandas`) są renderowane jako HTML — sortowanie
   `score_weighted` / `score` bez zmian.
 
+## Wygląd (UI)
+
+Nowoczesny, responsywny interfejs bez zewnętrznych zależności (żadnych CDN-ów ani
+fontów z sieci — działa offline, ikony są w inline SVG).
+
+- **Motyw jasny/ciemny**: wartość `auto` podąża za `prefers-color-scheme`, a
+  przycisk w pasku nawigacji przełącza `auto → light → dark`; wybór zapisywany
+  jest w `localStorage` pod kluczem `sse-theme` (ustawiany przed pierwszym
+  malowaniem, więc brak „flasha” przy wczytywaniu).
+- **Tokeny designu** w `:root` (kolory, cienie, radiusy, odstępy) w
+  `app/static/css/style.css` — naklejenie innego brandu to zmiana
+  kilku zmiennych.
+- **Responsywność**: breakpointy 1080 px (siatka paneli), 980 px (nawigacja w
+  hamburger), 860 px (jedna kolumna), 560 px (stackowanie pól i suwaków).
+- **Dostępność**: link „Skip to content”, widoczne ramki fokusu, `aria-*` przy
+  przełącznikach i nawigacji, respektowane `prefers-reduced-motion`, styl do
+  druku.
+- **UX**: zakładki wyników jako segmentowany kontroler, sticky-header tabel,
+  rozwijane sekcje (JSON, opcje generacji, stan supervisora), pasek postępu
+  uploadu, spinner na przyciskach formularzy, podświetlanie aktywnej pozycji w
+  nawigacji, `Ctrl/Cmd + Enter` wysyła wiadomość w czacie, a filtry kategorii i
+  dokumentów odświeżają się bez przeładowania po zmianie kolekcji.
+
 ## Testy
 
 Smoke test odpala aplikację FastAPI wraz z **mockowanym backendem SSE**
@@ -109,7 +132,7 @@ czat RAG i wylogowanie. Nie wymaga prawdziwego backendu ani bazy wektorów.
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py   # 50 checków, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py   # 53 checki, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów

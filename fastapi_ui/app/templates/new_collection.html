@@ -1,17 +1,38 @@
 {% extends "base.html" %}
 {% block title %}SSE - new collection{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 {% block content %}
   <div class="card">
-    <h1>Add new collection to SSE</h1>
+    <div class="card__header">
+      <div>
+        <p class="card__eyebrow">Collections</p>
+        <h1>Add new collection to SSE</h1>
+        <p class="subtitle">Choose the embedder, the re-ranker and the index type used to store the embeddings.</p>
+      </div>
+      <span class="badge badge--brand">Step 1 of 3</span>
+    </div>
+
     {% include "partials/messages.html" %}
+
     <form method="post" action="/collections/new">
-      <div class="card" style="background:#f6f8fa;">
+      {% if success %}
+        <div class="alert alert-success" role="status">
+          <div class="alert__content">
+            {{ success }}
+            <div class="btn-row">
+              <a class="btn btn--sm" href="/documents/upload">Go to upload documents</a>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="card card--subtle">
         <label for="collection_name">Collection code name</label>
-        <input type="text" id="collection_name" name="collection_name" value="" required>
+        <input type="text" id="collection_name" name="collection_name" value="" placeholder="my-documents" required>
         <p class="muted">The final collection name will be <code>&lt;username&gt;_&lt;code name&gt;</code>.</p>
 
         <label for="collection_display_name">Collection display name</label>
-        <input type="text" id="collection_display_name" name="collection_display_name" value="" required>
+        <input type="text" id="collection_display_name" name="collection_display_name" value="" placeholder="My documents" required>
 
         <label for="embedder_index_type">Index type</label>
         <select id="embedder_index_type" name="embedder_index_type">
@@ -23,7 +44,7 @@
         <label for="embedder_model">Name of embedder model</label>
         <select id="embedder_model" name="embedder_model" required>
           {% for model in embedders %}
-            <option value="{{ model }}">{% if loop.first %}{{ model }}{% else %}{{ model }}{% endif %}</option>
+            <option value="{{ model }}">{{ model }}</option>
           {% endfor %}
         </select>
 
@@ -37,9 +58,10 @@
         <label for="collection_description">Collection description</label>
         <textarea id="collection_description" name="collection_description" placeholder="Opis kolekcji ..."></textarea>
       </div>
+
       <div class="btn-row">
-        <button type="submit" class="btn btn-primary">Create</button>
-        <a class="btn" href="/home">Cancel</a>
+        <button type="submit" class="btn btn-primary" data-loading-label="Creating…">Create collection</button>
+        <a class="btn btn--ghost" href="/home">Cancel</a>
       </div>
     </form>
   </div>

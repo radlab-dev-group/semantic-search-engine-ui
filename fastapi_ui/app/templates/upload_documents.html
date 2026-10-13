@@ -1,52 +1,68 @@
 {% extends "base.html" %}
 {% block title %}SSE - upload documents{% endblock %}
-{% block container_class %}wide{% endblock %}
+{% block page_class %}page--wide{% endblock %}
 {% block content %}
   <div class="card">
-    <h1>Upload documents to SSE</h1>
+    <div class="card__header">
+      <div>
+        <p class="card__eyebrow">Indexing</p>
+        <h1>Upload documents to SSE</h1>
+        <p class="subtitle">Files are chunked, embedded and indexed on the engine side — this can take a while.</p>
+      </div>
+      <span class="badge badge--brand">Step 2 of 3</span>
+    </div>
+
     {% include "partials/messages.html" %}
+
     {% if not collections or collections | length == 0 %}
-      <div class="alert alert-warning">
-        You do not have any collections of documents.
-        <a href="/collections/new">Click here to create a new collection</a> 🆕
+      <div class="empty-state">
+        <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
+        <p>You do not have any collections of documents yet — create one to start indexing.</p>
+        <div class="btn-row btn-row--center">
+          <a class="btn btn-primary" href="/collections/new">Create a new collection</a>
+        </div>
       </div>
     {% else %}
-      <form method="post" action="/documents/upload" enctype="multipart/form-data">
-        <label for="collection_name">Collection name</label>
-        <select id="collection_name" name="collection_name" required>
-          <option value="" disabled {% if not selected_collection %}selected{% endif %}>Choose collection...</option>
-          {% for coll in collections %}
-            <option value="{{ coll }}" {% if coll == selected_collection %}selected{% endif %}>{{ coll }}</option>
-          {% endfor %}
-        </select>
-
-        <label for="files">Add file to collection (pdf, docx, txt, zip)</label>
-        <input type="file" id="files" name="files[]" accept=".pdf,.docx,.txt,.zip" multiple required>
-
-        <hr class="divider">
-        <b>Documents indexing options</b>
-
+      <form method="post" action="/documents/upload" enctype="multipart/form-data" data-upload-form>
         <div class="grid-2">
-          <div>
+          <div class="card card--subtle">
+            <p class="section-title">Target collection</p>
+
+            <label for="collection_name">Collection name</label>
+            <select id="collection_name" name="collection_name" required>
+              <option value="" disabled {% if not selected_collection %}selected{% endif %}>Choose collection...</option>
+              {% for coll in collections %}
+                <option value="{{ coll }}" {% if coll == selected_collection %}selected{% endif %}>{{ coll }}</option>
+              {% endfor %}
+            </select>
+
+            <label for="files">Add files to collection <span class="muted">(pdf, docx, txt, zip)</span></label>
+            <input type="file" id="files" name="files[]" accept=".pdf,.docx,.txt,.zip" multiple required
+                   data-file-summary="#file-summary">
+            <p class="muted" id="file-summary">No files selected yet.</p>
+          </div>
+
+          <div class="card card--subtle">
+            <p class="section-title">Documents indexing options</p>
+
             <div class="field-slider">
               <span>Max tokens in chunk</span>
-              <input type="range" name="max_tokens_in_chunk" min="10" max="{{ constants.MAX_TOKENS_IN_CHUNK_LIMIT }}" value="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}">
+              <input type="range" name="max_tokens_in_chunk" min="10" max="{{ constants.MAX_TOKENS_IN_CHUNK_LIMIT }}" step="10" value="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}">
               <output>{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}</output>
             </div>
             <div class="field-slider">
-              <span>Overlapping tokens</span>
-              <input type="range" name="number_of_overlap_tokens" min="0" max="{{ constants.OVERLAP_TOKENS_LIMIT }}" value="{{ constants.DEFAULT_OVERLAP_TOKENS }}">
+              <span>Overlap tokens</span>
+              <input type="range" name="number_of_overlap_tokens" min="0" max="{{ constants.OVERLAP_TOKENS_LIMIT }}" step="5" value="{{ constants.DEFAULT_OVERLAP_TOKENS }}">
               <output>{{ constants.DEFAULT_OVERLAP_TOKENS }}</output>
             </div>
-          </div>
-          <div>
-            <div class="check-row">
-              <input type="checkbox" id="use_text_denoiser" name="use_text_denoiser">
-              <label for="use_text_denoiser">Denoise text before indexing (radlab/polish-denoiser-t5-base)</label>
-            </div>
+
             <div class="check-row">
               <input type="checkbox" id="clear_text" name="clear_text" checked>
               <label for="clear_text">Clear text before indexing (full chain processor)</label>
+            </div>
+            <div class="check-row">
+              <input type="checkbox" id="use_text_denoiser" name="use_text_denoiser">
+              <label for="use_text_denoiser">Denoise text before indexing (radlab/polish-denoiser-t5-base)</label>
             </div>
             <div class="check-row">
               <input type="checkbox" id="check_text_lang" name="check_text_lang" checked>
@@ -64,20 +80,35 @@
         </div>
 
         <div class="btn-row">
-          <button type="submit" class="btn btn-primary">Start indexing</button>
+          <button type="submit" class="btn btn-primary" data-loading-label="Uploading and indexing…">Start indexing</button>
+          <a class="btn" href="/search">Go to search engine</a>
         </div>
-        <p class="muted">Uploading and indexing files to engine backend, take a ☕ and wait calmly.</p>
+        <p class="muted">Uploading and indexing files to the engine backend — take a ☕ and wait calmly.</p>
+        <div class="progress hidden" id="upload-progress"><div class="progress__bar"></div></div>
       </form>
     {% endif %}
   </div>
 {% endblock %}
 {% block scripts %}
 <script>
-  document.querySelectorAll('input[type="range"]').forEach((r) => {
-    const out = r.parentElement.querySelector("output");
-    const upd = () => out.textContent = r.value;
-    r.addEventListener("input", upd);
-    upd();
-  });
+  // Selected files summary (the browser default label is not very readable).
+  const fileInput = document.querySelector("[data-file-summary]");
+  const summary = document.querySelector(fileInput ? fileInput.dataset.fileSummary : "#__none__");
+  if (fileInput && summary) {
+    const render = () => {
+      const files = Array.from(fileInput.files || []);
+      if (!files.length) {
+        summary.textContent = "No files selected yet.";
+        return;
+      }
+      const bytes = files.reduce((total, file) => total + file.size, 0);
+      const size = bytes > 1048576
+        ? `${(bytes / 1048576).toFixed(1)} MB`
+        : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+      summary.textContent = `${files.length} file(s) selected · ${size}`;
+    };
+    fileInput.addEventListener("change", render);
+    render();
+  }
 </script>
 {% endblock %}

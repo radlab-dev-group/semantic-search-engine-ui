@@ -1,17 +1,24 @@
 {% extends "base.html" %}
 {% block title %}SSE - Log in{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 {% block content %}
-  <div class="card" style="max-width: 480px; margin: 3rem auto;">
+  <div class="card card--auth">
+    <p class="card__eyebrow">RadLab · Semantic search engine</p>
     <h1>Log in to SSE</h1>
+    <p class="subtitle">Sign in with your organisation account to search, index and chat with your documents.</p>
+
     {% include "partials/messages.html" %}
-    <form method="post" action="/login">
-      <label for="username">Username</label>
-      <input type="text" id="username" name="username" value="{{ username or '' }}" required autofocus>
-      <label for="password">Password</label>
-      <input type="password" id="password" name="password" required>
-      <div class="btn-row">
-        <button type="submit" class="btn btn-primary">Submit</button>
+
+    <form method="post" action="/login" class="stack">
+      <div>
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" value="{{ username or '' }}" autocomplete="username" required autofocus>
       </div>
+      <div>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn--block" data-loading-label="Signing in…">Sign in</button>
     </form>
   </div>
 {% endblock %}

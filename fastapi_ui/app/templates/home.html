@@ -1,19 +1,48 @@
 {% extends "base.html" %}
 {% block title %}Semantic search engine{% endblock %}
 {% block content %}
-  <div class="card">
-    <h1>Conversational UI to search engine (with Q&amp;A models)</h1>
-    <h2>Welcome to SSSUI (Simple Semantic Search UI)! 👋</h2>
-    <p>
-      This is a fully functional UI to RadLab Semantic Search Engine.
-      This application may be helpful when you want to test LLM models
-      combined with IR/Semantic Search (f.e. for RAG)/Conversational search.
+  <section class="hero">
+    <p class="card__eyebrow">Conversational UI to search engine · with Q&amp;A models</p>
+    <h1>Welcome to SSSUI</h1>
+    <p class="lead">
+      A fully functional UI to the RadLab Semantic Search Engine. Use it to test LLM models
+      combined with IR / semantic search (RAG) and conversational search over your own documents.
     </p>
-    <p><b>Select an option from the navigation bar</b> to use engine.</p>
-  </div>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="/search">Open search engine</a>
+      <a class="btn" href="/chat">Try conversational search</a>
+    </div>
+
+    <div class="feature-grid">
+      <a class="feature" href="/collections/new">
+        <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        <h3>New collection</h3>
+        <p>Create a collection with your embedder, re-ranker and index type.</p>
+      </a>
+      <a class="feature" href="/documents/upload">
+        <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
+        <h3>Upload documents</h3>
+        <p>Index PDF, DOCX, TXT or ZIP files with configurable chunking.</p>
+      </a>
+      <a class="feature" href="/search">
+        <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span>
+        <h3>Search engine</h3>
+        <p>Hybrid search with reranking, extractive and generative QA.</p>
+      </a>
+      <a class="feature" href="/chat">
+        <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a2 2 0 0 1-2 2H8l-4 4V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></svg></span>
+        <h3>Chat</h3>
+        <p>Conversational RAG with content and RAG supervisors.</p>
+      </a>
+    </div>
+  </section>
+
   <div class="card">
-    <h3>Some dev information</h3>
-    <ul>
+    <div class="card__header">
+      <h2>Some dev information</h2>
+      <span class="badge badge--brand">FastAPI UI</span>
+    </div>
+    <ul class="list-clean">
       <li>Azure Project with <a href="https://dev.azure.com/radlab-group/radlab-semantic-search-db">database</a> used to store embeddings and similarity search</li>
       <li>Azure Project with <a href="https://dev.azure.com/radlab-group/radlab-semantic-search-engine">semantic search engine backend</a> with full REST API handling</li>
       <li>Azure Project with <a href="https://dev.azure.com/radlab-group/radlab-conversational-search-ui">conversational UI</a> providing this application</li>
