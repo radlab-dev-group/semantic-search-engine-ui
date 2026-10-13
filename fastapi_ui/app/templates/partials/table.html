@@ -1,0 +1,11 @@
+{# Renders rows: list[dict] as an HTML table #}
+{% if rows %}
+<table>
+  <thead><tr>{% for col in rows[0].keys() %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for row in rows %}
+      <tr>{% for val in row.values() %}<td>{{ val }}</td>{% endfor %}</tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}

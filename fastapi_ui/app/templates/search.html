@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% set force_generative = false %}
+{% set show_content_supervisor = false %}
+{% set show_rag_supervisor = false %}
+{% block title %}SSE - semantic search engine{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+  <div class="card">
+    <h1>SSE with generative response</h1>
+    {% include "partials/messages.html" %}
+    {% if not collections or collections | length == 0 %}
+      <div class="alert alert-warning">
+        You do not have any collections of documents.
+        <a href="/collections/new">Click here to create a new collection</a> 🆕
+      </div>
+    {% else %}
+      <form method="post" action="/search">
+        <div class="grid-2">
+          {% include "partials/search_params.html" %}
+
+          <div>
+            <div class="card" style="background:#f6f8fa;">
+              <label for="question">Enter a sentence to search</label>
+              <textarea id="question" name="question" placeholder="Sample question....." required>{{ question or '' }}</textarea>
+              <label for="prompt">Enter an instruction to search</label>
+              <textarea id="prompt" name="prompt" placeholder="Optional instruction for the generative model">{{ prompt or '' }}</textarea>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Run</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if stats is defined %}
+  <div class="card">
+    <div class="tabs" data-tabs="search">
+      <button data-tab-group="search" data-target="search-stats" class="active">Search statistics</button>
+      <button data-tab-group="search" data-target="search-results">Search results</button>
+      <button data-tab-group="search" data-target="search-extractive">Answers (extractive QA)</button>
+      <button data-tab-group="search" data-target="search-generative">Answers (generative QA)</button>
+    </div>
+
+    <div class="tab-pane active" data-tab-group="search" data-tab-id="search-stats">
+      {% if stats %}
+        {% set rows = stats %}
+        {% include "partials/table.html" %}
+      {% else %}
+        <p class="muted">No statistics available.</p>
+      {% endif %}
+    </div>
+
+    <div class="tab-pane" data-tab-group="search" data-tab-id="search-results">
+      {% if detailed %}
+        {% set rows = detailed %}
+        {% include "partials/table.html" %}
+      {% else %}
+        <p class="muted">No detailed results available.</p>
+      {% endif %}
+    </div>
+
+    <div class="tab-pane" data-tab-group="search" data-tab-id="search-extractive">
+      {% if qa_results %}
+        {% set rows = qa_results %}
+        {% include "partials/table.html" %}
+      {% else %}
+        <p class="muted">No extractive QA results.
+          (Extractive QA is executed on the engine side; the Streamlit UI had it
+          commented out as well.)</p>
+      {% endif %}
+    </div>
+
+    <div class="tab-pane" data-tab-group="search" data-tab-id="search-generative">
+      {% if qa_gen_results %}
+        {% if qa_gen_results_time is not none %}
+          <p><b>Generation time:</b> {{ qa_gen_results_time }}</p>
+          <hr class="divider">
+        {% endif %}
+        <p style="white-space: pre-wrap;">{{ qa_gen_results.get('answer', '') }}</p>
+        <hr class="divider">
+        <details class="expander">
+          <summary>Show json</summary>
+          <div class="expander-body"><pre class="json">{{ qa_gen_results | tojson(indent=2) }}</pre></div>
+        </details>
+      {% else %}
+        <p class="muted">No generative QA answer.</p>
+      {% endif %}
+    </div>
+  </div>
+
+    {% if last_response_id is not none %}
+    <div class="card">
+      <h2>Rate the generated answer</h2>
+      <form method="post" action="/search/rate">
+        <div class="grid-2">
+          <div>
+            <label for="rate_value">Set the number of stars</label>
+            <div class="field-slider">
+              <span>Stars</span>
+              <input type="range" id="rate_value" name="rate_value" min="1" max="{{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }}" value="{{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }}">
+              <output>{{ constants.MAX_VAL_RATING_GENERATIVE_ANSWER }}</output>
+            </div>
+          </div>
+          <div>
+            <label for="rate_comment">Please leave your comment</label>
+            <textarea id="rate_comment" name="rate_comment"></textarea>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn btn-primary">Send your feedback!</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll('input[type="range"]').forEach((r) => {
+    const out = r.parentElement.querySelector("output");
+    if (!out) return;
+    const upd = () => out.textContent = r.value;
+    r.addEventListener("input", upd);
+    upd();
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% set force_generative = true %}
+{% set show_content_supervisor = true %}
+{% set show_rag_supervisor = true %}
+{% block title %}Conversational Semantic Search bot{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+  <div class="card">
+    <h1>Conversational search bot</h1>
+    {% include "partials/messages.html" %}
+    {% if not collections or collections | length == 0 %}
+      <div class="alert alert-warning">
+        You do not have any collections of documents.
+        <a href="/collections/new">Click here to create a new collection</a> 🆕
+      </div>
+    {% else %}
+      <div class="grid-2">
+        <div class="card">
+          <b>Conversation</b>
+          <div class="chat-log" id="chat-log">
+            {% for message in chat %}
+              {% set text = message.get("text_translated") if message.get("text_translated") and message.get("text_translated") | trim else message.get("text") %}
+              {% if message.get("role") == "assistant" %}
+                <div class="chat-message assistant"><div class="chat-role">assistant</div>{{ text }}</div>
+              {% elif message.get("role") == "user" %}
+                <div class="chat-message user"><div class="chat-role">user</div>{{ text }}</div>
+              {% endif %}
+            {% else %}
+              <p class="muted">Say something to start the conversation with the assistant.</p>
+            {% endfor %}
+          </div>
+
+          {% if generation_time is defined and generation_time is not none %}
+            <p class="muted">Gen. time: {{ generation_time }}</p>
+          {% endif %}
+        </div>
+
+        {# One form for the whole chat: the message is sent with the current search parameters #}
+        <form method="post" action="/chat/message">
+          <div>
+            {% include "partials/search_params.html" %}
+          </div>
+
+          <div class="card">
+            <label for="message">Say something</label>
+            <textarea id="message" name="message" placeholder="Say something" required></textarea>
+            <div class="btn-row">
+              <button type="submit" class="btn btn-primary">Send</button>
+              {% if speech_input %}
+                <button type="button" class="btn" id="speech-btn" title="Dictate your message">🎤 Dictate</button>
+                <span class="muted" id="speech-state"></span>
+              {% endif %}
+            </div>
+            <p class="muted">
+              {% if chat_id is not none %}
+                Chat id: <b>{{ chat_id }}</b> — the same conversation is continued until you clear the chat.
+              {% else %}
+                A new chat is created automatically with the first message.
+              {% endif %}
+            </p>
+          </div>
+        </form>
+      </div>
+
+      <form method="post" action="/chat/clear">
+        <div class="btn-row">
+          <button type="submit" class="btn">Clear chat</button>
+        </div>
+      </form>
+
+      {% if cs_rag %}
+        <div class="card">
+          {% if cs_rag.get("extracted_query") %}
+            <p>Detected question: <b>{{ cs_rag["extracted_query"] }}</b></p>
+          {% endif %}
+          {% if percentage_rank_mass is defined and percentage_rank_mass is not none %}
+            <p>Percentage rank: {{ percentage_rank_mass }}</p>
+          {% endif %}
+
+          {% if general_stats %}
+            <details class="expander" open>
+              <summary>Documents used to generate response</summary>
+              <div class="expander-body">
+                {% set rows = general_stats %}
+                {% include "partials/table.html" %}
+              </div>
+            </details>
+          {% endif %}
+
+          {% if detailed_stats %}
+            <details class="expander">
+              <summary>Detailed search results</summary>
+              <div class="expander-body">
+                {% set rows = detailed_stats %}
+                {% include "partials/table.html" %}
+              </div>
+            </details>
+          {% endif %}
+
+          {% if cs_rag.get("content_supervisor_state") %}
+            <details class="expander">
+              <summary>Content supervisor state</summary>
+              <div class="expander-body">
+                <pre class="json">{{ cs_rag["content_supervisor_state"] | tojson(indent=2) }}</pre>
+              </div>
+            </details>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+{% endblock %}
+{% block scripts %}
+{% if speech_input %}
+<script>
+  // Voice input: the equivalent of streamlit_mic_recorder (language "pl").
+  const speechBtn = document.getElementById("speech-btn");
+  const speechState = document.getElementById("speech-state");
+  const messageBox = document.getElementById("message");
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (speechBtn && SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.lang = "pl";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    let recording = false;
+
+    speechBtn.addEventListener("click", () => (recording ? recognition.stop() : recognition.start()));
+    recognition.addEventListener("start", () => {
+      recording = true;
+      speechBtn.textContent = "⏹ Stop";
+      speechState.textContent = "listening...";
+    });
+    recognition.addEventListener("result", (event) => {
+      const transcript = Array.from(event.results).map((r) => r[0].transcript).join(" ");
+      messageBox.value = messageBox.value ? `${messageBox.value} ${transcript}` : transcript;
+    });
+    recognition.addEventListener("end", () => {
+      recording = false;
+      speechBtn.textContent = "🎤 Dictate";
+      speechState.textContent = "";
+    });
+    recognition.addEventListener("error", (event) => {
+      speechState.textContent = `speech error: ${event.error}`;
+    });
+  } else if (speechBtn) {
+    speechBtn.disabled = true;
+    speechState.textContent = "Web Speech API is not available in this browser";
+  }
+</script>
+{% endif %}
+<script>
+  document.querySelectorAll('input[type="range"]').forEach((r) => {
+    const out = r.parentElement.querySelector("output");
+    if (!out) return;
+    const upd = () => out.textContent = r.value;
+    r.addEventListener("input", upd);
+    upd();
+  });
+</script>
+{% endblock %}

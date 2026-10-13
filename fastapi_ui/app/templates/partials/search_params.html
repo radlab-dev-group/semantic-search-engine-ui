@@ -1,0 +1,144 @@
+{#
+  Shared sidebar of search parameters.
+  Context variables:
+    collections, generative_models, categories, documents, selected_collection
+    force_generative (bool)  -> conversational search: generative QA always on
+    show_content_supervisor (bool)
+    show_rag_supervisor (bool)
+#}
+<div class="card" style="background:#f6f8fa;">
+  <b>Search parameters</b>
+
+  <label for="collection_name">Collection name</label>
+  <select id="collection_name" name="collection_name" required>
+    <option value="" disabled {% if not selected_collection %}selected{% endif %}>Choose collection...</option>
+    {% for coll in collections %}
+      <option value="{{ coll }}" {% if coll == selected_collection %}selected{% endif %}>{{ coll }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="results_count">Number of results (1-100)</label>
+  <input type="number" id="results_count" name="results_count" value="{{ constants.DEFAULT_MAX_RESULTS }}" min="1" max="{{ constants.MAX_RESULTS_LIMIT }}">
+
+  {% if show_content_supervisor %}
+    <div class="check-row">
+      <input type="checkbox" id="use_content_supervisor" name="use_content_supervisor">
+      <label for="use_content_supervisor">Content supervisor</label>
+    </div>
+  {% endif %}
+
+  {% if show_rag_supervisor %}
+    <div class="check-row">
+      <input type="checkbox" id="use_rag_supervisor" name="use_rag_supervisor" checked>
+      <label for="use_rag_supervisor">RAG supervisor</label>
+    </div>
+  {% endif %}
+
+  <div class="check-row">
+    <input type="checkbox" id="rerank_results" name="rerank_results">
+    <label for="rerank_results">Rerank results</label>
+  </div>
+
+  {% if not force_generative %}
+    <div class="check-row">
+      <input type="checkbox" id="return_with_factored_fields" name="return_with_factored_fields">
+      <label for="return_with_factored_fields">Results count with factored number of results</label>
+    </div>
+    <div class="check-row">
+      <input type="checkbox" id="use_qa_extractive" name="use_qa_extractive">
+      <label for="use_qa_extractive">Run Extractive QA</label>
+    </div>
+    <div class="check-row">
+      <input type="checkbox" id="use_qa_generative" name="use_qa_generative">
+      <label for="use_qa_generative">Run Generative QA</label>
+    </div>
+  {% else %}
+    <input type="hidden" name="use_qa_generative" value="on">
+  {% endif %}
+
+  <div id="generative-qa-block" {% if not force_generative %}class="hidden"{% endif %}>
+    <div class="check-row">
+      <input type="checkbox" id="use_doc_names_in_response" name="use_doc_names_in_response">
+      <label for="use_doc_names_in_response">Document names in answer</label>
+    </div>
+
+    <label for="qa_gen_model">Model for results summarization</label>
+    <select id="qa_gen_model" name="qa_gen_model">
+      {% for model in generative_models %}
+        <option value="{{ model }}">{{ model }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="perc_rank_to_gen_qa">Percentage rank to generative QA (1-100)</label>
+    <input type="number" id="perc_rank_to_gen_qa" name="perc_rank_to_gen_qa" value="{{ constants.DEFAULT_PERC_RANK_TO_GEN_QA }}" min="1" max="100">
+
+    <div class="check-row">
+      <input type="checkbox" id="translate_output" name="translate_output">
+      <label for="translate_output">Translate generated answer</label>
+    </div>
+    <div class="lang-options-row hidden">
+      <label for="lang_options">Generated answer target language</label>
+      <select id="lang_options" name="lang_options">
+        {% for lang in constants.ANSWER_LANGUAGES %}
+          <option value="{{ lang }}">{{ lang }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <details class="expander">
+      <summary>Generation options</summary>
+      <div class="expander-body">
+        <div class="field-slider">
+          <span>top_k</span>
+          <input type="range" name="top_k" min="0" max="500" step="1" value="{{ constants.DEFAULT_TOP_K }}">
+          <output>{{ constants.DEFAULT_TOP_K }}</output>
+        </div>
+        <div class="field-slider">
+          <span>top_p</span>
+          <input type="range" name="top_p" min="0.0" max="1.0" step="0.01" value="{{ constants.DEFAULT_TOP_P }}">
+          <output>{{ constants.DEFAULT_TOP_P }}</output>
+        </div>
+        <div class="field-slider">
+          <span>temperature</span>
+          <input type="range" name="temperature" min="0.0" max="2.0" step="0.01" value="{{ constants.DEFAULT_TEMPERATURE }}">
+          <output>{{ constants.DEFAULT_TEMPERATURE }}</output>
+        </div>
+        <div class="field-slider">
+          <span>typical_p</span>
+          <input type="range" name="typical_p" min="0.0" max="2.0" step="0.01" value="{{ constants.DEFAULT_TYPICAL_P }}">
+          <output>{{ constants.DEFAULT_TYPICAL_P }}</output>
+        </div>
+        <div class="field-slider">
+          <span>repetition penalty</span>
+          <input type="range" name="repetition_penalty" min="0.0" max="2.0" step="0.01" value="{{ constants.DEFAULT_REPETITION_PENALTY }}">
+          <output>{{ constants.DEFAULT_REPETITION_PENALTY }}</output>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="set_max_new_tokens" name="set_max_new_tokens">
+          <label for="set_max_new_tokens">Set max new tokens</label>
+        </div>
+        <div class="field-slider hidden" id="max_new_tokens_row">
+          <span>max_new_tokens</span>
+          <input type="range" name="max_new_tokens" min="10" max="{{ constants.MAX_MAX_NEW_TOKENS }}" step="1" value="{{ constants.DEFAULT_MAX_NEW_TOKENS }}">
+          <output id="max_new_tokens_out">{{ constants.DEFAULT_MAX_NEW_TOKENS }}</output>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <label>Categories in collection (<span data-count-for="categories">{{ categories | length }}</span>)</label>
+  <select name="categories" multiple size="5">
+    {% for cat in categories %}
+      <option value="{{ cat }}">{{ cat }}</option>
+    {% endfor %}
+  </select>
+  <p class="muted">Hold Ctrl/Cmd to select multiple categories.</p>
+
+  <label>Documents in collection (<span data-count-for="documents">{{ documents | length }}</span>)</label>
+  <select name="documents" multiple size="5">
+    {% for doc in documents %}
+      <option value="{{ doc }}">{{ doc }}</option>
+    {% endfor %}
+  </select>
+  <p class="muted">Hold Ctrl/Cmd to select multiple documents.</p>
+</div>

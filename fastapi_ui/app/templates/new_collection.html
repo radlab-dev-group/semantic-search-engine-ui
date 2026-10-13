@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}SSE - new collection{% endblock %}
+{% block content %}
+  <div class="card">
+    <h1>Add new collection to SSE</h1>
+    {% include "partials/messages.html" %}
+    <form method="post" action="/collections/new">
+      <div class="card" style="background:#f6f8fa;">
+        <label for="collection_name">Collection code name</label>
+        <input type="text" id="collection_name" name="collection_name" value="" required>
+        <p class="muted">The final collection name will be <code>&lt;username&gt;_&lt;code name&gt;</code>.</p>
+
+        <label for="collection_display_name">Collection display name</label>
+        <input type="text" id="collection_display_name" name="collection_display_name" value="" required>
+
+        <label for="embedder_index_type">Index type</label>
+        <select id="embedder_index_type" name="embedder_index_type">
+          {% for idx in constants.INDEX_TYPES %}
+            <option value="{{ idx }}" {% if idx == 'IVF_FLAT' %}selected{% endif %}>{{ idx }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="embedder_model">Name of embedder model</label>
+        <select id="embedder_model" name="embedder_model" required>
+          {% for model in embedders %}
+            <option value="{{ model }}">{% if loop.first %}{{ model }}{% else %}{{ model }}{% endif %}</option>
+          {% endfor %}
+        </select>
+
+        <label for="re_ranker_model">Name of re-ranker model</label>
+        <select id="re_ranker_model" name="re_ranker_model" required>
+          {% for model in rerankers %}
+            <option value="{{ model }}">{{ model }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="collection_description">Collection description</label>
+        <textarea id="collection_description" name="collection_description" placeholder="Opis kolekcji ..."></textarea>
+      </div>
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary">Create</button>
+        <a class="btn" href="/home">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

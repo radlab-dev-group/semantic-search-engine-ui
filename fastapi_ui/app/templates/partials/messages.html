@@ -1,0 +1,26 @@
+{% if error %}
+  <div class="alert alert-error">❌ {{ error }}</div>
+{% endif %}
+{% if warning %}
+  <div class="alert alert-warning">⚠️ {{ warning }}</div>
+{% endif %}
+{% if success %}
+  <div class="alert alert-success">ℹ️ {{ success }}</div>
+{% endif %}
+{% if info %}
+  <div class="alert alert-info">{{ info }}</div>
+{% endif %}
+{% if errors and errors is iterable and errors is not string %}
+  <div class="alert alert-error">
+    <b>Error occurred while processing:</b>
+    {% for err in errors %}
+      <pre class="json">{{ err | tojson(indent=2) }}</pre>
+    {% endfor %}
+  </div>
+{% endif %}
+{% if result_json %}
+  <details class="expander">
+    <summary>Show raw API response</summary>
+    <div class="expander-body"><pre class="json">{{ result_json }}</pre></div>
+  </details>
+{% endif %}

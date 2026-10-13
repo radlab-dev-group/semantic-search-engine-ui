@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}SSE - Log in{% endblock %}
+{% block content %}
+  <div class="card" style="max-width: 480px; margin: 3rem auto;">
+    <h1>Log in to SSE</h1>
+    {% include "partials/messages.html" %}
+    <form method="post" action="/login">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" value="{{ username or '' }}" required autofocus>
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required>
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

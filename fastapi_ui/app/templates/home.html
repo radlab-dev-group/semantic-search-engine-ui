@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Semantic search engine{% endblock %}
+{% block content %}
+  <div class="card">
+    <h1>Conversational UI to search engine (with Q&amp;A models)</h1>
+    <h2>Welcome to SSSUI (Simple Semantic Search UI)! 👋</h2>
+    <p>
+      This is a fully functional UI to RadLab Semantic Search Engine.
+      This application may be helpful when you want to test LLM models
+      combined with IR/Semantic Search (f.e. for RAG)/Conversational search.
+    </p>
+    <p><b>Select an option from the navigation bar</b> to use engine.</p>
+  </div>
+  <div class="card">
+    <h3>Some dev information</h3>
+    <ul>
+      <li>Azure Project with <a href="https://dev.azure.com/radlab-group/radlab-semantic-search-db">database</a> used to store embeddings and similarity search</li>
+      <li>Azure Project with <a href="https://dev.azure.com/radlab-group/radlab-semantic-search-engine">semantic search engine backend</a> with full REST API handling</li>
+      <li>Azure Project with <a href="https://dev.azure.com/radlab-group/radlab-conversational-search-ui">conversational UI</a> providing this application</li>
+      <li>Azure Project with <a href="https://dev.azure.com/radlab-group/radlab-llama-service">LLM API service</a> provided as internal publicity available api</li>
+      <li>Azure Project with starter <a href="https://dev.azure.com/radlab-group/radlab-django-core">django-core</a> for rest framework</li>
+    </ul>
+  </div>
+{% endblock %}

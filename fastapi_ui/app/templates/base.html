@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Semantic search engine{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧊</text></svg>">
+  <link rel="stylesheet" href="/static/css/style.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="navbar">
+    <a class="brand" href="{{ '/home' if is_logged_in else '/login' }}">🧊 Semantic search engine</a>
+    {% if is_logged_in %}
+      <a class="nav-link" href="/home">Home</a>
+      <a class="nav-link" href="/collections/new">New Collection</a>
+      <a class="nav-link" href="/documents/upload">Upload Documents</a>
+      <a class="nav-link" href="/search">Semantic Search Engine</a>
+      <a class="nav-link" href="/chat">Conversational Search</a>
+      <span class="spacer"></span>
+      <span class="user">Logged as <b>{{ username }}</b></span>
+      <a class="nav-link" href="/logout">Logout</a>
+    {% endif %}
+  </nav>
+
+  <main class="container {% block container_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="/static/js/app.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}SSE - upload documents{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+  <div class="card">
+    <h1>Upload documents to SSE</h1>
+    {% include "partials/messages.html" %}
+    {% if not collections or collections | length == 0 %}
+      <div class="alert alert-warning">
+        You do not have any collections of documents.
+        <a href="/collections/new">Click here to create a new collection</a> 🆕
+      </div>
+    {% else %}
+      <form method="post" action="/documents/upload" enctype="multipart/form-data">
+        <label for="collection_name">Collection name</label>
+        <select id="collection_name" name="collection_name" required>
+          <option value="" disabled {% if not selected_collection %}selected{% endif %}>Choose collection...</option>
+          {% for coll in collections %}
+            <option value="{{ coll }}" {% if coll == selected_collection %}selected{% endif %}>{{ coll }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="files">Add file to collection (pdf, docx, txt, zip)</label>
+        <input type="file" id="files" name="files[]" accept=".pdf,.docx,.txt,.zip" multiple required>
+
+        <hr class="divider">
+        <b>Documents indexing options</b>
+
+        <div class="grid-2">
+          <div>
+            <div class="field-slider">
+              <span>Max tokens in chunk</span>
+              <input type="range" name="max_tokens_in_chunk" min="10" max="{{ constants.MAX_TOKENS_IN_CHUNK_LIMIT }}" value="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}">
+              <output>{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}</output>
+            </div>
+            <div class="field-slider">
+              <span>Overlapping tokens</span>
+              <input type="range" name="number_of_overlap_tokens" min="0" max="{{ constants.OVERLAP_TOKENS_LIMIT }}" value="{{ constants.DEFAULT_OVERLAP_TOKENS }}">
+              <output>{{ constants.DEFAULT_OVERLAP_TOKENS }}</output>
+            </div>
+          </div>
+          <div>
+            <div class="check-row">
+              <input type="checkbox" id="use_text_denoiser" name="use_text_denoiser">
+              <label for="use_text_denoiser">Denoise text before indexing (radlab/polish-denoiser-t5-base)</label>
+            </div>
+            <div class="check-row">
+              <input type="checkbox" id="clear_text" name="clear_text" checked>
+              <label for="clear_text">Clear text before indexing (full chain processor)</label>
+            </div>
+            <div class="check-row">
+              <input type="checkbox" id="check_text_lang" name="check_text_lang" checked>
+              <label for="check_text_lang">Check language of indexed files (store to database)</label>
+            </div>
+            <div class="check-row">
+              <input type="checkbox" id="prepare_proper_pages" name="prepare_proper_pages" checked>
+              <label for="prepare_proper_pages">Prepare proper pages (merge single texts from same page)</label>
+            </div>
+            <div class="check-row">
+              <input type="checkbox" id="merge_document_pages" name="merge_document_pages">
+              <label for="merge_document_pages">Merge whole document to single page and process it</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn btn-primary">Start indexing</button>
+        </div>
+        <p class="muted">Uploading and indexing files to engine backend, take a ☕ and wait calmly.</p>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll('input[type="range"]').forEach((r) => {
+    const out = r.parentElement.querySelector("output");
+    const upd = () => out.textContent = r.value;
+    r.addEventListener("input", upd);
+    upd();
+  });
+</script>
+{% endblock %}

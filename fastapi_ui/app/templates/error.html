@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}SSE - error{% endblock %}
+{% block content %}
+  <div class="card">
+    <h1>Error</h1>
+    <div class="alert alert-error">
+      Error occurred while processing:
+      {% if errors %}
+        {% for err in errors %}
+          <pre class="json">{{ err | tojson(indent=2) }}</pre>
+        {% endfor %}
+      {% else %}
+        {{ error_result | tojson(indent=2) }}
+      {% endif %}
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="/search">Back to search</a>
+      <a class="btn" href="/home">Home</a>
+    </div>
+  </div>
+{% endblock %}
