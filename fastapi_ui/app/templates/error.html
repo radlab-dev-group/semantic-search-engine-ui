@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}SSE - error{% endblock %}
+{% block title %}{{ t('error.title') }}{% endblock %}
 {% block page_class %}page--narrow{% endblock %}
 {% block content %}
   <div class="card">
-    <p class="card__eyebrow">Something went wrong</p>
-    <h1>Engine error</h1>
-    <p class="subtitle">The semantic search engine rejected or failed to process this request.</p>
+    <p class="card__eyebrow">{{ t('error.eyebrow') }}</p>
+    <h1>{{ t('error.heading') }}</h1>
+    <p class="subtitle">{{ t('error.subtitle') }}</p>
 
     <div class="alert alert-error" role="alert">
       <div class="alert__content">
-        <b>Error occurred while processing</b>
+        <b>{{ t('messages.error_processing') }}</b>
         {% if errors %}
           {% for err in errors %}
             <pre class="json"><code>{{ err | tojson(indent=2) }}</code></pre>
@@ -21,8 +21,8 @@
     </div>
 
     <div class="btn-row">
-      <a class="btn btn-primary" href="/search">Back to search</a>
-      <a class="btn" href="/home">Home</a>
+      <a class="btn btn-primary" href="/search">{{ t('error.back_to_search') }}</a>
+      <a class="btn" href="/home">{{ t('error.home') }}</a>
     </div>
   </div>
 {% endblock %}

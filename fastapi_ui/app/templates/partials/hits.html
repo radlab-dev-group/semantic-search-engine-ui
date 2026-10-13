@@ -31,9 +31,9 @@
 <div class="results-view" data-view-switch>
   <div class="results-toolbar">
     {% if documents.names | length > 1 %}
-      <div class="doc-filter" role="group" aria-label="Show passages from">
+      <div class="doc-filter" role="group" aria-label="{{ t('hits.filter_label') }}">
         <button type="button" class="doc-filter__chip is-active" data-hit-filter="" aria-pressed="true">
-          All <span class="doc-filter__count">{{ rows | length }}</span>
+          {{ t('hits.all') }} <span class="doc-filter__count">{{ rows | length }}</span>
         </button>
         {% for name in documents.names %}
           <button type="button" class="doc-filter__chip" data-hit-filter="{{ name }}" aria-pressed="false" title="{{ name }}">
@@ -43,18 +43,18 @@
       </div>
     {% else %}
       <p class="results-toolbar__summary muted">
-        {{ rows | length }} passage(s){% if documents.names %} from <b>{{ documents.names[0] }}</b>{% endif %}
+        {{ t.plural('hits.passages', rows | length) }}{% if documents.names %} {{ t('hits.from_html', document=documents.names[0]) }}{% endif %}
       </p>
     {% endif %}
 
-    <div class="segmented" role="group" aria-label="Results view">
+    <div class="segmented" role="group" aria-label="{{ t('hits.view_label') }}">
       <button type="button" class="segmented__btn is-active" data-view="cards" aria-pressed="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4.5" width="16" height="6" rx="1.5"/><rect x="4" y="13.5" width="16" height="6" rx="1.5"/></svg>
-        Passages
+        {{ t('hits.view_passages') }}
       </button>
       <button type="button" class="segmented__btn" data-view="table" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4.5" width="16" height="15" rx="1.5"/><path d="M4 9.5h16M4 14.5h16M10 9.5v10"/></svg>
-        Table
+        {{ t('hits.view_table') }}
       </button>
     </div>
   </div>
@@ -75,7 +75,7 @@
         {% set extra = row | dictsort | rejectattr('0', 'in', known_keys) | list %}
 
         <li class="hit {% if loop.index <= 3 %}hit--top{% endif %}" data-hit data-doc="{{ f.doc or '' }}">
-          <div class="hit__rank" aria-label="Rank {{ loop.index }}">
+          <div class="hit__rank" aria-label="{{ t('hits.rank', rank=loop.index) }}">
             <span class="hit__rank-num">{{ loop.index }}</span>
           </div>
 
@@ -83,12 +83,12 @@
             <header class="hit__head">
               <span class="hit__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"/></svg></span>
               <div class="hit__title">
-                <b title="{{ f.path or f.doc or '' }}">{{ f.doc or 'Passage' }}</b>
+                <b title="{{ f.path or f.doc or '' }}">{{ f.doc or t('hits.passage') }}</b>
                 <ul class="hit__meta">
                   {% if folder and folder not in ['/', '.', './'] %}<li class="hit__folder" title="{{ f.path }}">{{ folder }}</li>{% endif %}
-                  {% if f.page is not none %}<li>page <b>{{ f.page }}</b></li>{% endif %}
-                  {% if f.chunk is not none %}<li>chunk <b>{{ f.chunk }}</b></li>{% endif %}
-                  {% if row.get('result_id') is not none %}<li>id <b>{{ row.get('result_id') }}</b></li>{% endif %}
+                  {% if f.page is not none %}<li>{{ t('hits.page') }} <b>{{ f.page }}</b></li>{% endif %}
+                  {% if f.chunk is not none %}<li>{{ t('hits.chunk') }} <b>{{ f.chunk }}</b></li>{% endif %}
+                  {% if row.get('result_id') is not none %}<li>{{ t('hits.id') }} <b>{{ row.get('result_id') }}</b></li>{% endif %}
                   {% if f.lang %}<li class="hit__lang">{{ f.lang | upper }}</li>{% endif %}
                 </ul>
               </div>
@@ -96,7 +96,7 @@
                 <div class="hit__score">
                   <span class="hit__score-value">{{ '%.4f' | format(score) }}</span>
                   <span class="score__bar hit__score-bar" aria-hidden="true" data-score="{{ score }}" data-score-max="{{ top_score }}"></span>
-                  <small>{% if top_score %}{{ ((score / top_score) * 100) | round | int }}% of top{% else %}score{% endif %}</small>
+                  <small>{% if top_score %}{{ t('hits.of_top', percent=((score / top_score) * 100) | round | int) }}{% else %}{{ t('hits.score') }}{% endif %}</small>
                 </div>
               {% endif %}
             </header>
@@ -109,14 +109,14 @@
 
             <footer class="hit__foot">
               {% if f.text and f.text | length > 360 %}
-                <button type="button" class="hit__action" data-hit-expand aria-controls="hit-text-{{ loop.index }}" aria-expanded="false">Show full passage</button>
+                <button type="button" class="hit__action" data-hit-expand aria-controls="hit-text-{{ loop.index }}" aria-expanded="false">{{ t('hits.show_full') }}</button>
               {% endif %}
               {% if f.text %}
-                <button type="button" class="hit__action" data-copy="hit-text-{{ loop.index }}">Copy</button>
+                <button type="button" class="hit__action" data-copy="hit-text-{{ loop.index }}">{{ t('hits.copy') }}</button>
               {% endif %}
               {% if extra %}
                 <details class="hit__extra">
-                  <summary>{{ extra | length }} more field(s)</summary>
+                  <summary>{{ t.plural('hits.more_fields', extra | length) }}</summary>
                   <dl>
                     {% for key, value in extra %}
                       <div><dt>{{ key }}</dt><dd>{% if value is none %}—{% else %}{{ value }}{% endif %}</dd></div>

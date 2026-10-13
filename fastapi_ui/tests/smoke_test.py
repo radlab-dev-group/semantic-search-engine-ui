@@ -11,6 +11,7 @@ served by tests/mock_sse_backend.py.
 
 import json
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -71,6 +72,152 @@ def last_request(method: str, endpoint: str) -> dict:
         if entry["method"] == method and entry["path"].endswith(endpoint):
             return entry
     return {}
+
+
+UNTRANSLATED_KEY = re.compile(
+    r"\b(?:base|nav|stepper|messages|home|login|error|collections|upload|search"
+    r"|params|hits|board|table|js)\.[a-z_]+\b"
+)
+
+
+def check_i18n(client) -> None:
+    from core import i18n
+
+    en, pl = i18n.catalog("en"), i18n.catalog("pl")
+    check(
+        "pl and en translations have the same keys",
+        set(en) == set(pl),
+        f"only en: {sorted(set(en) - set(pl))}, only pl: {sorted(set(pl) - set(en))}",
+    )
+    check(
+        "polish plural forms",
+        [i18n.translate_plural("pl", "upload.files_count", n) for n in (1, 3, 5, 22, 112)]
+        == ["1 plik", "3 pliki", "5 plików", "22 pliki", "112 plików"]
+        and i18n.translate_plural("en", "upload.files_count", 1) == "1 file",
+        "",
+    )
+    check(
+        "accept-language parsing",
+        i18n.language_from_header("de-DE,pl;q=0.8,en;q=0.5") == "pl"
+        and i18n.language_from_header("en-GB,pl;q=0.9") == "en"
+        and i18n.language_from_header("de") is None,
+        "",
+    )
+    check(
+        "html translations escape their arguments",
+        str(i18n.translate("en", "hits.from_html", document="<x>"))
+        == "from <b>&lt;x&gt;</b>",
+        "",
+    )
+
+    response = client.get("/search")
+    check(
+        "english is the default language",
+        '<html lang="en"' in response.text
+        and 'href="/lang/pl?next=/search"' in response.text
+        and '"lang": "en"' in response.text,
+        "",
+    )
+
+    response = client.get(
+        "/lang/pl?next=/search%3Fcollection_name%3Duser_col", follow_redirects=False
+    )
+    check(
+        "language switch stores the choice and goes back",
+        response.status_code == 303
+        and response.headers["location"] == "/search?collection_name=user_col"
+        and "sse_lang=pl" in response.headers.get("set-cookie", ""),
+        str(response.headers),
+    )
+    for target in ["https://evil.example", "//evil.example", "/\\evil.example"]:
+        response = client.get(
+            "/lang/pl", params={"next": target}, follow_redirects=False
+        )
+        check(
+            f"language switch never redirects off-site ({target})",
+            response.headers.get("location") == "/",
+            str(response.headers),
+        )
+
+    client.cookies.set("sse_lang", "pl")
+    pages = {url: client.get(url).text for url in ["/home", "/collections", "/documents/upload", "/search"]}
+    check(
+        "polish interface",
+        '<html lang="pl"' in pages["/search"]
+        and ">Kolekcje</a>" in pages["/search"]
+        and "Parametry wyszukiwania" in pages["/search"]
+        and "Szukaj po <span" in pages["/home"]
+        and "Lista kolekcji" in pages["/collections"]
+        and "Opcje indeksowania dokumentów" in pages["/documents/upload"]
+        and '"lang": "pl"' in pages["/search"],
+        "",
+    )
+    leaked = {url: UNTRANSLATED_KEY.findall(html) for url, html in pages.items()}
+    check(
+        "no untranslated keys on polish pages",
+        not any(leaked.values()),
+        str(leaked),
+    )
+    check(
+        "polish pages render without inline styles",
+        all('style="' not in html for html in pages.values()),
+        "",
+    )
+
+    response = client.post(
+        "/search",
+        data={
+            "collection_name": "user_col",
+            "question": "jakies pytanie",
+            "use_qa_generative": "on",
+            "qa_gen_model": "llama-8b",
+        },
+    )
+    check(
+        "polish search results",
+        "Co znalazł silnik" in response.text
+        and "Statystyki wyszukiwania" in response.text
+        and "Wyślij opinię!" in response.text
+        and not UNTRANSLATED_KEY.findall(response.text),
+        str(UNTRANSLATED_KEY.findall(response.text)),
+    )
+    response = client.post(
+        "/search", data={"collection_name": "user_col", "question": " "}
+    )
+    check(
+        "polish server messages",
+        "Wpisz zdanie do wyszukania!" in response.text,
+        "",
+    )
+    response = client.post(
+        "/documents/upload",
+        data={"collection_name": "user_col"},
+        files=[
+            ("files[]", ("a.pdf", b"PDF-A", "application/pdf")),
+            ("files[]", ("b.txt", b"text", "text/plain")),
+        ],
+    )
+    check(
+        "polish upload summary uses plural forms",
+        "Podsumowanie indeksowania" in response.text and "2 pliki" in response.text,
+        "",
+    )
+
+    client.cookies.delete("sse_lang")
+    response = client.get("/search", headers={"Accept-Language": "pl-PL,pl;q=0.9"})
+    check(
+        "language detected from Accept-Language",
+        '<html lang="pl"' in response.text,
+        "",
+    )
+    client.cookies.set("sse_lang", "en")
+    response = client.get("/search", headers={"Accept-Language": "pl"})
+    check(
+        "chosen language wins over Accept-Language",
+        '<html lang="en"' in response.text,
+        "",
+    )
+    client.cookies.delete("sse_lang")
 
 
 def main() -> int:
@@ -280,7 +427,7 @@ def main() -> int:
             "upload success shows an alert with an indexing summary",
             '<div class="alert alert-success" role="status">' in response.text
             and "Indexing summary" in response.text
-            and "2 file(s)" in response.text,
+            and "2 files" in response.text,
             response.text[:400],
         )
         check(
@@ -575,6 +722,9 @@ def main() -> int:
             ),
             "",
         )
+        # --- Interface language (pl / en) ---------------------------------- #
+        check_i18n(client)
+
         response = client.get("/healthz")
         check(
             "healthz",

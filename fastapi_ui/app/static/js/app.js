@@ -5,6 +5,42 @@
 const THEME_KEY = "sse-theme";
 const THEME_ORDER = ["auto", "light", "dark"];
 
+/* ------------------------------------------------------------------- i18n */
+// Texts of the current interface language, rendered by base.html from
+// app/locales/<lang>.json (section "js"). Plural entries hold CLDR forms
+// (one / few / many / other) selected with Intl.PluralRules.
+const I18N = (() => {
+  try {
+    return JSON.parse(document.getElementById("i18n-data")?.textContent || "{}");
+  } catch (error) {
+    return {};
+  }
+})();
+const LANG = I18N.lang || document.documentElement.lang || "en";
+const TEXTS = I18N.texts || {};
+
+function fill(template, vars) {
+  return String(template).replace(/\{(\w+)\}/g, (match, name) =>
+    name in vars ? String(vars[name]) : match
+  );
+}
+
+function t(key, vars = {}, fallback = key) {
+  const value = TEXTS[key];
+  if (value === undefined || value === null) return fill(fallback, vars);
+  if (typeof value === "object") {
+    const n = Number(vars.n) || 0;
+    let category = "other";
+    try {
+      category = new Intl.PluralRules(LANG).select(n);
+    } catch (error) {
+      category = n === 1 ? "one" : "other";
+    }
+    return fill(value[category] ?? value.other ?? value.many ?? fallback, vars);
+  }
+  return fill(value, vars);
+}
+
 /* ------------------------------------------------------------------ theme */
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
@@ -22,9 +58,13 @@ function initThemeToggle() {
     const current = document.documentElement.dataset.theme || "auto";
     const next = THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length];
     applyTheme(next);
-    button.setAttribute("title", `Theme: ${next} (click to change)`);
+    button.setAttribute("title", themeTitle(next));
   });
-  button.setAttribute("title", `Theme: ${document.documentElement.dataset.theme} (click to change)`);
+  button.setAttribute("title", themeTitle(document.documentElement.dataset.theme || "auto"));
+}
+
+function themeTitle(theme) {
+  return t("theme_title", { theme: t(`theme_${theme}`, {}, theme) }, "Theme: {theme} (click to change)");
 }
 
 /* ------------------------------------------------------------ navigation */
@@ -190,7 +230,7 @@ function initHitExpanders() {
     button.addEventListener("click", () => {
       const opened = text.classList.toggle("is-open");
       button.setAttribute("aria-expanded", String(opened));
-      button.textContent = opened ? "Show less" : label;
+      button.textContent = opened ? t("show_less", {}, "Show less") : label;
     });
   });
 }
@@ -203,7 +243,8 @@ const HIGHLIGHT_STOPWORDS = new Set([
   "oraz", "jest", "jako", "które", "który", "która", "czego", "czym", "jaki", "jakie",
   "jaka", "kiedy", "gdzie", "dlaczego", "przez", "tego", "temu", "albo", "lub",
   "what", "which", "where", "when", "with", "from", "that", "this", "does", "have",
-  "about", "there", "their", "sample", "question",
+  "about", "there", "their", "sample", "question", "przykładowe", "pytanie",
+  "jaką", "jakim", "jakich", "można", "należy",
 ]);
 
 function initHighlights() {
@@ -266,7 +307,7 @@ function initCopyButtons() {
         area.remove();
       }
       const label = button.textContent;
-      button.textContent = "Copied";
+      button.textContent = t("copied", {}, "Copied");
       button.disabled = true;
       window.setTimeout(() => {
         button.textContent = label;
@@ -311,15 +352,20 @@ function initFileSummary() {
   const render = () => {
     const files = Array.from(fileInput.files || []);
     if (!files.length) {
-      summary.textContent = "No files selected yet.";
+      summary.textContent = t("no_files", {}, "No files selected yet.");
       return;
     }
 
     const bytes = files.reduce((total, file) => total + file.size, 0);
+    const number = new Intl.NumberFormat(LANG, { maximumFractionDigits: 1 });
     const size = bytes > 1048576
-      ? `${(bytes / 1048576).toFixed(1)} MB`
+      ? `${number.format(bytes / 1048576)} MB`
       : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-    summary.textContent = `${files.length} file(s) selected · ${size}`;
+    summary.textContent = t(
+      "files_selected",
+      { n: files.length, size },
+      "{n} file(s) selected · {size}"
+    );
   };
 
   fileInput.addEventListener("change", render);
@@ -430,7 +476,7 @@ function initFormBusyStates() {
       button.dataset.originalLabel = button.innerHTML;
       button.disabled = true;
 
-      const label = button.dataset.loadingLabel || "Working…";
+      const label = button.dataset.loadingLabel || t("working", {}, "Working…");
       button.innerHTML = `<span class="spinner" aria-hidden="true"></span>${label}`;
 
       const progress = document.getElementById("upload-progress");

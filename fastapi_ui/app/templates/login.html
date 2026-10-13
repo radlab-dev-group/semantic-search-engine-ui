@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}SSE - Log in{% endblock %}
+{% block title %}{{ t('login.title') }}{% endblock %}
 {% block page_class %}page--auth{% endblock %}
 {% block content %}
   <div class="auth">
     <aside class="auth__showcase" aria-hidden="true">
-      <p class="eyebrow-pill"><span class="status-dot"></span> Semantic search engine</p>
-      <h2>Every document,<br><span class="text-gradient">one question away.</span></h2>
-      <p>Index your organisation's knowledge once — then search it by meaning and get answers that cite their sources.</p>
+      <p class="eyebrow-pill"><span class="status-dot"></span> {{ t('login.showcase_eyebrow') }}</p>
+      <h2>{{ t('login.showcase_title_html') }}</h2>
+      <p>{{ t('login.showcase_text') }}</p>
       <ul class="auth__facts">
-        <li><b>Embeddings</b><small>dense vectors per chunk</small></li>
-        <li><b>Reranking</b><small>cross-encoder precision</small></li>
-        <li><b>RAG</b><small>answers from your data</small></li>
+        <li><b>{{ t('login.fact_embeddings') }}</b><small>{{ t('login.fact_embeddings_text') }}</small></li>
+        <li><b>{{ t('login.fact_reranking') }}</b><small>{{ t('login.fact_reranking_text') }}</small></li>
+        <li><b>{{ t('login.fact_rag') }}</b><small>{{ t('login.fact_rag_text') }}</small></li>
       </ul>
       <svg class="auth__constellation" viewBox="0 0 320 120" fill="none">
         <path d="M20 90 90 40l70 45 70-60 70 50" class="vs-links"/>
@@ -23,22 +23,22 @@
     </aside>
 
     <div class="card card--auth">
-      <p class="card__eyebrow">RadLab · Semantic search engine</p>
-      <h1>Log in to SSE</h1>
-      <p class="subtitle">Sign in with your organisation account to search and index your documents.</p>
+      <p class="card__eyebrow">{{ t('login.eyebrow') }}</p>
+      <h1>{{ t('login.heading') }}</h1>
+      <p class="subtitle">{{ t('login.subtitle') }}</p>
 
       {% include "partials/messages.html" %}
 
       <form method="post" action="/login" class="stack">
         <div>
-          <label for="username">Username</label>
+          <label for="username">{{ t('login.username') }}</label>
           <input type="text" id="username" name="username" value="{{ username or '' }}" autocomplete="username" required autofocus>
         </div>
         <div>
-          <label for="password">Password</label>
+          <label for="password">{{ t('login.password') }}</label>
           <input type="password" id="password" name="password" autocomplete="current-password" required>
         </div>
-        <button type="submit" class="btn btn-primary btn--block" data-loading-label="Signing in…">Sign in</button>
+        <button type="submit" class="btn btn-primary btn--block" data-loading-label="{{ t('login.submitting') }}">{{ t('login.submit') }}</button>
       </form>
     </div>
   </div>

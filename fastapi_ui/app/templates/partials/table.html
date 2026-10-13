@@ -41,7 +41,7 @@
               {%- elif value is none -%}
                 <span class="muted">—</span>
               {%- elif value is string and value | length > 320 -%}
-                <span class="clamp" data-clamp tabindex="0" role="button" aria-expanded="false" title="Click to expand">{{ value }}</span>
+                <span class="clamp" data-clamp tabindex="0" role="button" aria-expanded="false" title="{{ t('table.expand') }}">{{ value }}</span>
               {%- else -%}
                 {{ value }}
               {%- endif -%}

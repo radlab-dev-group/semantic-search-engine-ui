@@ -33,7 +33,7 @@ from starlette.datastructures import FormData
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import HTMLResponse, RedirectResponse
 
-from core import constants
+from core import constants, i18n
 from core.api import SemanticSearchEngineAPI
 from core.markdown import render_markdown
 from core.state_store import LAST_QUERY_RESPONSE_ID
@@ -64,6 +64,7 @@ app.mount(
 
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "app", "templates"))
 templates.env.globals["constants"] = constants
+templates.env.globals["languages"] = i18n.LANGUAGES
 
 # Engine answers arrive as Markdown; render_markdown() escapes raw HTML, so the
 # result can be marked safe (see core/markdown.py).
@@ -106,9 +107,37 @@ def get_last_response_id(request: Request):
     return get_state(request).get(LAST_QUERY_RESPONSE_ID)
 
 
+# --------------------------------------------------------------------------- #
+# Interface language (pl / en), see core/i18n.py
+# --------------------------------------------------------------------------- #
+def get_language(request: Request) -> str:
+    """Cookie chosen with the language switch, then Accept-Language."""
+    return (
+        i18n.normalize_language(request.cookies.get(i18n.LANGUAGE_COOKIE))
+        or i18n.language_from_header(request.headers.get("accept-language"))
+        or i18n.DEFAULT_LANGUAGE
+    )
+
+
+def translator(request: Request) -> i18n.Translator:
+    return i18n.Translator(get_language(request))
+
+
+def safe_next_url(value: str | None) -> str:
+    """Local path to return to after switching the language."""
+    target = str(value or "").strip()
+    if not target.startswith("/") or target.startswith("//") or "\\" in target:
+        return "/"
+    return target
+
+
 def render_page(
     request: Request, name: str, status_code: int = 200, **context
 ) -> HTMLResponse:
+    t = translator(request)
+    context.setdefault("t", t)
+    context.setdefault("lang", t.lang)
+    context.setdefault("js_i18n", {"lang": t.lang, "texts": t.section("js")})
     context.setdefault("username", get_username(request))
     context.setdefault("is_logged_in", get_token(request) is not None)
     return templates.TemplateResponse(
@@ -426,7 +455,7 @@ def login_submit(
         return render_page(
             request,
             "login.html",
-            error="Invalid username or password!",
+            error=translator(request)("login.invalid_credentials"),
             username=username,
         )
 
@@ -434,6 +463,22 @@ def login_submit(
     request.session["sse_login"] = username
     clear_session_state(request)
     return RedirectResponse(url="/search", status_code=303)
+
+
+@app.get("/lang/{code}", include_in_schema=False)
+def switch_language(request: Request, code: str, next: str = "/"):
+    """Remember the interface language and go back to the previous page."""
+    response = RedirectResponse(url=safe_next_url(next), status_code=303)
+    lang = i18n.normalize_language(code)
+    if lang is not None:
+        response.set_cookie(
+            i18n.LANGUAGE_COOKIE,
+            lang,
+            max_age=60 * 60 * 24 * 365,
+            samesite="lax",
+            httponly=True,
+        )
+    return response
 
 
 @app.get("/logout", include_in_schema=False)
@@ -511,7 +556,7 @@ def new_collection_submit(request: Request, form: FormData = Depends(parsed_form
 
     return render_collections_page(
         request,
-        success="Collection has been created. Add documents to start searching.",
+        success=translator(request)("collections.created"),
         created=collection_params,
     )
 
@@ -539,6 +584,7 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
         return redirect
 
     token = get_token(request)
+    t = translator(request)
     collection_name = form.get("collection_name", "")
     uploaded_files = form.getlist("files[]")
 
@@ -554,7 +600,7 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
         )
 
     if not len(uploaded_files):
-        return page(error="There are no files to upload!")
+        return page(error=t("upload.error_no_files"))
 
     indexing_options = {
         "clear_text": form.get("clear_text") is not None,
@@ -577,16 +623,13 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
         indexing_options=indexing_options,
     )
     if upload_response is None or upload_response.get("status") is False:
-        return page(error="Problem while uploading files to engine backend")
+        return page(error=t("upload.error_upload"))
 
     return page(
-        success=(
-            "Files are uploaded and indexed! Go to the Search Engine page and "
-            "ask about knowledge from the indexed documents."
-        ),
+        success=t("upload.success"),
         uploaded={
             "collection_name": collection_name,
-            "files": f"{len(uploaded_files)} file(s)",
+            "files": len(uploaded_files),
             "max_tokens_in_chunk": indexing_options["max_tokens_in_chunk"],
             "number_of_overlap_tokens": indexing_options["number_of_overlap_tokens"],
         },
@@ -616,6 +659,7 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
         return redirect
 
     token = get_token(request)
+    t = translator(request)
     collection_name = form.get("collection_name", "")
     question = form.get("question", "")
     prompt = form.get("prompt", "")
@@ -639,7 +683,7 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
         )
 
     if not question or not len(question.strip()):
-        return page(error="Enter a sentence to search!")
+        return page(error=t("search.error_empty_question"))
 
     results = sse_api_engine.search_answer_with_options(
         token=token,
@@ -651,10 +695,10 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
         return render_api_error(request, results)
 
     if "body" not in results or "results" not in results["body"]:
-        return page(error="Engine returned no results section!")
+        return page(error=t("search.error_no_results_section"))
 
     if not len(results["body"]["results"]):
-        return page(warning="No results found!")
+        return page(warning=t("search.warning_no_results"))
 
     body = results["body"]
     stats = []
@@ -668,7 +712,7 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
             )
     except Exception as exc:  # noqa: BLE001
         logger.exception("Cannot prepare results dataframes")
-        return page(error=f"Cannot prepare results: {exc}")
+        return page(error=t("search.error_prepare", error=exc))
 
     qa_results = []
     if run_models_options["use_qa_extractive"]:

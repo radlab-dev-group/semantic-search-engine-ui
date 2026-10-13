@@ -32,6 +32,7 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 | `UI_SECRET_KEY` | `change-me-in-production` | klucz podpisujący ciasteczko sesji (**zmień w produkcji**) |
 | `UI_MAX_UPLOAD_SIZE_MB` | `6000` | limit rozmiaru pojedynczego pliku przy uploadzie, odpowiednik `STREAMLIT_SERVER_MAX_UPLOAD_SIZE` |
 | `UI_MAX_UPLOAD_FILES` | `500` | maksymalna liczba plików w jednym żądaniu uploadu |
+| `UI_DEFAULT_LANGUAGE` | `en` | język interfejsu (`en` / `pl`), gdy użytkownik go nie wybrał, a przeglądarka nie podaje obsługiwanego języka |
 
 Konfiguracja hostów/endpointów backendu to ten sam plik co w wersji Streamlit:
 `configs/ui-configuration.json` (skopiowany z `streamlit_ui/configs/`).
@@ -57,6 +58,8 @@ Dodatkowo (poza oryginałem):
   kolekcji; używany przez `app/static/js/app.js` do odświeżania filtrów po zmianie
   kolekcji (zastępuje automatyczny rerun Streamlita). Filtry (kategorie i
   dokumenty) są — tak jak w oryginale — na stronie wyszukiwania.
+- `GET /lang/{pl|en}?next=/sciezka` — przełącza język interfejsu (ciasteczko
+  `sse_lang`, rok ważności) i wraca na stronę `next` (tylko ścieżki lokalne).
 - `GET /healthz` — endpoint kontrolny (health check).
 - `GET /docs` — wbudowana dokumentacja OpenAPI.
 
@@ -151,18 +154,48 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   `?collection_name=`, więc kolekcja jest już wybrana. Surowy JSON zostaje
   tylko tam, gdzie ma sens: w `error.html` i sekcjach „Show json".
 
+## Wielojęzyczność (PL / EN)
+
+Interfejs jest dostępny po polsku i po angielsku. Przełącznik `EN | PL` jest w
+pasku nawigacji (także na stronie logowania).
+
+- **Wybór języka**: ciasteczko `sse_lang` (ustawiane przez `GET /lang/<kod>`),
+  potem nagłówek `Accept-Language` przeglądarki, a na końcu
+  `UI_DEFAULT_LANGUAGE`.
+- **Teksty** są w `app/locales/en.json` i `app/locales/pl.json`. To zagnieżdżone
+  obiekty, a w szablonach odwołujesz się do nich kluczem z kropkami:
+  `{{ t('nav.search') }}`, `{{ t('collections.created_on', date=...) }}`.
+  Brakujący klucz w danym języku zastępuje tekst angielski.
+- **Liczba mnoga**: wpis może być obiektem z formami CLDR `one` / `few` /
+  `many` / `other`, używany przez `{{ t.plural('upload.files_count', n) }}`
+  („1 plik”, „3 pliki”, „5 plików”). W przeglądarce formę wybiera
+  `Intl.PluralRules`.
+- **HTML w tłumaczeniach**: tylko klucze z sufiksem `_html` mogą zawierać
+  znaczniki. Wstawiane do nich wartości są escapowane.
+- **JavaScript**: sekcja `js` aktualnego języka trafia do strony jako
+  `<script type="application/json" id="i18n-data">`, a `app.js` korzysta z niej
+  przez `t(key, vars)`.
+- **Komunikaty serwera** (błędy formularzy, sukces uploadu itd.) są tłumaczone
+  w `server.py` przez `translator(request)`. Treść zwracana przez silnik (np.
+  błędy API, odpowiedzi modelu) i dane wysyłane do silnika (np. domyślny opis
+  kolekcji „Opis kolekcji …”) zostają bez zmian.
+- Nowy język to nowy plik `app/locales/<kod>.json` i wpis w
+  `core/i18n.py: LANGUAGES` (oraz reguła liczby mnogiej w `plural_category`).
+
 ## Testy
 
 Smoke test odpala aplikację FastAPI wraz z **mockowanym backendem SSE**
 (`tests/mock_sse_backend.py` odwzorowuje kształty odpowiedzi
 `radlab-semantic-search-engine`), przechodzi całą ścieżkę: logowanie, tworzenie
 kolekcji, upload plików, wyszukiwanie z odpowiedzią generatywną, ocenianie,
-wylogowanie. Nie wymaga prawdziwego backendu ani bazy wektorów.
+przełączanie języka (zgodność kluczy PL/EN, formy mnogie, brak
+nieprzetłumaczonych kluczy na stronach), wylogowanie. Nie wymaga prawdziwego
+backendu ani bazy wektorów.
 
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py   # 60 checków, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py   # 77 checków, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów
@@ -177,11 +210,13 @@ fastapi_ui/
 ├── core/
 │   ├── api.py             # klient REST API SSE (port streamlit_ui/pages/src/api.py)
 │   ├── constants.py
+│   ├── i18n.py            # tłumaczenia interfejsu (pl / en), wybór języka
 │   └── state_store.py     # stan sesji (id ostatniej odpowiedzi) — odpowiednik st.session_state
 ├── tests/
 │   ├── mock_sse_backend.py # atrapa REST API silnika (uruchamiana lokalnie)
 │   └── smoke_test.py       # test end-to-end wszystkich stron
 ├── app/
+│   ├── locales/           # en.json, pl.json — teksty interfejsu
 │   ├── templates/         # Jinja2: base, home, login, error, collections,
 │   │   │                  #        upload_documents, search
 │   │   └── partials/      # search_params.html, table.html, messages.html, stepper.html

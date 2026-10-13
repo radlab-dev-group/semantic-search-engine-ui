@@ -12,16 +12,16 @@
 <div class="results-view" data-view-switch>
   <div class="results-toolbar">
     <p class="results-toolbar__summary muted">
-      {{ rows | length }} document(s) ranked by weighted score — the share shows how much of the rank mass each one holds.
+      {{ t.plural('board.summary', rows | length) }}
     </p>
-    <div class="segmented" role="group" aria-label="Statistics view">
+    <div class="segmented" role="group" aria-label="{{ t('board.view_label') }}">
       <button type="button" class="segmented__btn is-active" data-view="cards" aria-pressed="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 19V11M10 19V6M15 19v-5M20 19V9"/></svg>
-        Ranking
+        {{ t('board.view_ranking') }}
       </button>
       <button type="button" class="segmented__btn" data-view="table" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4.5" width="16" height="15" rx="1.5"/><path d="M4 9.5h16M4 14.5h16M10 9.5v10"/></svg>
-        Table
+        {{ t('board.view_table') }}
       </button>
     </div>
   </div>
@@ -37,11 +37,11 @@
           <span class="doc-board__rank">{{ loop.index }}</span>
           <div class="doc-board__main">
             <div class="doc-board__head">
-              <b class="doc-board__name" title="{{ name.value or '' }}">{{ name.value or 'Document' }}</b>
+              <b class="doc-board__name" title="{{ name.value or '' }}">{{ name.value or t('board.document') }}</b>
               {% if score is number %}
                 <span class="doc-board__score">
                   {{ '%.4f' | format(score) }}
-                  {% if total_score %}<small>{{ ((score / total_score) * 100) | round(1) }}% share</small>{% endif %}
+                  {% if total_score %}<small>{{ t('board.share', percent=((score / total_score) * 100) | round(1)) }}</small>{% endif %}
                 </span>
               {% endif %}
             </div>

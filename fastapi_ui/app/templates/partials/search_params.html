@@ -6,54 +6,54 @@
     show_rag_supervisor (bool)
 #}
 <div class="card card--panel">
-  <p class="card__eyebrow">Search parameters</p>
+  <p class="card__eyebrow">{{ t('params.eyebrow') }}</p>
 
-  <div class="section-title section-title--rule">Collection</div>
+  <div class="section-title section-title--rule">{{ t('params.collection') }}</div>
 
-  <label for="collection_name">Collection name</label>
+  <label for="collection_name">{{ t('params.collection_name') }}</label>
   <select id="collection_name" name="collection_name" required>
-    <option value="" disabled {% if not selected_collection %}selected{% endif %}>Choose collection...</option>
+    <option value="" disabled {% if not selected_collection %}selected{% endif %}>{{ t('params.choose_collection') }}</option>
     {% for coll in collections %}
       <option value="{{ coll }}" {% if coll == selected_collection %}selected{% endif %}>{{ coll }}</option>
     {% endfor %}
   </select>
 
-  <label for="results_count">Number of results <span class="muted">(1–{{ constants.MAX_RESULTS_LIMIT }})</span></label>
+  <label for="results_count">{{ t('params.results_count') }} <span class="muted">(1–{{ constants.MAX_RESULTS_LIMIT }})</span></label>
   <input type="number" id="results_count" name="results_count" value="{{ constants.DEFAULT_MAX_RESULTS }}" min="1" max="{{ constants.MAX_RESULTS_LIMIT }}">
 
   <div class="check-row">
     <input type="checkbox" id="rerank_results" name="rerank_results">
-    <label for="rerank_results">Rerank results</label>
+    <label for="rerank_results">{{ t('params.rerank') }}</label>
   </div>
 
   {% if show_content_supervisor %}
     <div class="check-row">
       <input type="checkbox" id="use_content_supervisor" name="use_content_supervisor">
-      <label for="use_content_supervisor">Content supervisor</label>
+      <label for="use_content_supervisor">{{ t('params.content_supervisor') }}</label>
     </div>
   {% endif %}
 
   {% if show_rag_supervisor %}
     <div class="check-row">
       <input type="checkbox" id="use_rag_supervisor" name="use_rag_supervisor" checked>
-      <label for="use_rag_supervisor">RAG supervisor</label>
+      <label for="use_rag_supervisor">{{ t('params.rag_supervisor') }}</label>
     </div>
   {% endif %}
 
-  <div class="section-title section-title--rule">Models</div>
+  <div class="section-title section-title--rule">{{ t('params.models') }}</div>
 
   {% if not force_generative %}
     <div class="check-row">
       <input type="checkbox" id="return_with_factored_fields" name="return_with_factored_fields">
-      <label for="return_with_factored_fields">Results count with factored number of results</label>
+      <label for="return_with_factored_fields">{{ t('params.factored') }}</label>
     </div>
     <div class="check-row">
       <input type="checkbox" id="use_qa_extractive" name="use_qa_extractive">
-      <label for="use_qa_extractive">Run Extractive QA</label>
+      <label for="use_qa_extractive">{{ t('params.extractive') }}</label>
     </div>
     <div class="check-row">
       <input type="checkbox" id="use_qa_generative" name="use_qa_generative">
-      <label for="use_qa_generative">Run Generative QA</label>
+      <label for="use_qa_generative">{{ t('params.generative') }}</label>
     </div>
   {% else %}
     <input type="hidden" name="use_qa_generative" value="on">
@@ -62,25 +62,25 @@
   <div id="generative-qa-block" {% if not force_generative %}class="hidden"{% endif %}>
     <div class="check-row">
       <input type="checkbox" id="use_doc_names_in_response" name="use_doc_names_in_response">
-      <label for="use_doc_names_in_response">Document names in answer</label>
+      <label for="use_doc_names_in_response">{{ t('params.doc_names') }}</label>
     </div>
 
-    <label for="qa_gen_model">Model for results summarization</label>
+    <label for="qa_gen_model">{{ t('params.gen_model') }}</label>
     <select id="qa_gen_model" name="qa_gen_model">
       {% for model in generative_models %}
         <option value="{{ model }}">{{ model }}</option>
       {% endfor %}
     </select>
 
-    <label for="perc_rank_to_gen_qa">Percentage rank to generative QA <span class="muted">(1–100)</span></label>
+    <label for="perc_rank_to_gen_qa">{{ t('params.perc_rank') }} <span class="muted">(1–100)</span></label>
     <input type="number" id="perc_rank_to_gen_qa" name="perc_rank_to_gen_qa" value="{{ constants.DEFAULT_PERC_RANK_TO_GEN_QA }}" min="1" max="100">
 
     <div class="check-row">
       <input type="checkbox" id="translate_output" name="translate_output">
-      <label for="translate_output">Translate generated answer</label>
+      <label for="translate_output">{{ t('params.translate') }}</label>
     </div>
     <div class="lang-options-row hidden">
-      <label for="lang_options">Generated answer target language</label>
+      <label for="lang_options">{{ t('params.target_language') }}</label>
       <select id="lang_options" name="lang_options">
         {% for lang in constants.ANSWER_LANGUAGES %}
           <option value="{{ lang }}">{{ lang }}</option>
@@ -89,7 +89,7 @@
     </div>
 
     <details class="expander">
-      <summary>Generation options</summary>
+      <summary>{{ t('params.generation_options') }}</summary>
       <div class="expander-body">
         <div class="field-slider">
           <span>top_k</span>
@@ -112,13 +112,13 @@
           <output>{{ constants.DEFAULT_TYPICAL_P }}</output>
         </div>
         <div class="field-slider">
-          <span>repetition&nbsp;penalty</span>
+          <span>{{ t('params.repetition_penalty') }}</span>
           <input type="range" name="repetition_penalty" min="0.0" max="2.0" step="0.01" value="{{ constants.DEFAULT_REPETITION_PENALTY }}">
           <output>{{ constants.DEFAULT_REPETITION_PENALTY }}</output>
         </div>
         <div class="check-row">
           <input type="checkbox" id="set_max_new_tokens" name="set_max_new_tokens">
-          <label for="set_max_new_tokens">Set max new tokens</label>
+          <label for="set_max_new_tokens">{{ t('params.set_max_new_tokens') }}</label>
         </div>
         <div class="field-slider hidden" id="max_new_tokens_row">
           <span>max_new_tokens</span>
@@ -129,21 +129,21 @@
     </details>
   </div>
 
-  <div class="section-title section-title--rule">Filters</div>
+  <div class="section-title section-title--rule">{{ t('params.filters') }}</div>
 
-  <label>Categories in collection (<span data-count-for="categories">{{ categories | length }}</span>)</label>
+  <label>{{ t('params.categories') }} (<span data-count-for="categories">{{ categories | length }}</span>)</label>
   <select name="categories" multiple size="5">
     {% for cat in categories %}
       <option value="{{ cat }}">{{ cat }}</option>
     {% endfor %}
   </select>
-  <p class="muted">Hold Ctrl/Cmd to select multiple categories.</p>
+  <p class="muted">{{ t('params.categories_hint') }}</p>
 
-  <label>Documents in collection (<span data-count-for="documents">{{ documents | length }}</span>)</label>
+  <label>{{ t('params.documents') }} (<span data-count-for="documents">{{ documents | length }}</span>)</label>
   <select name="documents" multiple size="5">
     {% for doc in documents %}
       <option value="{{ doc }}">{{ doc }}</option>
     {% endfor %}
   </select>
-  <p class="muted">Hold Ctrl/Cmd to select multiple documents.</p>
+  <p class="muted">{{ t('params.documents_hint') }}</p>
 </div>

@@ -1,38 +1,35 @@
 {% extends "base.html" %}
-{% block title %}SSSUI · Semantic search engine{% endblock %}
+{% block title %}{{ t('home.title') }}{% endblock %}
 {% block page_class %}page--wide{% endblock %}
 {% block content %}
   <section class="hero">
     <div class="hero__content">
-      <p class="eyebrow-pill"><span class="status-dot" aria-hidden="true"></span> SSSUI · Simple Semantic Search UI</p>
-      <h1 class="hero__title">Search by <span class="text-gradient">meaning</span>,<br>not by keywords.</h1>
-      <p class="lead">
-        Your documents become vectors in a shared embedding space. Ask a question in natural language —
-        the engine finds the nearest passages, reranks them and writes an answer grounded in your sources.
-      </p>
+      <p class="eyebrow-pill"><span class="status-dot" aria-hidden="true"></span> {{ t('home.eyebrow') }}</p>
+      <h1 class="hero__title">{{ t('home.hero_title_html') }}</h1>
+      <p class="lead">{{ t('home.lead') }}</p>
 
       <a class="command-bar" href="/search">
         <svg class="command-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
-        <span class="command-bar__placeholder">Ask your documents anything…</span>
+        <span class="command-bar__placeholder">{{ t('home.command_placeholder') }}</span>
         <span class="command-bar__kbd" aria-hidden="true">↵</span>
       </a>
 
       <div class="btn-row">
-        <a class="btn btn-primary" href="/search">Open search engine <span aria-hidden="true">→</span></a>
-        <a class="btn btn--ghost" href="/collections">Browse collections</a>
+        <a class="btn btn-primary" href="/search">{{ t('home.open_search') }} <span aria-hidden="true">→</span></a>
+        <a class="btn btn--ghost" href="/collections">{{ t('home.browse_collections') }}</a>
       </div>
 
-      <ul class="hero__chips" aria-label="Search capabilities">
-        <li><span class="chip-dot chip-dot--teal" aria-hidden="true"></span>Dense retrieval</li>
-        <li><span class="chip-dot chip-dot--violet" aria-hidden="true"></span>Cross-encoder reranking</li>
-        <li><span class="chip-dot chip-dot--pink" aria-hidden="true"></span>Generative answers (RAG)</li>
+      <ul class="hero__chips" aria-label="{{ t('home.capabilities') }}">
+        <li><span class="chip-dot chip-dot--teal" aria-hidden="true"></span>{{ t('home.chip_dense') }}</li>
+        <li><span class="chip-dot chip-dot--violet" aria-hidden="true"></span>{{ t('home.chip_rerank') }}</li>
+        <li><span class="chip-dot chip-dot--pink" aria-hidden="true"></span>{{ t('home.chip_rag') }}</li>
       </ul>
     </div>
 
     <div class="hero__visual" aria-hidden="true">
       <div class="vector-space">
         <div class="vector-space__header">
-          <span class="vector-space__title">embedding space</span>
+          <span class="vector-space__title">{{ t('home.vs_title') }}</span>
           <span class="vector-space__meta">k = 3 · cosine</span>
         </div>
         <svg class="vector-space__plot" viewBox="0 0 400 300" fill="none">
@@ -64,13 +61,13 @@
             <text x="112" y="100">0.92</text>
             <text x="272" y="122">0.88</text>
             <text x="238" y="222">0.81</text>
-            <text x="188" y="180">query</text>
+            <text x="188" y="180">{{ t('home.vs_query') }}</text>
           </g>
         </svg>
         <ol class="vector-space__hits">
-          <li><span class="vs-rank">1</span><span class="vs-doc"><b>policy_2024.pdf</b><small>p. 4 · chunk 12</small></span><span class="vs-score"><i class="vs-score__bar vs-score__bar--92"></i>0.92</span></li>
-          <li><span class="vs-rank">2</span><span class="vs-doc"><b>handbook.docx</b><small>p. 17 · chunk 3</small></span><span class="vs-score"><i class="vs-score__bar vs-score__bar--88"></i>0.88</span></li>
-          <li><span class="vs-rank">3</span><span class="vs-doc"><b>notes.txt</b><small>chunk 41</small></span><span class="vs-score"><i class="vs-score__bar vs-score__bar--81"></i>0.81</span></li>
+          <li><span class="vs-rank">1</span><span class="vs-doc"><b>policy_2024.pdf</b><small>{{ t('home.vs_page', page=4) }} · {{ t('home.vs_chunk', chunk=12) }}</small></span><span class="vs-score"><i class="vs-score__bar vs-score__bar--92"></i>0.92</span></li>
+          <li><span class="vs-rank">2</span><span class="vs-doc"><b>handbook.docx</b><small>{{ t('home.vs_page', page=17) }} · {{ t('home.vs_chunk', chunk=3) }}</small></span><span class="vs-score"><i class="vs-score__bar vs-score__bar--88"></i>0.88</span></li>
+          <li><span class="vs-rank">3</span><span class="vs-doc"><b>notes.txt</b><small>{{ t('home.vs_chunk', chunk=41) }}</small></span><span class="vs-score"><i class="vs-score__bar vs-score__bar--81"></i>0.81</span></li>
         </ol>
       </div>
     </div>
@@ -78,53 +75,53 @@
 
   <section class="pipeline" aria-labelledby="pipeline-title">
     <div class="section-heading">
-      <p class="card__eyebrow">How it works</p>
-      <h2 id="pipeline-title">From raw files to grounded answers</h2>
-      <p class="muted">Every collection runs the same retrieval-augmented pipeline on the engine side.</p>
+      <p class="card__eyebrow">{{ t('home.how_it_works') }}</p>
+      <h2 id="pipeline-title">{{ t('home.pipeline_title') }}</h2>
+      <p class="muted">{{ t('home.pipeline_lead') }}</p>
     </div>
 
     <ol class="pipeline__track">
       <li class="pipeline__stage">
         <span class="pipeline__icon pipeline__icon--teal" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12h6M9 15h6M9 18h3"/></svg></span>
-        <b>Chunk</b>
-        <small>Text is cleaned, denoised and split into overlapping token windows.</small>
+        <b>{{ t('home.stage_chunk') }}</b>
+        <small>{{ t('home.stage_chunk_text') }}</small>
       </li>
       <li class="pipeline__stage">
         <span class="pipeline__icon pipeline__icon--blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="2.2"/><circle cx="12" cy="7" r="2.2"/><circle cx="18" cy="14" r="2.2"/><path d="m7.2 15.2 3.6-6.4M13.6 8.4l3 4"/></svg></span>
-        <b>Embed</b>
-        <small>Each chunk becomes a dense vector stored in an IVF / HNSW index.</small>
+        <b>{{ t('home.stage_embed') }}</b>
+        <small>{{ t('home.stage_embed_text') }}</small>
       </li>
       <li class="pipeline__stage">
         <span class="pipeline__icon pipeline__icon--violet" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg></span>
-        <b>Retrieve &amp; rerank</b>
-        <small>Nearest neighbours of your query are re-scored by a cross-encoder.</small>
+        <b>{{ t('home.stage_rerank') }}</b>
+        <small>{{ t('home.stage_rerank_text') }}</small>
       </li>
       <li class="pipeline__stage">
         <span class="pipeline__icon pipeline__icon--pink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 13.8 9l5.7 1.5-5.7 1.6L12 17.5l-1.8-5.4-5.7-1.6L10.2 9z"/><path d="M18.5 16.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg></span>
-        <b>Generate</b>
-        <small>An LLM summarises the top passages into an answer you can rate.</small>
+        <b>{{ t('home.stage_generate') }}</b>
+        <small>{{ t('home.stage_generate_text') }}</small>
       </li>
     </ol>
   </section>
 
-  <section class="feature-grid" aria-label="Workspace">
+  <section class="feature-grid" aria-label="{{ t('home.workspace') }}">
     <a class="feature" href="/collections">
-      <span class="feature__step">01 · Set up</span>
-      <h3>Build a collection</h3>
-      <p>Pick the embedder, the re-ranker and the vector index that fit your knowledge base.</p>
-      <span class="feature__link">Manage collections <span aria-hidden="true">→</span></span>
+      <span class="feature__step">{{ t('home.step_setup') }}</span>
+      <h3>{{ t('home.feature_collection') }}</h3>
+      <p>{{ t('home.feature_collection_text') }}</p>
+      <span class="feature__link">{{ t('home.feature_collection_link') }} <span aria-hidden="true">→</span></span>
     </a>
     <a class="feature" href="/documents/upload">
-      <span class="feature__step">02 · Index</span>
-      <h3>Add your documents</h3>
-      <p>Upload PDF, DOCX, TXT, HTML, MD or ZIP files and tune chunk size and overlap.</p>
-      <span class="feature__link">Upload documents <span aria-hidden="true">→</span></span>
+      <span class="feature__step">{{ t('home.step_index') }}</span>
+      <h3>{{ t('home.feature_upload') }}</h3>
+      <p>{{ t('home.feature_upload_text') }}</p>
+      <span class="feature__link">{{ t('home.feature_upload_link') }} <span aria-hidden="true">→</span></span>
     </a>
     <a class="feature" href="/search">
-      <span class="feature__step">03 · Discover</span>
-      <h3>Ask better questions</h3>
-      <p>Filter by category or document, rerank results and generate grounded answers.</p>
-      <span class="feature__link">Open search <span aria-hidden="true">→</span></span>
+      <span class="feature__step">{{ t('home.step_discover') }}</span>
+      <h3>{{ t('home.feature_search') }}</h3>
+      <p>{{ t('home.feature_search_text') }}</p>
+      <span class="feature__link">{{ t('home.feature_search_link') }} <span aria-hidden="true">→</span></span>
     </a>
   </section>
 {% endblock %}

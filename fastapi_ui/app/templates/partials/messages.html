@@ -19,7 +19,7 @@
 {% if errors and errors is iterable and errors is not string %}
   <div class="alert alert-error" role="alert">
     <div class="alert__content">
-      <b>Error occurred while processing</b>
+      <b>{{ t('messages.error_processing') }}</b>
       {% for err in errors %}
         <pre class="json"><code>{{ err | tojson(indent=2) }}</code></pre>
       {% endfor %}
