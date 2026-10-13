@@ -10,7 +10,6 @@ export UI_CONFIG_PATH="${UI_CONFIG_PATH:-configs/ui-configuration.json}"
 export UI_SECRET_KEY="${UI_SECRET_KEY:-change-me-in-production}"
 export UI_MAX_UPLOAD_SIZE_MB="${UI_MAX_UPLOAD_SIZE_MB:-6000}"  # per uploaded file, like STREAMLIT_SERVER_MAX_UPLOAD_SIZE
 export UI_MAX_UPLOAD_FILES="${UI_MAX_UPLOAD_FILES:-500}"
-export UI_SPEECH_INPUT="${UI_SPEECH_INPUT:-false}"                  # voice dictation in the chat (needs HTTPS or localhost)
 
 if [ -x ".venv/bin/uvicorn" ]; then
   UVICORN=".venv/bin/uvicorn"

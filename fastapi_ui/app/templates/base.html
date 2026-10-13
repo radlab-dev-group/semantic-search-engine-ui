@@ -41,10 +41,9 @@
         <nav class="nav" id="primary-nav">
           {% set path = request.url.path %}
           <a class="nav__link {% if path == '/home' %}is-active{% endif %}" href="/home">Home</a>
-          <a class="nav__link {% if path == '/collections/new' %}is-active{% endif %}" href="/collections/new">New collection</a>
+          <a class="nav__link {% if path.startswith('/collections') %}is-active{% endif %}" href="/collections">Collections</a>
           <a class="nav__link {% if path == '/documents/upload' %}is-active{% endif %}" href="/documents/upload">Upload documents</a>
           <a class="nav__link {% if path.startswith('/search') %}is-active{% endif %}" href="/search">Search engine</a>
-          <a class="nav__link {% if path.startswith('/chat') %}is-active{% endif %}" href="/chat">Chat</a>
         </nav>
       {% endif %}
 

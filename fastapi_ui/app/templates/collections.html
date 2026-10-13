@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}SSE - collections{% endblock %}
+{% block content %}
+  <div class="card">
+    <div class="card__header">
+      <div>
+        <p class="card__eyebrow">Collections</p>
+        <h1>Collections in SSE</h1>
+        <p class="subtitle">Collections of your organisation and of yours, as returned by the engine.</p>
+      </div>
+      <div class="badge-row">
+        <span class="badge badge--brand">{{ collections | length }} collection(s)</span>
+        <a class="btn btn--ghost btn--sm" href="#new-collection">Add new collection</a>
+      </div>
+    </div>
+
+    {% include "partials/messages.html" %}
+
+    <p class="section-title">List of collections</p>
+    {% if collections %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Collection name</th>
+              <th scope="col">Display name</th>
+              <th scope="col">Description</th>
+              <th scope="col">Created</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for coll in collections %}
+              <tr>
+                <td class="mono">{{ coll.name }}</td>
+                <td>{{ coll.display_name }}</td>
+                <td>
+                  {% if coll.description %}{{ coll.description }}{% else %}<span class="muted">—</span>{% endif %}
+                </td>
+                <td class="nowrap">
+                  {% if coll.created_on %}{{ coll.created_on }}{% else %}<span class="muted">—</span>{% endif %}
+                </td>
+                <td class="nowrap">
+                  <a href="/documents/upload?collection_name={{ coll.name | urlencode }}">Upload</a>
+                  <span class="muted">·</span>
+                  <a href="/search?collection_name={{ coll.name | urlencode }}">Search</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/><path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3 1.3 0 2.5-.13 3.5-.35"/></svg></span>
+        <p>There are no collections yet — create the first one below and upload documents to it.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card" id="new-collection">
+    <div class="card__header">
+      <div>
+        <p class="card__eyebrow">Indexing</p>
+        <h1>Add new collection to SSE</h1>
+        <p class="subtitle">Choose the embedder, the re-ranker and the index type used to store the embeddings.</p>
+      </div>
+      <span class="badge badge--brand">Step 1 of 3</span>
+    </div>
+
+    {% if created %}
+      <p class="section-title">Collection details</p>
+      <dl class="kv">
+        <dt>Collection name</dt>
+        <dd class="mono">{{ created.collection_name }}</dd>
+        <dt>Display name</dt>
+        <dd>{{ created.collection_display_name }}</dd>
+        <dt>Index type</dt>
+        <dd>{{ created.embedder_index_type }}</dd>
+        <dt>Embedder</dt>
+        <dd>{{ created.model_embedder }}</dd>
+        <dt>Re-ranker</dt>
+        <dd>{{ created.model_reranker }}</dd>
+        {% if created.collection_description %}
+          <dt>Description</dt>
+          <dd>{{ created.collection_description }}</dd>
+        {% endif %}
+      </dl>
+
+      <div class="btn-row">
+        <a class="btn btn-primary btn--sm" href="/documents/upload?collection_name={{ created.collection_name | urlencode }}">Go to upload documents</a>
+        <a class="btn btn--ghost btn--sm" href="/collections">Refresh the list</a>
+      </div>
+    {% endif %}
+
+    <form method="post" action="/collections/new">
+
+      <div class="card card--subtle">
+        <label for="collection_name">Collection code name</label>
+        <input type="text" id="collection_name" name="collection_name" value="" placeholder="my-documents" required>
+        <p class="muted">The final collection name will be <code>&lt;username&gt;_&lt;code name&gt;</code>.</p>
+
+        <label for="collection_display_name">Collection display name</label>
+        <input type="text" id="collection_display_name" name="collection_display_name" value="" placeholder="My documents" required>
+
+        <label for="embedder_index_type">Index type</label>
+        <select id="embedder_index_type" name="embedder_index_type">
+          {% for idx in constants.INDEX_TYPES %}
+            <option value="{{ idx }}" {% if idx == 'IVF_FLAT' %}selected{% endif %}>{{ idx }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="embedder_model">Name of embedder model</label>
+        <select id="embedder_model" name="embedder_model" required>
+          {% for model in embedders %}
+            <option value="{{ model }}">{{ model }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="re_ranker_model">Name of re-ranker model</label>
+        <select id="re_ranker_model" name="re_ranker_model" required>
+          {% for model in rerankers %}
+            <option value="{{ model }}">{{ model }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="collection_description">Collection description</label>
+        <textarea id="collection_description" name="collection_description" placeholder="Opis kolekcji ..."></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary" data-loading-label="Creating…">Create collection</button>
+        <a class="btn btn--ghost" href="/home">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

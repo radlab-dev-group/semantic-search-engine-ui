@@ -17,8 +17,6 @@ identical:
 - generative_answer:  POST {host}/api/generative_answer
 - rate_generative_answer: POST {host}/api/rate_generative_answer
 - upload_and_index_files: POST {host}/api/upload_and_index_files (multipart)
-- new_chat:           POST {host}/api/new_chat
-- add_user_message:   POST {host}/api/add_user_message
 
 Auth is a Django token: header ``Authorization: Token <token>``.
 """
@@ -174,12 +172,6 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             self.upload_and_index_files = (
                 api_config.semantic_search_engine_endpoints["upload_and_index_files"]
             )
-            self.add_new_chat = api_config.semantic_search_engine_endpoints[
-                "new_chat"
-            ]
-            self.add_user_message_to_chat = (
-                api_config.semantic_search_engine_endpoints["add_user_message"]
-            )
 
     def __init__(self, config_path: str = "configs/ui-configuration.json"):
         self._api_config = ApiConfiguration(config_path=config_path)
@@ -197,50 +189,6 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             data=collection_params,
         )
         return response
-
-    def new_chat(
-        self, token: str, collection_name: str, options: dict, search_options: dict
-    ):
-        data = {
-            "collection_name": collection_name,
-            "options": json.dumps(options),
-            "search_options": json.dumps(search_options),
-        }
-
-        response = self.general_call_post(
-            token=token,
-            api_call_url=self._api_host,
-            api_function=self._engine_ep.add_new_chat,
-            params=None,
-            data=data,
-        )
-        return response["body"]["chat"]["id"]
-
-    def add_user_message_to_chat(
-        self,
-        token: str,
-        chat_id,
-        user_message: str,
-        options: dict,
-        search_options: dict,
-        collection_name: str,
-    ):
-        data = {
-            "chat_id": chat_id,
-            "user_message": user_message,
-            "options": json.dumps(options),
-            "search_options": json.dumps(search_options),
-            "collection_name": collection_name,
-        }
-
-        response = self.general_call_post(
-            token=token,
-            api_call_url=self._api_host,
-            api_function=self._engine_ep.add_user_message_to_chat,
-            params=None,
-            data=data,
-        )
-        return response["body"]
 
     def upload_files(
         self,

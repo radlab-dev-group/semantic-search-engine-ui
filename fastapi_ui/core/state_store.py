@@ -2,8 +2,8 @@
 In-memory per-browser state store.
 
 The signed session cookie keeps only small values (token, username, state id),
-while heavy, per-session data (chat history, RAG supervisor state, id of the
-last generated answer) lives here. This is the FastAPI equivalent of
+while the id of the last generated answer lives here. This is the FastAPI
+equivalent of
 ``st.session_state`` from the Streamlit application.
 """
 
@@ -15,9 +15,6 @@ from typing import Any
 from starlette.requests import Request
 
 STATE_ID_SESSION_KEY = "state_id"
-CHAT = "chat"
-CHAT_ID = "chat_id"
-CS_RAG = "cs_rag"
 LAST_QUERY_RESPONSE_ID = "last_query_response_id"
 
 
