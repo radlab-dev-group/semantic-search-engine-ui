@@ -56,13 +56,13 @@
               {% endfor %}
             </select>
 
-            <label for="files">Add files to collection <span class="muted">(pdf, docx, txt, zip)</span></label>
+            <label for="files">Add files to collection <span class="muted">(pdf, docx, txt, html, md, zip)</span></label>
             <div class="dropzone" data-dropzone>
-              <input type="file" id="files" name="files[]" accept=".pdf,.docx,.txt,.zip" multiple required
+              <input type="file" id="files" name="files[]" accept=".pdf,.docx,.txt,.html,.md,.zip" multiple required
                      data-file-summary="#file-summary">
               <span class="dropzone__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
               <span class="dropzone__title">Drop files here or <u>browse</u></span>
-              <span class="dropzone__formats" aria-hidden="true"><i>PDF</i><i>DOCX</i><i>TXT</i><i>ZIP</i></span>
+              <span class="dropzone__formats" aria-hidden="true"><i>PDF</i><i>DOCX</i><i>TXT</i><i>HTML</i><i>MD</i><i>ZIP</i></span>
             </div>
             <p class="muted file-summary" id="file-summary">No files selected yet.</p>
           </div>

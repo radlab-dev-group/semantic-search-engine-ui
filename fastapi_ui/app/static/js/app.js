@@ -105,12 +105,146 @@ function initClamps() {
 }
 
 /* ------------------------------------------------ score bars (0..1 values) */
+// With data-score-max the bar is relative to the best hit: engine scores
+// (e.g. after rank fusion) can be tiny in absolute terms.
 function initScoreBars() {
   document.querySelectorAll("[data-score]").forEach((bar) => {
     const value = Number(bar.dataset.score);
     if (!Number.isFinite(value)) return;
-    const ratio = value > 1 ? value / 100 : value;
+    const max = Number(bar.dataset.scoreMax);
+    const ratio = Number.isFinite(max) && max > 0
+      ? value / max
+      : value > 1 ? value / 100 : value;
     bar.style.setProperty("--score", `${Math.max(0, Math.min(1, ratio)) * 100}%`);
+  });
+}
+
+/* ------------------------------------------------- results: view switch */
+// [data-view-switch] holds [data-view] buttons and [data-view-panel] blocks;
+// the chosen view is remembered for the next search.
+function initViewSwitches() {
+  document.querySelectorAll("[data-view-switch]").forEach((root, index) => {
+    const buttons = Array.from(root.querySelectorAll("[data-view]"));
+    const panels = Array.from(root.querySelectorAll("[data-view-panel]"));
+    const key = `sse-view-${root.closest("[role='tabpanel']")?.id || index}`;
+
+    const show = (view) => {
+      buttons.forEach((button) => {
+        const active = button.dataset.view === view;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
+      panels.forEach((panel) => {
+        panel.hidden = panel.dataset.viewPanel !== view;
+      });
+    };
+
+    buttons.forEach((button) =>
+      button.addEventListener("click", () => {
+        show(button.dataset.view);
+        try {
+          localStorage.setItem(key, button.dataset.view);
+        } catch (error) {
+          /* storage unavailable */
+        }
+      })
+    );
+
+    let saved = null;
+    try {
+      saved = localStorage.getItem(key);
+    } catch (error) {
+      /* storage unavailable */
+    }
+    if (saved && buttons.some((button) => button.dataset.view === saved)) show(saved);
+  });
+}
+
+/* ------------------------------------------- results: filter by document */
+function initHitFilters() {
+  document.querySelectorAll(".doc-filter").forEach((group) => {
+    const root = group.closest("[data-view-switch]") || document;
+    const chips = Array.from(group.querySelectorAll("[data-hit-filter]"));
+    chips.forEach((chip) =>
+      chip.addEventListener("click", () => {
+        const doc = chip.dataset.hitFilter;
+        chips.forEach((other) => {
+          const active = other === chip;
+          other.classList.toggle("is-active", active);
+          other.setAttribute("aria-pressed", String(active));
+        });
+        root.querySelectorAll("[data-hit]").forEach((hit) => {
+          hit.hidden = Boolean(doc) && hit.dataset.doc !== doc;
+        });
+      })
+    );
+  });
+}
+
+/* ----------------------------------------- results: expand long passages */
+function initHitExpanders() {
+  document.querySelectorAll("[data-hit-expand]").forEach((button) => {
+    const text = document.getElementById(button.getAttribute("aria-controls"));
+    if (!text) return;
+    const label = button.textContent;
+    button.addEventListener("click", () => {
+      const opened = text.classList.toggle("is-open");
+      button.setAttribute("aria-expanded", String(opened));
+      button.textContent = opened ? "Show less" : label;
+    });
+  });
+}
+
+/* ------------------------------------ results: highlight the query words */
+// Words of the question (4+ letters) are matched by their stem, so inflected
+// forms ("ofertowe" / "ofertowego") are highlighted too. Works on text nodes
+// only, the passage text is never parsed as HTML.
+const HIGHLIGHT_STOPWORDS = new Set([
+  "oraz", "jest", "jako", "które", "który", "która", "czego", "czym", "jaki", "jakie",
+  "jaka", "kiedy", "gdzie", "dlaczego", "przez", "tego", "temu", "albo", "lub",
+  "what", "which", "where", "when", "with", "from", "that", "this", "does", "have",
+  "about", "there", "their", "sample", "question",
+]);
+
+function initHighlights() {
+  document.querySelectorAll("[data-highlight]").forEach((root) => {
+    const stems = Array.from(
+      new Set(
+        (root.dataset.highlight.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [])
+          .filter((word) => word.length >= 4 && !HIGHLIGHT_STOPWORDS.has(word))
+          .map((word) => word.slice(0, Math.max(4, word.length - 2)))
+      )
+    );
+    if (!stems.length) return;
+
+    const escaped = stems.map((stem) => stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const pattern = new RegExp(`(?<![\\p{L}\\p{N}])(?:${escaped.join("|")})[\\p{L}\\p{N}]*`, "giu");
+
+    root.querySelectorAll("[data-hit-text]").forEach((element) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+
+      nodes.forEach((node) => {
+        const text = node.nodeValue;
+        pattern.lastIndex = 0;
+        if (!pattern.test(text)) return;
+        pattern.lastIndex = 0;
+
+        const fragment = document.createDocumentFragment();
+        let last = 0;
+        for (const match of text.matchAll(pattern)) {
+          fragment.append(text.slice(last, match.index));
+          const mark = document.createElement("mark");
+          mark.className = "hit__mark";
+          mark.textContent = match[0];
+          fragment.append(mark);
+          last = match.index + match[0].length;
+        }
+        fragment.append(text.slice(last));
+        node.replaceWith(fragment);
+      });
+    });
   });
 }
 
@@ -331,6 +465,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initFormBusyStates();
   initClamps();
   initScoreBars();
+  initViewSwitches();
+  initHitFilters();
+  initHitExpanders();
+  initHighlights();
   initCopyButtons();
 });
 

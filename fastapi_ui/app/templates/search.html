@@ -117,7 +117,7 @@
            id="panel-stats" aria-labelledby="tab-stats" tabindex="0">
         {% if stats %}
           {% set rows = stats %}
-          {% include "partials/table.html" %}
+          {% include "partials/doc_board.html" %}
         {% else %}
           <p class="muted">No statistics available.</p>
         {% endif %}
@@ -127,7 +127,7 @@
            id="panel-results" aria-labelledby="tab-results" tabindex="0">
         {% if detailed %}
           {% set rows = detailed %}
-          {% include "partials/table.html" %}
+          {% include "partials/hits.html" %}
         {% else %}
           <p class="muted">No detailed results available.</p>
         {% endif %}

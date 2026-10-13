@@ -43,7 +43,7 @@ Konfiguracja hostów/endpointów backendu to ten sam plik co w wersji Streamlit:
 | `Home.py` | `GET /home` | Strona główna z opisem projektu |
 | `pages/0_Login.py` | `GET/POST /login`, `GET /logout` | Logowanie (token Django `Authorization: Token ...`) |
 | `pages/1_New_Collection.py` | `GET /collections`, `POST /collections/new` | **Lista kolekcji** (`GET api/collections`, odpowiednik `SSEClient.list_collections()`) + tworzenie kolekcji (embedder, reranker, typ indeksu) |
-| `pages/2_Upload_Documents.py` | `GET/POST /documents/upload` | Upload `pdf/docx/txt/zip` + opcje indeksowania |
+| `pages/2_Upload_Documents.py` | `GET/POST /documents/upload` | Upload `pdf/docx/txt/html/md/zip` + opcje indeksowania |
 | `pages/3_Semantic_Search_Engine.py` | `GET/POST /search`, `POST /search/rate` | Wyszukiwanie + odpowiedź generatywna + ocenianie (gwiazdki) |
 | `pages/4_Conversational_Search.py` | — | **Wycofane**: zakładka Chat nie istnieje w tej aplikacji |
 | `pages/src/api.py` | `core/api.py` | Klient REST API (bez zależności od Streamlita) |
@@ -115,6 +115,15 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
 - **Wyszukiwanie**: wyróżniona „konsola zapytania”, przykładowe pytania jako
   klikalne chipy, panel parametrów w przyklejonym (sticky) sidebarze, karta
   odpowiedzi modelu z gradientowym akcentem, ocena odpowiedzi gwiazdkami.
+- **Wyniki („What the engine found”)**: zamiast szerokiej tabeli każdy
+  fragment to karta (`partials/hits.html`) z pozycją w rankingu, dokumentem,
+  stroną/chunkiem/językiem, skorem i paskiem względem najlepszego trafienia
+  oraz tekstem fragmentu z podświetlonymi słowami pytania (dopasowanie po
+  rdzeniu, więc łapie też odmiany). Długie fragmenty można rozwinąć, skopiować,
+  a pozostałe pola są w „more field(s)”. Chipy nad listą filtrują fragmenty po
+  dokumencie. Statystyki (`partials/doc_board.html`) to ranking dokumentów z
+  udziałem w masie rankingu. Surowa tabela jest nadal dostępna przełącznikiem
+  „Table” (wybór zapamiętywany w `localStorage`).
 - **Motyw jasny/ciemny**: wartość `auto` podąża za `prefers-color-scheme`, a
   przycisk w pasku nawigacji przełącza `auto → light → dark`; wybór zapisywany
   jest w `localStorage` pod kluczem `sse-theme` (ustawiany przed pierwszym

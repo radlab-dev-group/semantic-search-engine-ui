@@ -31,4 +31,4 @@ DEFAULT_OVERLAP_TOKENS = 20
 OVERLAP_TOKENS_LIMIT = 200
 
 # Accepted file types for document upload
-ACCEPTED_FILE_EXTENSIONS = [".pdf", ".docx", ".txt", ".zip"]
+ACCEPTED_FILE_EXTENSIONS = [".pdf", ".docx", ".txt", ".html", ".md", ".zip"]
