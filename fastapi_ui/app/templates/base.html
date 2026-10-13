@@ -3,41 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1120">
+  <meta name="theme-color" content="#070a14">
   <title>{% block title %}Semantic search engine{% endblock %}</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔎</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%229%22 fill=%22%23070a14%22/><path d=%22M9 22l7-12 7 8%22 stroke=%22%235eead4%22 stroke-width=%222%22 fill=%22none%22/><circle cx=%229%22 cy=%2222%22 r=%223%22 fill=%22%238b7bff%22/><circle cx=%2216%22 cy=%2210%22 r=%223%22 fill=%22%235eead4%22/><circle cx=%2223%22 cy=%2218%22 r=%223%22 fill=%22%23f0abfc%22/></svg>">
   <script src="/static/js/theme.js"></script>
   <link rel="stylesheet" href="/static/css/style.css">
   {% block head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="backdrop" aria-hidden="true">
+    <span class="backdrop__grid"></span>
+    <span class="backdrop__glow backdrop__glow--a"></span>
+    <span class="backdrop__glow backdrop__glow--b"></span>
+  </div>
 
   <header class="topbar">
     <div class="topbar__inner">
       <a class="brand" href="{{ '/home' if is_logged_in else '/login' }}">
         <span class="brand__mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <ellipse cx="12" cy="5.5" rx="7.5" ry="3"/>
-            <path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/>
-            <path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3 1.3 0 2.5-.13 3.5-.35"/>
-            <path d="M17.5 17.5l3 3"/>
-            <circle cx="16" cy="16" r="3"/>
+          <svg viewBox="0 0 32 32" fill="none">
+            <path d="M8 22.5 15.5 9.5l8.5 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+            <path d="M8 22.5h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="1.5 3" opacity=".45"/>
+            <circle cx="8" cy="22.5" r="3" class="brand__node brand__node--a"/>
+            <circle cx="15.5" cy="9.5" r="3.4" class="brand__node brand__node--b"/>
+            <circle cx="24" cy="18.5" r="2.6" class="brand__node brand__node--c"/>
           </svg>
         </span>
-        <span class="brand__text">Semantic<strong>Search</strong></span>
+        <span class="brand__text">
+          <span class="brand__name">Semantic<strong>Search</strong></span>
+          <span class="brand__tag">vector retrieval · RAG</span>
+        </span>
       </a>
 
       {% if is_logged_in %}
         <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="primary-nav">
           <span></span><span></span><span></span>
         </button>
-        <nav class="nav" id="primary-nav">
+        <nav class="nav" id="primary-nav" aria-label="Primary">
           {% set path = request.url.path %}
-          <a class="nav__link {% if path == '/home' %}is-active{% endif %}" href="/home">Home</a>
-          <a class="nav__link {% if path.startswith('/collections') %}is-active{% endif %}" href="/collections">Collections</a>
-          <a class="nav__link {% if path == '/documents/upload' %}is-active{% endif %}" href="/documents/upload">Upload documents</a>
-          <a class="nav__link {% if path.startswith('/search') %}is-active{% endif %}" href="/search">Search engine</a>
+          <a class="nav__link {% if path == '/home' %}is-active{% endif %}" href="/home"><svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></svg>Home</a>
+          <a class="nav__link {% if path.startswith('/collections') %}is-active{% endif %}" href="/collections"><svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg>Collections</a>
+          <a class="nav__link {% if path == '/documents/upload' %}is-active{% endif %}" href="/documents/upload"><svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M12 17v-6M9.5 13.5 12 11l2.5 2.5"/></svg>Upload documents</a>
+          <a class="nav__link {% if path.startswith('/search') %}is-active{% endif %}" href="/search"><svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5M8 10.5h5M10.5 8v5"/></svg>Search engine</a>
         </nav>
       {% endif %}
 
@@ -64,7 +73,9 @@
   </main>
 
   <footer class="footer">
-    <span>RadLab Semantic Search Engine · FastAPI UI</span>
+    <span class="footer__brand"><span class="status-dot" aria-hidden="true"></span> RadLab Semantic Search Engine</span>
+    <span class="footer__dot" aria-hidden="true">•</span>
+    <span>SSSUI · FastAPI UI</span>
     <span class="footer__dot" aria-hidden="true">•</span>
     <a href="/docs" rel="noopener">API docs</a>
   </footer>

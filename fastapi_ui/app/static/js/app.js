@@ -192,6 +192,57 @@ function initFileSummary() {
   render();
 }
 
+/* ------------------------------------------------------- upload dropzone */
+function initDropzone() {
+  document.querySelectorAll("[data-dropzone]").forEach((zone) => {
+    const input = zone.querySelector("input[type='file']");
+    const setActive = (active) => zone.classList.toggle("is-dragover", active);
+    ["dragenter", "dragover"].forEach((name) =>
+      zone.addEventListener(name, () => setActive(true))
+    );
+    ["dragleave", "drop"].forEach((name) =>
+      zone.addEventListener(name, () => setActive(false))
+    );
+    if (input) {
+      input.addEventListener("change", () =>
+        zone.classList.toggle("has-files", Boolean(input.files && input.files.length))
+      );
+    }
+  });
+}
+
+/* ------------------------------------------------------ chunking preview */
+// Visualises the chunk/overlap ratio chosen with the indexing sliders.
+function initChunkPreview() {
+  const preview = document.querySelector("[data-chunk-preview]");
+  if (!preview) return;
+  const form = preview.closest("form") || document;
+  const chunk = form.querySelector("input[name='max_tokens_in_chunk']");
+  const overlap = form.querySelector("input[name='number_of_overlap_tokens']");
+  if (!chunk || !overlap) return;
+
+  const render = () => {
+    const size = Math.max(1, Number(chunk.value) || 1);
+    const ratio = Math.max(0, Math.min(0.9, (Number(overlap.value) || 0) / size));
+    preview.style.setProperty("--overlap", ratio.toFixed(3));
+  };
+  chunk.addEventListener("input", render);
+  overlap.addEventListener("input", render);
+  render();
+}
+
+/* ------------------------------------------------------- example queries */
+function initExamples() {
+  const question = document.getElementById("question");
+  if (!question) return;
+  document.querySelectorAll("[data-example]").forEach((button) => {
+    button.addEventListener("click", () => {
+      question.value = button.textContent.trim();
+      question.focus();
+    });
+  });
+}
+
 /* ------------------------------------------- conditional form sections */
 function toggleBlock(target, visible) {
   if (target) target.classList.toggle("hidden", !visible);
@@ -273,6 +324,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initSliders();
   initFileSummary();
+  initDropzone();
+  initChunkPreview();
+  initExamples();
   initConditionalFields();
   initFormBusyStates();
   initClamps();

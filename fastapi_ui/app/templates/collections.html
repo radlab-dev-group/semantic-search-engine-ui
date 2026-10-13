@@ -1,55 +1,56 @@
 {% extends "base.html" %}
 {% block title %}SSE - collections{% endblock %}
+{% block page_class %}page--wide{% endblock %}
 {% block content %}
+  <header class="page-header">
+    <div>
+      <p class="card__eyebrow">Knowledge bases</p>
+      <h1>Collections in SSE</h1>
+      <p class="subtitle">Collections of your organisation and of yours, as returned by the engine. Each one is a separate vector index.</p>
+    </div>
+    {% set current_step = 1 %}
+    {% include "partials/stepper.html" %}
+  </header>
+
   <div class="card">
     <div class="card__header">
       <div>
-        <p class="card__eyebrow">Collections</p>
-        <h1>Collections in SSE</h1>
-        <p class="subtitle">Collections of your organisation and of yours, as returned by the engine.</p>
+        <p class="section-title">List of collections</p>
       </div>
       <div class="badge-row">
-        <span class="badge badge--brand">{{ collections | length }} collection(s)</span>
-        <a class="btn btn--ghost btn--sm" href="#new-collection">Add new collection</a>
+        <span class="badge badge--brand"><span class="badge__value">{{ collections | length }}</span> collection(s)</span>
+        <a class="btn btn--ghost btn--sm" href="#new-collection">+ Add new collection</a>
       </div>
     </div>
 
     {% include "partials/messages.html" %}
 
-    <p class="section-title">List of collections</p>
     {% if collections %}
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th scope="col">Collection name</th>
-              <th scope="col">Display name</th>
-              <th scope="col">Description</th>
-              <th scope="col">Created</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for coll in collections %}
-              <tr>
-                <td class="mono">{{ coll.name }}</td>
-                <td>{{ coll.display_name }}</td>
-                <td>
-                  {% if coll.description %}{{ coll.description }}{% else %}<span class="muted">—</span>{% endif %}
-                </td>
-                <td class="nowrap">
-                  {% if coll.created_on %}{{ coll.created_on }}{% else %}<span class="muted">—</span>{% endif %}
-                </td>
-                <td class="nowrap">
-                  <a href="/documents/upload?collection_name={{ coll.name | urlencode }}">Upload</a>
-                  <span class="muted">·</span>
-                  <a href="/search?collection_name={{ coll.name | urlencode }}">Search</a>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+      <ul class="collection-grid">
+        {% for coll in collections %}
+          <li class="collection">
+            <div class="collection__head">
+              <span class="collection__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg></span>
+              <div class="collection__title">
+                <h3>{{ coll.display_name }}</h3>
+                <span class="mono">{{ coll.name }}</span>
+              </div>
+            </div>
+            <p class="collection__desc">
+              {% if coll.description %}{{ coll.description }}{% else %}<span class="muted">No description</span>{% endif %}
+            </p>
+            <div class="collection__foot">
+              <span class="collection__date">
+                {% if coll.created_on %}Created {{ coll.created_on }}{% else %}<span class="muted">—</span>{% endif %}
+              </span>
+              <span class="collection__actions">
+                <a class="btn btn--ghost btn--sm" href="/documents/upload?collection_name={{ coll.name | urlencode }}">Upload</a>
+                <a class="btn btn-primary btn--sm" href="/search?collection_name={{ coll.name | urlencode }}">Search</a>
+              </span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
     {% else %}
       <div class="empty-state">
         <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/><path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3 1.3 0 2.5-.13 3.5-.35"/></svg></span>
@@ -61,11 +62,11 @@
   <div class="card" id="new-collection">
     <div class="card__header">
       <div>
-        <p class="card__eyebrow">Indexing</p>
-        <h1>Add new collection to SSE</h1>
+        <p class="card__eyebrow">New vector index</p>
+        <h2>Add new collection to SSE</h2>
         <p class="subtitle">Choose the embedder, the re-ranker and the index type used to store the embeddings.</p>
       </div>
-      <span class="badge badge--brand">Step 1 of 3</span>
+      <span class="badge">Embedder · re-ranker · index</span>
     </div>
 
     {% if created %}
@@ -95,37 +96,44 @@
 
     <form method="post" action="/collections/new">
 
-      <div class="card card--subtle">
-        <label for="collection_name">Collection code name</label>
-        <input type="text" id="collection_name" name="collection_name" value="" placeholder="my-documents" required>
-        <p class="muted">The final collection name will be <code>&lt;username&gt;_&lt;code name&gt;</code>.</p>
+      <div class="form-grid">
+        <div class="card card--subtle">
+          <p class="section-title">Identity</p>
+          <label for="collection_name">Collection code name</label>
+          <input type="text" id="collection_name" name="collection_name" value="" placeholder="my-documents" required>
+          <p class="muted">The final collection name will be <code>&lt;username&gt;_&lt;code name&gt;</code>.</p>
 
-        <label for="collection_display_name">Collection display name</label>
-        <input type="text" id="collection_display_name" name="collection_display_name" value="" placeholder="My documents" required>
+          <label for="collection_display_name">Collection display name</label>
+          <input type="text" id="collection_display_name" name="collection_display_name" value="" placeholder="My documents" required>
 
-        <label for="embedder_index_type">Index type</label>
-        <select id="embedder_index_type" name="embedder_index_type">
-          {% for idx in constants.INDEX_TYPES %}
-            <option value="{{ idx }}" {% if idx == 'IVF_FLAT' %}selected{% endif %}>{{ idx }}</option>
-          {% endfor %}
-        </select>
+          <label for="collection_description">Collection description</label>
+          <textarea id="collection_description" name="collection_description" placeholder="Opis kolekcji ..."></textarea>
+        </div>
 
-        <label for="embedder_model">Name of embedder model</label>
-        <select id="embedder_model" name="embedder_model" required>
-          {% for model in embedders %}
-            <option value="{{ model }}">{{ model }}</option>
-          {% endfor %}
-        </select>
+        <div class="card card--subtle">
+          <p class="section-title">Vector models</p>
+          <label for="embedder_index_type">Index type</label>
+          <select id="embedder_index_type" name="embedder_index_type">
+            {% for idx in constants.INDEX_TYPES %}
+              <option value="{{ idx }}" {% if idx == 'IVF_FLAT' %}selected{% endif %}>{{ idx }}</option>
+            {% endfor %}
+          </select>
 
-        <label for="re_ranker_model">Name of re-ranker model</label>
-        <select id="re_ranker_model" name="re_ranker_model" required>
-          {% for model in rerankers %}
-            <option value="{{ model }}">{{ model }}</option>
-          {% endfor %}
-        </select>
+          <label for="embedder_model">Name of embedder model</label>
+          <select id="embedder_model" name="embedder_model" required>
+            {% for model in embedders %}
+              <option value="{{ model }}">{{ model }}</option>
+            {% endfor %}
+          </select>
 
-        <label for="collection_description">Collection description</label>
-        <textarea id="collection_description" name="collection_description" placeholder="Opis kolekcji ..."></textarea>
+          <label for="re_ranker_model">Name of re-ranker model</label>
+          <select id="re_ranker_model" name="re_ranker_model" required>
+            {% for model in rerankers %}
+              <option value="{{ model }}">{{ model }}</option>
+            {% endfor %}
+          </select>
+          <p class="muted">The embedder turns chunks into vectors; the re-ranker re-scores the nearest neighbours of a query.</p>
+        </div>
       </div>
 
       <div class="btn-row">

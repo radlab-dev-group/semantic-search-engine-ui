@@ -91,27 +91,43 @@ Kody błędów są renderowane na stronie `error.html`, odpowiednik
   aplikacji: nie ma tras `/chat*`, ani powiązane z nimi opcje
   (dyktowanie głosem `UI_SPEECH_INPUT`, stan RAG/supervisorów w sesji).
   Wersja Streamlit nadal ją zawiera pod `streamlit_ui/`.
-- Ocena odpowiedzi (zamiast `st-star-rating`) to suwak 1-5 gwiazdek.
+- Ocena odpowiedzi (zamiast `st-star-rating`) to wybór 1-5 gwiazdek (radio).
 - Tabele wyników (`pandas`) są renderowane jako HTML — sortowanie
   `score_weighted` / `score` bez zmian.
 
 ## Wygląd (UI)
 
 Nowoczesny, responsywny interfejs bez zewnętrznych zależności (żadnych CDN-ów ani
-fontów z sieci — działa offline, ikony są w inline SVG).
+fontów z sieci — działa offline, ikony są w inline SVG). Język wizualny
+„przestrzeni wektorowej” nawiązuje do przeznaczenia aplikacji: ciemne tło z
+delikatną siatką współrzędnych, świecące węzły (embeddingi) i gradient
+podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
 
+- **Strona główna**: hero „Search by meaning, not by keywords” z animowaną
+  wizualizacją przestrzeni embeddingów (zapytanie + k najbliższych sąsiadów ze
+  skorami cosinusowymi), schemat pipeline'u RAG (Chunk → Embed → Retrieve &
+  rerank → Generate) i skróty do kolejnych kroków.
+- **Stepper pipeline'u** (`partials/stepper.html`): Collection → Index → Search
+  w nagłówku stron kolekcji, uploadu i wyszukiwania.
+- **Kolekcje** jako karty (nazwa, opis, data, akcje Upload/Search).
+- **Upload**: strefa drag & drop dla plików oraz podgląd chunkowania, który na
+  żywo pokazuje stosunek `overlap` do rozmiaru chunka.
+- **Wyszukiwanie**: wyróżniona „konsola zapytania”, przykładowe pytania jako
+  klikalne chipy, panel parametrów w przyklejonym (sticky) sidebarze, karta
+  odpowiedzi modelu z gradientowym akcentem, ocena odpowiedzi gwiazdkami.
 - **Motyw jasny/ciemny**: wartość `auto` podąża za `prefers-color-scheme`, a
   przycisk w pasku nawigacji przełącza `auto → light → dark`; wybór zapisywany
   jest w `localStorage` pod kluczem `sse-theme` (ustawiany przed pierwszym
   malowaniem, więc brak „flasha” przy wczytywaniu).
-- **Tokeny designu** w `:root` (kolory, cienie, radiusy, odstępy) w
+- **Tokeny designu** w `:root` (kolory, gradienty, cienie, radiusy, odstępy) w
   `app/static/css/style.css` — naklejenie innego brandu to zmiana
   kilku zmiennych.
-- **Responsywność**: breakpointy 1080 px (siatka paneli), 980 px (nawigacja w
-  hamburger), 860 px (jedna kolumna), 560 px (stackowanie pól i suwaków).
+- **Responsywność**: breakpointy 1024 px (jedna kolumna hero/sidebar), 900 px
+  (nawigacja w hamburger), 720 px (stackowanie pól i suwaków), 420 px
+  (kompaktowy stepper).
 - **Dostępność**: link „Skip to content”, widoczne ramki fokusu, `aria-*` przy
-  przełącznikach i nawigacji, respektowane `prefers-reduced-motion`, styl do
-  druku.
+  przełącznikach, nawigacji i stepperze, respektowane `prefers-reduced-motion`,
+  styl do druku.
 - **UX**: zakładki wyników jako segmentowany kontroler, sticky-header tabel,
   rozwijane sekcje (JSON, opcje generacji), pasek postępu
   uploadu, spinner na przyciskach formularzy, podświetlanie aktywnej pozycji w
@@ -159,7 +175,7 @@ fastapi_ui/
 ├── app/
 │   ├── templates/         # Jinja2: base, home, login, error, collections,
 │   │   │                  #        upload_documents, search
-│   │   └── partials/      # search_params.html, table.html, messages.html
+│   │   └── partials/      # search_params.html, table.html, messages.html, stepper.html
 │   └── static/
 │       ├── css/style.css
 │       └── js/app.js

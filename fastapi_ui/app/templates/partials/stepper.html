@@ -1,0 +1,22 @@
+{#
+  Retrieval pipeline stepper: collection -> indexing -> search.
+  Context variables:
+    current_step (int, 1..3)
+#}
+{% set pipeline = [
+  ('/collections', 'Collection', 'embedder · index'),
+  ('/documents/upload', 'Index', 'chunk · embed'),
+  ('/search', 'Search', 'retrieve · answer'),
+] %}
+<ol class="stepper" aria-label="Pipeline step {{ current_step }} of 3">
+  {% for href, label, hint in pipeline %}
+    {% set number = loop.index %}
+    <li class="stepper__item {% if number < current_step %}is-done{% elif number == current_step %}is-current{% endif %}"
+        {% if number == current_step %}aria-current="step"{% endif %}>
+      <a href="{{ href }}">
+        <span class="stepper__dot">{% if number < current_step %}✓{% else %}{{ number }}{% endif %}</span>
+        <span class="stepper__copy"><b>{{ label }}</b><small>{{ hint }}</small></span>
+      </a>
+    </li>
+  {% endfor %}
+</ol>

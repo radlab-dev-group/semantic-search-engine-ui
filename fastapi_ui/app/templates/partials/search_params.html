@@ -5,10 +5,10 @@
     show_content_supervisor (bool)
     show_rag_supervisor (bool)
 #}
-<div class="card card--subtle">
+<div class="card card--panel">
   <p class="card__eyebrow">Search parameters</p>
 
-  <div class="section-title">Collection</div>
+  <div class="section-title section-title--rule">Collection</div>
 
   <label for="collection_name">Collection name</label>
   <select id="collection_name" name="collection_name" required>
@@ -40,7 +40,7 @@
     </div>
   {% endif %}
 
-  <div class="section-title">Models</div>
+  <div class="section-title section-title--rule">Models</div>
 
   {% if not force_generative %}
     <div class="check-row">
@@ -129,7 +129,7 @@
     </details>
   </div>
 
-  <div class="section-title">Filters</div>
+  <div class="section-title section-title--rule">Filters</div>
 
   <label>Categories in collection (<span data-count-for="categories">{{ categories | length }}</span>)</label>
   <select name="categories" multiple size="5">

@@ -1,82 +1,130 @@
 {% extends "base.html" %}
-{% block title %}Semantic search engine{% endblock %}
+{% block title %}SSSUI · Semantic search engine{% endblock %}
+{% block page_class %}page--wide{% endblock %}
 {% block content %}
-  <section class="hero hero--product">
+  <section class="hero">
     <div class="hero__content">
-      <p class="hero__eyebrow"><span class="status-dot" aria-hidden="true"></span> Semantic search workspace</p>
-      <h1>Find the answer.<br><span>Not just another document.</span></h1>
+      <p class="eyebrow-pill"><span class="status-dot" aria-hidden="true"></span> SSSUI · Simple Semantic Search UI</p>
+      <h1 class="hero__title">Search by <span class="text-gradient">meaning</span>,<br>not by keywords.</h1>
       <p class="lead">
-        Search across your knowledge with semantic retrieval and get useful answers grounded in your own documents.
+        Your documents become vectors in a shared embedding space. Ask a question in natural language —
+        the engine finds the nearest passages, reranks them and writes an answer grounded in your sources.
       </p>
+
+      <a class="command-bar" href="/search">
+        <svg class="command-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
+        <span class="command-bar__placeholder">Ask your documents anything…</span>
+        <span class="command-bar__kbd" aria-hidden="true">↵</span>
+      </a>
+
       <div class="btn-row">
-        <a class="btn btn-primary" href="/search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
-          Start searching
-        </a>
-        <a class="btn hero__secondary" href="/collections">Explore collections</a>
+        <a class="btn btn-primary" href="/search">Open search engine <span aria-hidden="true">→</span></a>
+        <a class="btn btn--ghost" href="/collections">Browse collections</a>
       </div>
-      <div class="hero__capabilities" aria-label="Search capabilities">
-        <span><i aria-hidden="true"></i> Semantic retrieval</span>
-        <span><i aria-hidden="true"></i> Reranking</span>
-        <span><i aria-hidden="true"></i> AI answers</span>
-      </div>
+
+      <ul class="hero__chips" aria-label="Search capabilities">
+        <li><span class="chip-dot chip-dot--teal" aria-hidden="true"></span>Dense retrieval</li>
+        <li><span class="chip-dot chip-dot--violet" aria-hidden="true"></span>Cross-encoder reranking</li>
+        <li><span class="chip-dot chip-dot--pink" aria-hidden="true"></span>Generative answers (RAG)</li>
+      </ul>
     </div>
 
     <div class="hero__visual" aria-hidden="true">
-      <div class="search-illustration">
-        <div class="search-illustration__header">
-          <span class="search-illustration__mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></span>
-          <span>Semantic retrieval</span>
-          <span class="search-illustration__live"><i></i> READY</span>
+      <div class="vector-space">
+        <div class="vector-space__header">
+          <span class="vector-space__title">embedding space</span>
+          <span class="vector-space__meta">k = 3 · cosine</span>
         </div>
-        <div class="search-illustration__query">How does semantic search work?<span>↵</span></div>
-        <div class="search-illustration__label">MATCHING KNOWLEDGE</div>
-        <div class="search-hit">
-          <span class="search-hit__icon search-hit__icon--blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.75h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1.25Z"/><path d="M14 4v4h4M8 13h8M8 16h5"/></svg></span>
-          <span class="search-hit__copy"><b>Semantic search overview</b><small>Knowledge base · 3 relevant passages</small></span>
-          <span class="search-hit__score">Relevant</span>
-        </div>
-        <div class="search-hit search-hit--faint">
-          <span class="search-hit__icon search-hit__icon--teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.75h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1.25Z"/><path d="M14 4v4h4M8 13h8M8 16h5"/></svg></span>
-          <span class="search-hit__copy"><b>Building a retrieval pipeline</b><small>Engineering notes · 2 relevant passages</small></span>
-        </div>
-        <div class="search-illustration__answer"><span class="answer-sparkle">✳</span><span><b>Answer with context</b><small>Grounded in your indexed documents</small></span><span class="answer-arrow">↗</span></div>
+        <svg class="vector-space__plot" viewBox="0 0 400 300" fill="none">
+          <g class="vs-axis">
+            <path d="M20 280H385M20 280V15"/>
+          </g>
+          <g class="vs-cloud">
+            <circle cx="60" cy="70" r="3"/><circle cx="92" cy="122" r="2.5"/><circle cx="48" cy="200" r="3"/>
+            <circle cx="120" cy="245" r="2.5"/><circle cx="330" cy="60" r="3"/><circle cx="355" cy="120" r="2.5"/>
+            <circle cx="300" cy="250" r="3"/><circle cx="360" cy="215" r="2.5"/><circle cx="150" cy="40" r="2.5"/>
+            <circle cx="250" cy="35" r="3"/><circle cx="85" cy="160" r="2"/><circle cx="330" cy="170" r="2"/>
+            <circle cx="180" cy="265" r="2"/><circle cx="240" cy="270" r="2.5"/><circle cx="110" cy="85" r="2"/>
+          </g>
+          <circle class="vs-ring vs-ring--outer" cx="205" cy="150" r="86"/>
+          <circle class="vs-ring" cx="205" cy="150" r="54"/>
+          <g class="vs-links">
+            <path d="M205 150 160 112"/>
+            <path d="M205 150 262 128"/>
+            <path d="M205 150 228 205"/>
+          </g>
+          <g class="vs-hits">
+            <circle cx="160" cy="112" r="6"/>
+            <circle cx="262" cy="128" r="6"/>
+            <circle cx="228" cy="205" r="6"/>
+          </g>
+          <circle class="vs-query-pulse" cx="205" cy="150" r="10"/>
+          <circle class="vs-query" cx="205" cy="150" r="8"/>
+          <g class="vs-labels">
+            <text x="112" y="100">0.92</text>
+            <text x="272" y="122">0.88</text>
+            <text x="238" y="222">0.81</text>
+            <text x="188" y="180">query</text>
+          </g>
+        </svg>
+        <ol class="vector-space__hits">
+          <li><span class="vs-rank">1</span><span class="vs-doc"><b>policy_2024.pdf</b><small>p. 4 · chunk 12</small></span><span class="vs-score"><i class="vs-score__bar vs-score__bar--92"></i>0.92</span></li>
+          <li><span class="vs-rank">2</span><span class="vs-doc"><b>handbook.docx</b><small>p. 17 · chunk 3</small></span><span class="vs-score"><i class="vs-score__bar vs-score__bar--88"></i>0.88</span></li>
+          <li><span class="vs-rank">3</span><span class="vs-doc"><b>notes.txt</b><small>chunk 41</small></span><span class="vs-score"><i class="vs-score__bar vs-score__bar--81"></i>0.81</span></li>
+        </ol>
       </div>
-      <span class="hero__orb hero__orb--one"></span>
-      <span class="hero__orb hero__orb--two"></span>
     </div>
   </section>
 
-  <section class="workflow" aria-labelledby="workflow-title">
-    <div class="workflow__heading">
-      <div>
-        <p class="card__eyebrow">From files to insights</p>
-        <h2 id="workflow-title">Your knowledge, ready to explore</h2>
-      </div>
-      <p>Everything you need to build and search a document collection.</p>
+  <section class="pipeline" aria-labelledby="pipeline-title">
+    <div class="section-heading">
+      <p class="card__eyebrow">How it works</p>
+      <h2 id="pipeline-title">From raw files to grounded answers</h2>
+      <p class="muted">Every collection runs the same retrieval-augmented pipeline on the engine side.</p>
     </div>
-    <div class="feature-grid">
-      <a class="feature" href="/collections">
-        <span class="feature__step">01 <span>SET UP</span></span>
-        <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v13c0 1.66 3.36 3 7.5 3 1.3 0 2.5-.13 3.5-.35M19.5 5.5v6M4.5 11.5c0 1.66 3.36 3 7.5 3"/><circle cx="18" cy="17" r="3"/><path d="m20.3 19.3 1.7 1.7"/></svg></span>
-        <h3>Build a collection</h3>
-        <p>Choose the models and index that fit your knowledge base.</p>
-        <span class="feature__link">Manage collections <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="feature" href="/documents/upload">
-        <span class="feature__step">02 <span>INDEX</span></span>
-        <span class="feature__icon feature__icon--teal" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
-        <h3>Add your documents</h3>
-        <p>Upload PDF, DOCX, TXT or ZIP files and tune how they are indexed.</p>
-        <span class="feature__link">Upload documents <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="feature" href="/search">
-        <span class="feature__step">03 <span>DISCOVER</span></span>
-        <span class="feature__icon feature__icon--violet" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5M8.5 11h5M11 8.5v5"/></svg></span>
-        <h3>Ask better questions</h3>
-        <p>Find relevant passages, rerank results and generate grounded answers.</p>
-        <span class="feature__link">Open search <span aria-hidden="true">→</span></span>
-      </a>
-    </div>
+
+    <ol class="pipeline__track">
+      <li class="pipeline__stage">
+        <span class="pipeline__icon pipeline__icon--teal" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12h6M9 15h6M9 18h3"/></svg></span>
+        <b>Chunk</b>
+        <small>Text is cleaned, denoised and split into overlapping token windows.</small>
+      </li>
+      <li class="pipeline__stage">
+        <span class="pipeline__icon pipeline__icon--blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="2.2"/><circle cx="12" cy="7" r="2.2"/><circle cx="18" cy="14" r="2.2"/><path d="m7.2 15.2 3.6-6.4M13.6 8.4l3 4"/></svg></span>
+        <b>Embed</b>
+        <small>Each chunk becomes a dense vector stored in an IVF / HNSW index.</small>
+      </li>
+      <li class="pipeline__stage">
+        <span class="pipeline__icon pipeline__icon--violet" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg></span>
+        <b>Retrieve &amp; rerank</b>
+        <small>Nearest neighbours of your query are re-scored by a cross-encoder.</small>
+      </li>
+      <li class="pipeline__stage">
+        <span class="pipeline__icon pipeline__icon--pink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 13.8 9l5.7 1.5-5.7 1.6L12 17.5l-1.8-5.4-5.7-1.6L10.2 9z"/><path d="M18.5 16.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg></span>
+        <b>Generate</b>
+        <small>An LLM summarises the top passages into an answer you can rate.</small>
+      </li>
+    </ol>
+  </section>
+
+  <section class="feature-grid" aria-label="Workspace">
+    <a class="feature" href="/collections">
+      <span class="feature__step">01 · Set up</span>
+      <h3>Build a collection</h3>
+      <p>Pick the embedder, the re-ranker and the vector index that fit your knowledge base.</p>
+      <span class="feature__link">Manage collections <span aria-hidden="true">→</span></span>
+    </a>
+    <a class="feature" href="/documents/upload">
+      <span class="feature__step">02 · Index</span>
+      <h3>Add your documents</h3>
+      <p>Upload PDF, DOCX, TXT or ZIP files and tune chunk size and overlap.</p>
+      <span class="feature__link">Upload documents <span aria-hidden="true">→</span></span>
+    </a>
+    <a class="feature" href="/search">
+      <span class="feature__step">03 · Discover</span>
+      <h3>Ask better questions</h3>
+      <p>Filter by category or document, rerank results and generate grounded answers.</p>
+      <span class="feature__link">Open search <span aria-hidden="true">→</span></span>
+    </a>
   </section>
 {% endblock %}

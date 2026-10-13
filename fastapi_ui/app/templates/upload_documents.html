@@ -2,15 +2,17 @@
 {% block title %}SSE - upload documents{% endblock %}
 {% block page_class %}page--wide{% endblock %}
 {% block content %}
-  <div class="card">
-    <div class="card__header">
-      <div>
-        <p class="card__eyebrow">Indexing</p>
-        <h1>Upload documents to SSE</h1>
-        <p class="subtitle">Files are chunked, embedded and indexed on the engine side — this can take a while.</p>
-      </div>
-      <span class="badge badge--brand">Step 2 of 3</span>
+  <header class="page-header">
+    <div>
+      <p class="card__eyebrow">Indexing</p>
+      <h1>Upload documents to SSE</h1>
+      <p class="subtitle">Files are chunked, embedded and indexed on the engine side — this can take a while.</p>
     </div>
+    {% set current_step = 2 %}
+    {% include "partials/stepper.html" %}
+  </header>
+
+  <div class="card">
 
     {% include "partials/messages.html" %}
 
@@ -55,13 +57,28 @@
             </select>
 
             <label for="files">Add files to collection <span class="muted">(pdf, docx, txt, zip)</span></label>
-            <input type="file" id="files" name="files[]" accept=".pdf,.docx,.txt,.zip" multiple required
-                   data-file-summary="#file-summary">
-            <p class="muted" id="file-summary">No files selected yet.</p>
+            <div class="dropzone" data-dropzone>
+              <input type="file" id="files" name="files[]" accept=".pdf,.docx,.txt,.zip" multiple required
+                     data-file-summary="#file-summary">
+              <span class="dropzone__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
+              <span class="dropzone__title">Drop files here or <u>browse</u></span>
+              <span class="dropzone__formats" aria-hidden="true"><i>PDF</i><i>DOCX</i><i>TXT</i><i>ZIP</i></span>
+            </div>
+            <p class="muted file-summary" id="file-summary">No files selected yet.</p>
           </div>
 
           <div class="card card--subtle">
             <p class="section-title">Documents indexing options</p>
+
+            <div class="chunk-preview" data-chunk-preview aria-hidden="true">
+              <span class="chunk-preview__label">Chunking preview</span>
+              <div class="chunk-preview__track">
+                <span class="chunk-preview__chunk"></span>
+                <span class="chunk-preview__chunk"></span>
+                <span class="chunk-preview__chunk"></span>
+              </div>
+              <span class="chunk-preview__legend"><i class="chunk-preview__key"></i>chunk <i class="chunk-preview__key chunk-preview__key--overlap"></i>overlap</span>
+            </div>
 
             <div class="field-slider">
               <span>Max tokens in chunk</span>
