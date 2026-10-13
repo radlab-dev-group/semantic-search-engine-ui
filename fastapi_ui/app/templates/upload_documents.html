@@ -106,26 +106,3 @@
     {% endif %}
   </div>
 {% endblock %}
-{% block scripts %}
-<script>
-  // Selected files summary (the browser default label is not very readable).
-  const fileInput = document.querySelector("[data-file-summary]");
-  const summary = document.querySelector(fileInput ? fileInput.dataset.fileSummary : "#__none__");
-  if (fileInput && summary) {
-    const render = () => {
-      const files = Array.from(fileInput.files || []);
-      if (!files.length) {
-        summary.textContent = "No files selected yet.";
-        return;
-      }
-      const bytes = files.reduce((total, file) => total + file.size, 0);
-      const size = bytes > 1048576
-        ? `${(bytes / 1048576).toFixed(1)} MB`
-        : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-      summary.textContent = `${files.length} file(s) selected · ${size}`;
-    };
-    fileInput.addEventListener("change", render);
-    render();
-  }
-</script>
-{% endblock %}

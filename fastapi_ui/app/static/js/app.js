@@ -8,7 +8,11 @@ const THEME_ORDER = ["auto", "light", "dark"];
 /* ------------------------------------------------------------------ theme */
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
-  localStorage.setItem(THEME_KEY, theme);
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch (error) {
+    // The selected theme still applies when browser storage is unavailable.
+  }
 }
 
 function initThemeToggle() {
@@ -162,6 +166,32 @@ function initSliders() {
   });
 }
 
+/* --------------------------------------------------------- upload summary */
+function initFileSummary() {
+  const fileInput = document.querySelector("[data-file-summary]");
+  if (!fileInput) return;
+
+  const summary = document.querySelector(fileInput.dataset.fileSummary);
+  if (!summary) return;
+
+  const render = () => {
+    const files = Array.from(fileInput.files || []);
+    if (!files.length) {
+      summary.textContent = "No files selected yet.";
+      return;
+    }
+
+    const bytes = files.reduce((total, file) => total + file.size, 0);
+    const size = bytes > 1048576
+      ? `${(bytes / 1048576).toFixed(1)} MB`
+      : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    summary.textContent = `${files.length} file(s) selected · ${size}`;
+  };
+
+  fileInput.addEventListener("change", render);
+  render();
+}
+
 /* ------------------------------------------- conditional form sections */
 function toggleBlock(target, visible) {
   if (target) target.classList.toggle("hidden", !visible);
@@ -242,6 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initNavToggle();
   initTabs();
   initSliders();
+  initFileSummary();
   initConditionalFields();
   initFormBusyStates();
   initClamps();
