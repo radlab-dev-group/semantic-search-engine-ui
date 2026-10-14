@@ -290,8 +290,8 @@ function initHighlights() {
 }
 
 /* ---------------------------------------------------------- copy buttons */
-function initCopyButtons() {
-  document.querySelectorAll("[data-copy]").forEach((button) => {
+function initCopyButtons(root = document) {
+  root.querySelectorAll("[data-copy]").forEach((button) => {
     button.addEventListener("click", async () => {
       const target = document.getElementById(button.dataset.copy);
       if (!target) return;
@@ -458,14 +458,14 @@ function initConditionalFields() {
 }
 
 /* ------------------------------------------------------- busy form states */
-function initFormBusyStates() {
+function initFormBusyStates(root = document) {
   function busyButtonFor(event) {
     if (event.submitter) return event.submitter;
     const form = event.target;
     return form.querySelector("button[type='submit'], button:not([type])");
   }
 
-  document.querySelectorAll("form").forEach((form) => {
+  root.querySelectorAll("form").forEach((form) => {
     form.addEventListener("submit", (event) => {
       // Buttons can live outside the form (linked via the form attribute),
       // so resolve the actually submitted control first.
@@ -497,6 +497,72 @@ function initFormBusyStates() {
   });
 }
 
+/* -------------------------------------------- generative answer (async) */
+// The search page is rendered as soon as the results are known; the answer
+// card ([data-generate]) then asks /search/generate for the model answer and
+// is replaced with it, the rating form goes to [data-feedback-slot].
+function fragmentFrom(html) {
+  const template = document.createElement("template");
+  template.innerHTML = html || "";
+  return template.content;
+}
+
+function initGenerativeAnswer() {
+  const card = document.querySelector("[data-generate]");
+  if (!card) return;
+
+  const timer = card.querySelector("[data-gen-timer]");
+  const started = Date.now();
+  const tick = () => {
+    if (timer) timer.textContent = t("seconds", { n: Math.floor((Date.now() - started) / 1000) }, "{n} s");
+  };
+  tick();
+  const interval = window.setInterval(tick, 1000);
+
+  const showFailure = () => {
+    card.classList.remove("answer-card--pending");
+    card.classList.add("answer-card--error");
+    card.setAttribute("aria-busy", "false");
+    card.querySelectorAll(".answer-skeleton, .answer-card__hint, .badge--live").forEach((node) => node.remove());
+    const alert = document.createElement("div");
+    alert.className = "alert alert-error";
+    alert.setAttribute("role", "alert");
+    alert.textContent = t("answer_failed", {}, "Could not load the generated answer.");
+    card.append(alert);
+  };
+
+  const body = new FormData();
+  body.append("generation_id", card.dataset.generate);
+
+  fetch("/search/generate", { method: "POST", body, credentials: "same-origin" })
+    .then((response) => response.json().catch(() => ({})))
+    .then((payload) => {
+      window.clearInterval(interval);
+      if (!payload.answer_html) {
+        showFailure();
+        return;
+      }
+      const answer = fragmentFrom(payload.answer_html).firstElementChild;
+      if (!answer) {
+        showFailure();
+        return;
+      }
+      answer.classList.add("is-arrived");
+      card.replaceWith(answer);
+      initCopyButtons(answer);
+
+      const slot = document.querySelector("[data-feedback-slot]");
+      if (slot && payload.feedback_html) {
+        slot.replaceChildren(fragmentFrom(payload.feedback_html));
+        initFormBusyStates(slot);
+      }
+    })
+    .catch(() => {
+      window.clearInterval(interval);
+      showFailure();
+    });
+}
+
 /* ---------------------------------------------------------------- init */
 document.addEventListener("DOMContentLoaded", () => {
   initThemeToggle();
@@ -516,6 +582,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initHitExpanders();
   initHighlights();
   initCopyButtons();
+  initGenerativeAnswer();
 });
 
 /* ------------------------- refresh category/document filters on demand */

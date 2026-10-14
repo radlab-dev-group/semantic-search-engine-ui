@@ -1,6 +1,8 @@
 {% if stats is defined %}
-  {% set answer = qa_gen_results.get('answer', '') if qa_gen_results else '' %}
-  {% set active_tab = 'search-generative' if answer else 'search-stats' %}
+  {% if generation_id %}
+    {% include "partials/generative_answer.html" %}
+  {% endif %}
+  {% set active_tab = 'search-stats' %}
   <section class="card results">
     <div class="card__header">
       <div>
@@ -13,9 +15,6 @@
       <div class="badge-row">
         <span class="badge">{{ t('search.badge_documents') }} <span class="badge__value">{{ stats | length }}</span></span>
         <span class="badge">{{ t('search.badge_snippets') }} <span class="badge__value">{{ detailed | length }}</span></span>
-        {% if answer %}
-          <span class="badge">{{ t('search.badge_gen_time') }} <span class="badge__value">{{ qa_gen_results_time }}</span></span>
-        {% endif %}
       </div>
     </div>
 
@@ -34,11 +33,6 @@
               role="tab" aria-selected="{% if active_tab == 'search-extractive' %}true{% else %}false{% endif %}"
               aria-controls="panel-extractive" id="tab-extractive">
         {{ t('search.tab_extractive') }} <span class="tabs__count">{{ qa_results | length if qa_results else 0 }}</span>
-      </button>
-      <button type="button" class="tabs__btn {% if active_tab == 'search-generative' %}is-active{% endif %}"
-              role="tab" aria-selected="{% if active_tab == 'search-generative' %}true{% else %}false{% endif %}"
-              aria-controls="panel-generative" id="tab-generative">
-        {{ t('search.tab_generative') }} <span class="tabs__count">{% if answer %}1{% else %}0{% endif %}</span>
       </button>
     </div>
 
@@ -71,63 +65,8 @@
         <p class="muted">{{ t('search.no_extractive') }}</p>
       {% endif %}
     </div>
-
-    <div class="tab-panel {% if active_tab == 'search-generative' %}is-active{% endif %}" role="tabpanel"
-         id="panel-generative" aria-labelledby="tab-generative" tabindex="0">
-      {% if answer %}
-        <article class="answer">
-          <div class="answer__header">
-            <p class="section-title"><span class="answer__spark" aria-hidden="true">✦</span> {{ t('search.answer_title') }}</p>
-            <button type="button" class="btn btn--ghost btn--sm" data-copy="answer-body">{{ t('search.copy_answer') }}</button>
-          </div>
-          <div class="markdown" id="answer-body">{{ answer | markdown }}</div>
-          <details class="expander">
-            <summary>{{ t('search.show_json') }}</summary>
-            <div class="expander-body">
-              <pre class="json"><code>{{ qa_gen_results | tojson(indent=2) }}</code></pre>
-            </div>
-          </details>
-        </article>
-      {% else %}
-        <p class="muted">{{ t('search.no_generative') }}</p>
-      {% endif %}
-    </div>
   </section>
 
-  {% if last_response_id is not none %}
-    <section class="card">
-      <div class="card__header">
-        <div>
-          <p class="card__eyebrow">{{ t('search.feedback_eyebrow') }}</p>
-          <h2>{{ t('search.feedback_heading') }}</h2>
-          <p class="subtitle">{{ t('search.feedback_subtitle') }}</p>
-        </div>
-        <span class="badge">{{ t('search.badge_response') }} <span class="badge__value">{{ last_response_id }}</span></span>
-      </div>
-
-      <form method="post" action="/search/rate">
-        <div class="grid-2">
-          <div class="card card--subtle">
-            <p class="section-title">{{ t('search.stars_title') }}</p>
-            <fieldset class="star-rating">
-              <legend class="sr-only">{{ t('search.stars_legend') }}</legend>
-              {% for star in range(constants.MAX_VAL_RATING_GENERATIVE_ANSWER, 0, -1) %}
-                <input type="radio" id="rate_value_{{ star }}" name="rate_value" value="{{ star }}" {% if loop.first %}checked{% endif %}>
-                <label for="rate_value_{{ star }}" title="{{ t.plural('search.stars', star) }}"><span class="sr-only">{{ t.plural('search.stars', star) }}</span>★</label>
-              {% endfor %}
-            </fieldset>
-            <p class="muted">{{ t('search.stars_scale', max=constants.MAX_VAL_RATING_GENERATIVE_ANSWER) }}</p>
-          </div>
-          <div class="card card--subtle">
-            <p class="section-title">{{ t('search.comment') }}</p>
-            <label for="rate_comment">{{ t('search.comment_label') }}</label>
-            <textarea id="rate_comment" name="rate_comment" placeholder="{{ t('search.comment_placeholder') }}"></textarea>
-          </div>
-        </div>
-        <div class="btn-row">
-          <button type="submit" class="btn btn-primary" data-loading-label="{{ t('search.sending') }}">{{ t('search.send_feedback') }}</button>
-        </div>
-      </form>
-    </section>
-  {% endif %}
+  {#- Filled with partials/feedback.html once the generative answer arrives -#}
+  <div class="feedback-slot" data-feedback-slot></div>
 {% endif %}

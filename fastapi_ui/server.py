@@ -22,6 +22,7 @@ import datetime
 import json
 import logging
 import os
+import uuid
 
 import pandas as pd
 from fastapi import Depends, FastAPI, Request
@@ -36,7 +37,7 @@ from starlette.responses import HTMLResponse, RedirectResponse
 from core import constants, i18n
 from core.api import SemanticSearchEngineAPI
 from core.markdown import render_markdown
-from core.state_store import LAST_QUERY_RESPONSE_ID
+from core.state_store import LAST_QUERY_RESPONSE_ID, PENDING_GENERATIONS
 from core.state_store import clear_state, get_state, set_state
 
 logging.basicConfig(
@@ -720,29 +721,106 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
         # (pages/3_Semantic_Search_Engine.py: prepare_extractive_qa_results)
         pass
 
-    qa_gen_results = None
-    qa_gen_results_time = None
+    # The generative answer is not awaited here: the results are shown right
+    # away and the page fetches the answer from /search/generate afterwards.
+    generation_id = None
+    set_state(request, **{LAST_QUERY_RESPONSE_ID: None})
     if run_models_options["use_qa_generative"]:
-        qa_gen_results = sse_api_engine.generative_answer_from_results(
-            token=token,
-            query_response_id=body["query_response_id"],
-            query_prompt=prompt,
-            query_options=answer_options,
+        generation_id = add_pending_generation(
+            request,
+            {
+                "query_response_id": body["query_response_id"],
+                "prompt": prompt,
+                "answer_options": answer_options,
+            },
         )
-        if not qa_gen_results.get("status"):
-            return render_api_error(request, qa_gen_results)
-        qa_gen_results = qa_gen_results["body"]
-        qa_gen_results_time = format_generation_time(
-            qa_gen_results.get("generation_time")
-        )
-        set_state(request, **{LAST_QUERY_RESPONSE_ID: qa_gen_results["response_id"]})
 
     return page(
         stats=stats,
         detailed=detailed,
         qa_results=qa_results,
+        generation_id=generation_id,
+    )
+
+
+# Searches waiting for their generative answer (per browser session). A few
+# are kept so that searches run in parallel tabs do not cancel each other.
+MAX_PENDING_GENERATIONS = 5
+
+
+def add_pending_generation(request: Request, job: dict) -> str:
+    generation_id = uuid.uuid4().hex
+    pending = dict(get_state(request).get(PENDING_GENERATIONS) or {})
+    pending[generation_id] = job
+    while len(pending) > MAX_PENDING_GENERATIONS:
+        pending.pop(next(iter(pending)))
+    set_state(request, **{PENDING_GENERATIONS: pending})
+    return generation_id
+
+
+def pop_pending_generation(request: Request, generation_id: str) -> dict | None:
+    pending = dict(get_state(request).get(PENDING_GENERATIONS) or {})
+    job = pending.pop(generation_id, None)
+    set_state(request, **{PENDING_GENERATIONS: pending})
+    return job
+
+
+@app.post("/search/generate", include_in_schema=False)
+def search_generate(request: Request, form: FormData = Depends(parsed_form)):
+    """Generative answer of an already rendered search, as HTML fragments."""
+    if require_login(request) is not None:
+        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+
+    t = translator(request)
+
+    def fragment(status_code: int = 200, **context) -> JSONResponse:
+        context.setdefault("t", t)
+        env = templates.env
+        answer_html = env.get_template("partials/generative_answer.html").render(
+            **context
+        )
+        feedback_html = ""
+        if context.get("last_response_id") is not None:
+            feedback_html = env.get_template("partials/feedback.html").render(
+                **context
+            )
+        return JSONResponse(
+            {
+                "status": status_code == 200,
+                "answer_html": answer_html,
+                "feedback_html": feedback_html,
+            },
+            status_code=status_code,
+        )
+
+    job = pop_pending_generation(request, str(form.get("generation_id") or ""))
+    if job is None:
+        return fragment(status_code=409, gen_error=t("search.answer_expired"))
+
+    result = sse_api_engine.generative_answer_from_results(
+        token=get_token(request),
+        query_response_id=job["query_response_id"],
+        query_prompt=job["prompt"],
+        query_options=job["answer_options"],
+    )
+    if not isinstance(result, dict) or not result.get("status"):
+        errors = result.get("errors", []) if isinstance(result, dict) else []
+        return fragment(
+            status_code=502,
+            gen_error=t("messages.error_processing"),
+            errors=errors,
+            error_result=result,
+        )
+
+    qa_gen_results = result.get("body") or {}
+    set_state(
+        request, **{LAST_QUERY_RESPONSE_ID: qa_gen_results.get("response_id")}
+    )
+    return fragment(
         qa_gen_results=qa_gen_results,
-        qa_gen_results_time=qa_gen_results_time,
+        qa_gen_results_time=format_generation_time(
+            qa_gen_results.get("generation_time")
+        ),
         last_response_id=get_last_response_id(request),
     )
 

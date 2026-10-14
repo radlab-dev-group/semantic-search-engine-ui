@@ -45,7 +45,7 @@ Konfiguracja hostów/endpointów backendu to ten sam plik co w wersji Streamlit:
 | `pages/0_Login.py` | `GET/POST /login`, `GET /logout` | Logowanie (token Django `Authorization: Token ...`) |
 | `pages/1_New_Collection.py` | `GET /collections`, `POST /collections/new` | **Lista kolekcji** (`GET api/collections`, odpowiednik `SSEClient.list_collections()`) + tworzenie kolekcji (embedder, reranker, typ indeksu) |
 | `pages/2_Upload_Documents.py` | `GET/POST /documents/upload` | Upload `pdf/docx/txt/html/md/zip` + opcje indeksowania |
-| `pages/3_Semantic_Search_Engine.py` | `GET/POST /search`, `POST /search/rate` | Wyszukiwanie + odpowiedź generatywna + ocenianie (gwiazdki) |
+| `pages/3_Semantic_Search_Engine.py` | `GET/POST /search`, `POST /search/generate`, `POST /search/rate` | Wyszukiwanie + odpowiedź generatywna (doczytywana po wynikach) + ocenianie (gwiazdki) |
 | `pages/4_Conversational_Search.py` | — | **Wycofane**: zakładka Chat nie istnieje w tej aplikacji |
 | `pages/src/api.py` | `core/api.py` | Klient REST API (bez zależności od Streamlita) |
 | `pages/src/config.py` (`SessionConfig`) | `server.py` (`get_token`, `get_username`, `clear_session_state`) | Stan sesji użytkownika |
@@ -60,6 +60,13 @@ Dodatkowo (poza oryginałem):
   dokumenty) są — tak jak w oryginale — na stronie wyszukiwania.
 - `GET /lang/{pl|en}?next=/sciezka` — przełącza język interfejsu (ciasteczko
   `sse_lang`, rok ważności) i wraca na stronę `next` (tylko ścieżki lokalne).
+- `POST /search/generate` (`generation_id`) — odpowiedź generatywna dla
+  wyszukiwania, którego wyniki są już na stronie. `POST /search` nie czeka na
+  model: od razu renderuje wyniki i kartę „Odpowiedź modelu” w stanie
+  oczekiwania, a parametry generowania (`query_response_id`, prompt, opcje)
+  odkłada w stanie sesji pod jednorazowym `generation_id`. `app.js` wywołuje ten
+  endpoint i podmienia kartę na odpowiedź (JSON: `answer_html` +
+  `feedback_html`, czyli formularz oceny). Nieznany/zużyty `generation_id` → 409.
 - `GET /healthz` — endpoint kontrolny (health check).
 - `GET /docs` — wbudowana dokumentacja OpenAPI.
 
@@ -117,7 +124,9 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   żywo pokazuje stosunek `overlap` do rozmiaru chunka.
 - **Wyszukiwanie**: wyróżniona „konsola zapytania”, przykładowe pytania jako
   klikalne chipy, panel parametrów w przyklejonym (sticky) sidebarze, karta
-  odpowiedzi modelu z gradientowym akcentem, ocena odpowiedzi gwiazdkami.
+  odpowiedzi modelu z gradientowym akcentem nad wynikami, ocena odpowiedzi
+  gwiazdkami. Przy generatywnym QA wyniki pokazują się od razu, a karta
+  odpowiedzi ma animowany szkielet i licznik czasu, dopóki model nie skończy.
 - **Wyniki („What the engine found”)**: zamiast szerokiej tabeli każdy
   fragment to karta (`partials/hits.html`) z pozycją w rankingu, dokumentem,
   stroną/chunkiem/językiem, skorem i paskiem względem najlepszego trafienia

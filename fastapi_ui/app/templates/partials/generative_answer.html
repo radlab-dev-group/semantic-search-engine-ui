@@ -1,0 +1,59 @@
+{#- Answer of the generative QA. Rendered as a placeholder together with the
+    search results (generation_id set) and replaced by /search/generate with
+    the answer (qa_gen_results) or an error (gen_error). -#}
+{% set answer = qa_gen_results.get('answer', '') if qa_gen_results else '' %}
+{% set pending = generation_id is defined and generation_id %}
+<section class="card answer-card{% if pending %} answer-card--pending{% elif gen_error %} answer-card--error{% endif %}"
+         id="generative-answer" aria-live="polite" aria-busy="{% if pending %}true{% else %}false{% endif %}"
+         {% if pending %}data-generate="{{ generation_id }}"{% endif %}>
+  <div class="card__header">
+    <div>
+      <p class="card__eyebrow"><span class="answer__spark" aria-hidden="true">✦</span> {{ t('search.answer_eyebrow') }}</p>
+      <h2>{{ t('search.answer_title') }}</h2>
+    </div>
+    <div class="badge-row">
+      {% if pending %}
+        <span class="badge badge--live"><span class="spinner" aria-hidden="true"></span>{{ t('search.answer_generating') }} <span class="badge__value" data-gen-timer>0 s</span></span>
+      {% elif answer and qa_gen_results_time %}
+        <span class="badge">{{ t('search.badge_gen_time') }} <span class="badge__value">{{ qa_gen_results_time }}</span></span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if pending %}
+    <p class="muted answer-card__hint">{{ t('search.answer_pending') }}</p>
+    <div class="answer-skeleton" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <noscript><p class="muted">{{ t('search.answer_noscript') }}</p></noscript>
+  {% elif gen_error %}
+    <div class="alert alert-error" role="alert">
+      <div class="alert__content">
+        <b>{{ gen_error }}</b>
+        {% if errors %}
+          {% for err in errors %}
+            <pre class="json"><code>{{ err | tojson(indent=2) }}</code></pre>
+          {% endfor %}
+        {% elif error_result %}
+          <pre class="json"><code>{{ error_result | tojson(indent=2) }}</code></pre>
+        {% endif %}
+      </div>
+    </div>
+  {% elif answer %}
+    <article class="answer">
+      <div class="answer__header">
+        <p class="section-title">{{ t('search.answer_ready') }}</p>
+        <button type="button" class="btn btn--ghost btn--sm" data-copy="answer-body">{{ t('search.copy_answer') }}</button>
+      </div>
+      <div class="markdown" id="answer-body">{{ answer | markdown }}</div>
+      <details class="expander">
+        <summary>{{ t('search.show_json') }}</summary>
+        <div class="expander-body">
+          <pre class="json"><code>{{ qa_gen_results | tojson(indent=2) }}</code></pre>
+        </div>
+      </details>
+    </article>
+  {% else %}
+    <p class="muted">{{ t('search.answer_empty') }}</p>
+  {% endif %}
+</section>

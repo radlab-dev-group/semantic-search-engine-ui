@@ -3209,6 +3209,129 @@ input[type="range"]::-moz-range-thumb {
   font-size: 0.85rem;
 }
 
+/* Answer card: shown above the results; while the model is still writing,
+   it holds a skeleton that is replaced by the answer (see app.js). */
+.answer-card .card__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.answer-card .answer__spark {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  font-size: 0.75rem;
+}
+
+.answer-card--pending {
+  position: relative;
+  overflow: hidden;
+  border-color: rgb(124 108 255 / 35%);
+}
+
+.answer-card--pending::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: var(--gradient-vector);
+  background-size: 200% 100%;
+  animation: answer-flow 1.6s linear infinite;
+}
+
+.answer-card--pending .answer__spark {
+  animation: node-pulse 1.8s var(--ease) infinite;
+}
+
+.answer-card__hint {
+  margin: 0 0 var(--space-4);
+}
+
+.badge--live {
+  gap: 0.45rem;
+  color: var(--text);
+  border-color: rgb(124 108 255 / 40%);
+}
+
+.badge--live .spinner {
+  width: 12px;
+  height: 12px;
+  border-color: rgb(124 108 255 / 30%);
+  border-top-color: var(--brand-500);
+}
+
+.answer-skeleton {
+  display: grid;
+  gap: 0.7rem;
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px dashed rgb(124 108 255 / 35%);
+  background: var(--bg-inset);
+}
+
+.answer-skeleton span {
+  display: block;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+      rgb(124 108 255 / 10%) 0%,
+      rgb(124 108 255 / 28%) 40%,
+      rgb(20 211 190 / 18%) 60%,
+      rgb(124 108 255 / 10%) 100%);
+  background-size: 300% 100%;
+  animation: answer-shimmer 1.8s ease-in-out infinite;
+}
+
+.answer-skeleton span:nth-child(2) {
+  width: 92%;
+  animation-delay: 0.15s;
+}
+
+.answer-skeleton span:nth-child(3) {
+  width: 97%;
+  animation-delay: 0.3s;
+}
+
+.answer-skeleton span:nth-child(4) {
+  width: 58%;
+  animation-delay: 0.45s;
+}
+
+.answer-card .alert {
+  margin: 0;
+}
+
+.answer-card.is-arrived {
+  animation: fade-up 0.45s var(--ease) both;
+}
+
+.feedback-slot:empty {
+  display: none;
+}
+
+@keyframes answer-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: 0 0;
+  }
+}
+
+@keyframes answer-flow {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 .markdown {
   font-size: 0.98rem;
   line-height: 1.7;

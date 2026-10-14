@@ -173,13 +173,21 @@ def check_i18n(client) -> None:
             "qa_gen_model": "llama-8b",
         },
     )
+    generation = re.search(r'data-generate="([0-9a-f]+)"', response.text)
+    payload = client.post(
+        "/search/generate",
+        data={"generation_id": generation.group(1) if generation else ""},
+    ).json()
+    generated_html = payload.get("answer_html", "") + payload.get("feedback_html", "")
     check(
         "polish search results",
         "Co znalazł silnik" in response.text
         and "Statystyki wyszukiwania" in response.text
-        and "Wyślij opinię!" in response.text
-        and not UNTRANSLATED_KEY.findall(response.text),
-        str(UNTRANSLATED_KEY.findall(response.text)),
+        and "model pisze teraz" in response.text
+        and "Odpowiedź modelu" in generated_html
+        and "Wyślij opinię!" in generated_html
+        and not UNTRANSLATED_KEY.findall(response.text + generated_html),
+        str(UNTRANSLATED_KEY.findall(response.text + generated_html)),
     )
     response = client.post(
         "/search", data={"collection_name": "user_col", "question": " "}
@@ -467,6 +475,9 @@ def main() -> int:
             str(response.status_code),
         )
 
+        generations_before = sum(
+            entry["path"].endswith("api/generative_answer") for entry in REQUEST_LOG
+        )
         response = client.post(
             "/search",
             data={
@@ -489,15 +500,57 @@ def main() -> int:
             response.status_code == 200 and "Search statistics" in response.text,
             str(response.status_code),
         )
+        generation = re.search(r'data-generate="([0-9a-f]+)"', response.text)
+        check(
+            "results are shown before the answer is generated",
+            generation is not None
+            and "answer-card--pending" in response.text
+            and "To jest odpowiedź." not in response.text
+            and "Send your feedback!" not in response.text
+            and sum(
+                entry["path"].endswith("api/generative_answer")
+                for entry in REQUEST_LOG
+            )
+            == generations_before,
+            "",
+        )
+        results_html = response.text
+        generated = client.post(
+            "/search/generate",
+            data={"generation_id": generation.group(1) if generation else ""},
+        )
+        payload = generated.json()
+        answer_html = payload.get("answer_html", "")
+        feedback_html = payload.get("feedback_html", "")
         check(
             "generative answer rendered",
-            "To jest odpowiedź." in response.text,
-            response.text[:400],
+            generated.status_code == 200
+            and payload.get("status") is True
+            and "To jest odpowiedź." in answer_html
+            and 'id="generative-answer"' in answer_html
+            and "data-generate" not in answer_html,
+            str(generated.status_code) + answer_html[:400],
         )
         check(
             "generation time rendered",
-            "Gen. time" in response.text and "0:00:02.500000" in response.text,
+            "Gen. time" in answer_html and "0:00:02.500000" in answer_html,
             "",
+        )
+        again = client.post(
+            "/search/generate",
+            data={"generation_id": generation.group(1) if generation else ""},
+        )
+        check(
+            "generation id can be used only once",
+            again.status_code == 409
+            and "no longer available" in again.json().get("answer_html", ""),
+            str(again.status_code),
+        )
+        unknown = client.post("/search/generate", data={"generation_id": "nope"})
+        check(
+            "unknown generation id is rejected",
+            unknown.status_code == 409 and unknown.json().get("status") is False,
+            str(unknown.status_code),
         )
         check(
             "stats table shows document names",
@@ -511,17 +564,17 @@ def main() -> int:
         )
         check(
             "generative answer is rendered as Markdown",
-            "<h4>Podsumowanie</h4>" in response.text
-            and "<strong>To jest odpowiedź.</strong>" in response.text
-            and "<ul>" in response.text
-            and 'id="answer-body"' in response.text,
+            "<h4>Podsumowanie</h4>" in answer_html
+            and "<strong>To jest odpowiedź.</strong>" in answer_html
+            and "<ul>" in answer_html
+            and 'id="answer-body"' in answer_html,
             "",
         )
         check(
             "markdown links are safe and table alignment uses classes",
             'href="https://example.com/docs" rel="noopener noreferrer nofollow"'
-            in response.text
-            and 'class="cell-right"' in response.text,
+            in answer_html
+            and 'class="cell-right"' in answer_html,
             "",
         )
         check(
@@ -539,7 +592,9 @@ def main() -> int:
         )
         check(
             "results page renders without inline styles",
-            'style="' not in response.text,
+            'style="' not in response.text
+            and 'style="' not in answer_html
+            and 'style="' not in feedback_html,
             "",
         )
         check(
@@ -566,7 +621,12 @@ def main() -> int:
             gen_sent.get("body", {}).get("query_response_id") == "42",
             str(gen_sent.get("body")),
         )
-        check("rating form shown", "Send your feedback!" in response.text, "")
+        check(
+            "rating form comes with the answer",
+            "Send your feedback!" in feedback_html
+            and "data-feedback-slot" in results_html,
+            "",
+        )
 
         response = client.post(
             "/search/rate", data={"rate_value": "4", "rate_comment": "fajnie"}
