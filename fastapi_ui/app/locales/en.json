@@ -255,6 +255,8 @@
   },
   "params": {
     "eyebrow": "Search parameters",
+    "reset": "Restore defaults",
+    "reset_title": "Forget the options of the last search and use the default values",
     "collection": "Collection",
     "collection_name": "Collection name",
     "choose_collection": "Choose collection...",

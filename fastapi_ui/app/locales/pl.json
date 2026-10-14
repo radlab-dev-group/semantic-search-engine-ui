@@ -261,6 +261,8 @@
   },
   "params": {
     "eyebrow": "Parametry wyszukiwania",
+    "reset": "Przywróć domyślne",
+    "reset_title": "Zapomnij opcje ostatniego wyszukiwania i użyj wartości domyślnych",
     "collection": "Kolekcja",
     "collection_name": "Nazwa kolekcji",
     "choose_collection": "Wybierz kolekcję...",

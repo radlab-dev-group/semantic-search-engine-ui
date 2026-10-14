@@ -16,6 +16,8 @@ from starlette.requests import Request
 
 STATE_ID_SESSION_KEY = "state_id"
 LAST_QUERY_RESPONSE_ID = "last_query_response_id"
+# Options of the last search (the sidebar is filled with them again)
+LAST_SEARCH_PARAMS = "last_search_params"
 # Searches whose generative answer is fetched after the results are shown
 PENDING_GENERATIONS = "pending_generations"
 

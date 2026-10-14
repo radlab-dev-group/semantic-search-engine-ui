@@ -4,9 +4,26 @@
     collections, generative_models, categories, documents, selected_collection
     show_content_supervisor (bool)
     show_rag_supervisor (bool)
+    search_params (SearchParams, optional) - options of the last search, they
+      replace the defaults below
 #}
+{%- set sp = search_params if search_params is defined and search_params else none -%}
+{%- macro checked(name, default=false) -%}
+  {%- if (sp.checked(name, default) if sp else default) %} checked{% endif -%}
+{%- endmacro -%}
+{%- macro val(name, default) -%}
+  {{- sp.value(name, default) if sp else default -}}
+{%- endmacro -%}
+{%- macro selected(name, value, default=false) -%}
+  {%- if (sp.selected(name, value) if sp else default) %} selected{% endif -%}
+{%- endmacro -%}
 <div class="card card--panel">
-  <p class="card__eyebrow">{{ t('params.eyebrow') }}</p>
+  <div class="params-head">
+    <p class="card__eyebrow">{{ t('params.eyebrow') }}</p>
+    {% if sp %}
+      <a class="params-reset" href="/search/params/reset{% if selected_collection %}?collection_name={{ selected_collection | urlencode }}{% endif %}" title="{{ t('params.reset_title') }}">↺ {{ t('params.reset') }}</a>
+    {% endif %}
+  </div>
 
   <div class="section-title section-title--rule">{{ t('params.collection') }}</div>
 
@@ -19,23 +36,23 @@
   </select>
 
   <label for="results_count">{{ t('params.results_count') }} <span class="muted">(1–{{ constants.MAX_RESULTS_LIMIT }})</span></label>
-  <input type="number" id="results_count" name="results_count" value="{{ constants.DEFAULT_MAX_RESULTS }}" min="1" max="{{ constants.MAX_RESULTS_LIMIT }}">
+  <input type="number" id="results_count" name="results_count" value="{{ val('results_count', constants.DEFAULT_MAX_RESULTS) }}" min="1" max="{{ constants.MAX_RESULTS_LIMIT }}">
 
   <div class="check-row">
-    <input type="checkbox" id="rerank_results" name="rerank_results">
+    <input type="checkbox" id="rerank_results" name="rerank_results"{{ checked('rerank_results', false) }}>
     <label for="rerank_results">{{ t('params.rerank') }}</label>
   </div>
 
   {% if show_content_supervisor %}
     <div class="check-row">
-      <input type="checkbox" id="use_content_supervisor" name="use_content_supervisor">
+      <input type="checkbox" id="use_content_supervisor" name="use_content_supervisor"{{ checked('use_content_supervisor', false) }}>
       <label for="use_content_supervisor">{{ t('params.content_supervisor') }}</label>
     </div>
   {% endif %}
 
   {% if show_rag_supervisor %}
     <div class="check-row">
-      <input type="checkbox" id="use_rag_supervisor" name="use_rag_supervisor" checked>
+      <input type="checkbox" id="use_rag_supervisor" name="use_rag_supervisor"{{ checked('use_rag_supervisor', true) }}>
       <label for="use_rag_supervisor">{{ t('params.rag_supervisor') }}</label>
     </div>
   {% endif %}
@@ -44,15 +61,15 @@
 
   {% if not force_generative %}
     <div class="check-row">
-      <input type="checkbox" id="return_with_factored_fields" name="return_with_factored_fields">
+      <input type="checkbox" id="return_with_factored_fields" name="return_with_factored_fields"{{ checked('return_with_factored_fields', false) }}>
       <label for="return_with_factored_fields">{{ t('params.factored') }}</label>
     </div>
     <div class="check-row">
-      <input type="checkbox" id="use_qa_extractive" name="use_qa_extractive">
+      <input type="checkbox" id="use_qa_extractive" name="use_qa_extractive"{{ checked('use_qa_extractive', false) }}>
       <label for="use_qa_extractive">{{ t('params.extractive') }}</label>
     </div>
     <div class="check-row">
-      <input type="checkbox" id="use_qa_generative" name="use_qa_generative">
+      <input type="checkbox" id="use_qa_generative" name="use_qa_generative"{{ checked('use_qa_generative', false) }}>
       <label for="use_qa_generative">{{ t('params.generative') }}</label>
     </div>
   {% else %}
@@ -61,29 +78,29 @@
 
   <div id="generative-qa-block" {% if not force_generative %}class="hidden"{% endif %}>
     <div class="check-row">
-      <input type="checkbox" id="use_doc_names_in_response" name="use_doc_names_in_response">
+      <input type="checkbox" id="use_doc_names_in_response" name="use_doc_names_in_response"{{ checked('use_doc_names_in_response', false) }}>
       <label for="use_doc_names_in_response">{{ t('params.doc_names') }}</label>
     </div>
 
     <label for="qa_gen_model">{{ t('params.gen_model') }}</label>
     <select id="qa_gen_model" name="qa_gen_model">
       {% for model in generative_models %}
-        <option value="{{ model }}">{{ model }}</option>
+        <option value="{{ model }}"{{ selected('qa_gen_model', model) }}>{{ model }}</option>
       {% endfor %}
     </select>
 
     <label for="perc_rank_to_gen_qa">{{ t('params.perc_rank') }} <span class="muted">(1–100)</span></label>
-    <input type="number" id="perc_rank_to_gen_qa" name="perc_rank_to_gen_qa" value="{{ constants.DEFAULT_PERC_RANK_TO_GEN_QA }}" min="1" max="100">
+    <input type="number" id="perc_rank_to_gen_qa" name="perc_rank_to_gen_qa" value="{{ val('perc_rank_to_gen_qa', constants.DEFAULT_PERC_RANK_TO_GEN_QA) }}" min="1" max="100">
 
     <div class="check-row">
-      <input type="checkbox" id="translate_output" name="translate_output">
+      <input type="checkbox" id="translate_output" name="translate_output"{{ checked('translate_output', false) }}>
       <label for="translate_output">{{ t('params.translate') }}</label>
     </div>
     <div class="lang-options-row hidden">
       <label for="lang_options">{{ t('params.target_language') }}</label>
       <select id="lang_options" name="lang_options">
         {% for lang in constants.ANSWER_LANGUAGES %}
-          <option value="{{ lang }}">{{ lang }}</option>
+          <option value="{{ lang }}"{{ selected('lang_options', lang) }}>{{ lang }}</option>
         {% endfor %}
       </select>
     </div>
@@ -93,37 +110,37 @@
       <div class="expander-body">
         <div class="field-slider">
           <span>top_k</span>
-          <input type="range" name="top_k" min="0" max="500" step="1" value="{{ constants.DEFAULT_TOP_K }}">
-          <output>{{ constants.DEFAULT_TOP_K }}</output>
+          <input type="range" name="top_k" min="0" max="500" step="1" value="{{ val('top_k', constants.DEFAULT_TOP_K) }}">
+          <output>{{ val('top_k', constants.DEFAULT_TOP_K) }}</output>
         </div>
         <div class="field-slider">
           <span>top_p</span>
-          <input type="range" name="top_p" min="0.0" max="1.0" step="0.01" value="{{ constants.DEFAULT_TOP_P }}">
-          <output>{{ constants.DEFAULT_TOP_P }}</output>
+          <input type="range" name="top_p" min="0.0" max="1.0" step="0.01" value="{{ val('top_p', constants.DEFAULT_TOP_P) }}">
+          <output>{{ val('top_p', constants.DEFAULT_TOP_P) }}</output>
         </div>
         <div class="field-slider">
           <span>temperature</span>
-          <input type="range" name="temperature" min="0.0" max="2.0" step="0.01" value="{{ constants.DEFAULT_TEMPERATURE }}">
-          <output>{{ constants.DEFAULT_TEMPERATURE }}</output>
+          <input type="range" name="temperature" min="0.0" max="2.0" step="0.01" value="{{ val('temperature', constants.DEFAULT_TEMPERATURE) }}">
+          <output>{{ val('temperature', constants.DEFAULT_TEMPERATURE) }}</output>
         </div>
         <div class="field-slider">
           <span>typical_p</span>
-          <input type="range" name="typical_p" min="0.0" max="2.0" step="0.01" value="{{ constants.DEFAULT_TYPICAL_P }}">
-          <output>{{ constants.DEFAULT_TYPICAL_P }}</output>
+          <input type="range" name="typical_p" min="0.0" max="2.0" step="0.01" value="{{ val('typical_p', constants.DEFAULT_TYPICAL_P) }}">
+          <output>{{ val('typical_p', constants.DEFAULT_TYPICAL_P) }}</output>
         </div>
         <div class="field-slider">
           <span>{{ t('params.repetition_penalty') }}</span>
-          <input type="range" name="repetition_penalty" min="0.0" max="2.0" step="0.01" value="{{ constants.DEFAULT_REPETITION_PENALTY }}">
-          <output>{{ constants.DEFAULT_REPETITION_PENALTY }}</output>
+          <input type="range" name="repetition_penalty" min="0.0" max="2.0" step="0.01" value="{{ val('repetition_penalty', constants.DEFAULT_REPETITION_PENALTY) }}">
+          <output>{{ val('repetition_penalty', constants.DEFAULT_REPETITION_PENALTY) }}</output>
         </div>
         <div class="check-row">
-          <input type="checkbox" id="set_max_new_tokens" name="set_max_new_tokens">
+          <input type="checkbox" id="set_max_new_tokens" name="set_max_new_tokens"{{ checked('set_max_new_tokens', false) }}>
           <label for="set_max_new_tokens">{{ t('params.set_max_new_tokens') }}</label>
         </div>
         <div class="field-slider hidden" id="max_new_tokens_row">
           <span>max_new_tokens</span>
-          <input type="range" name="max_new_tokens" min="10" max="{{ constants.MAX_MAX_NEW_TOKENS }}" step="1" value="{{ constants.DEFAULT_MAX_NEW_TOKENS }}">
-          <output id="max_new_tokens_out">{{ constants.DEFAULT_MAX_NEW_TOKENS }}</output>
+          <input type="range" name="max_new_tokens" min="10" max="{{ constants.MAX_MAX_NEW_TOKENS }}" step="1" value="{{ val('max_new_tokens', constants.DEFAULT_MAX_NEW_TOKENS) }}">
+          <output id="max_new_tokens_out">{{ val('max_new_tokens', constants.DEFAULT_MAX_NEW_TOKENS) }}</output>
         </div>
       </div>
     </details>
@@ -134,7 +151,7 @@
   <label>{{ t('params.categories') }} (<span data-count-for="categories">{{ categories | length }}</span>)</label>
   <select name="categories" multiple size="5">
     {% for cat in categories %}
-      <option value="{{ cat }}">{{ cat }}</option>
+      <option value="{{ cat }}"{{ selected('categories', cat) }}>{{ cat }}</option>
     {% endfor %}
   </select>
   <p class="muted">{{ t('params.categories_hint') }}</p>
@@ -142,7 +159,7 @@
   <label>{{ t('params.documents') }} (<span data-count-for="documents">{{ documents | length }}</span>)</label>
   <select name="documents" multiple size="5">
     {% for doc in documents %}
-      <option value="{{ doc }}">{{ doc }}</option>
+      <option value="{{ doc }}"{{ selected('documents', doc) }}>{{ doc }}</option>
     {% endfor %}
   </select>
   <p class="muted">{{ t('params.documents_hint') }}</p>

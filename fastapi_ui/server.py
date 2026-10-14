@@ -23,6 +23,7 @@ import json
 import logging
 import os
 import uuid
+from urllib.parse import urlencode
 
 import pandas as pd
 from fastapi import Depends, FastAPI, Request
@@ -37,7 +38,11 @@ from starlette.responses import HTMLResponse, RedirectResponse
 from core import constants, i18n
 from core.api import SemanticSearchEngineAPI
 from core.markdown import render_markdown
-from core.state_store import LAST_QUERY_RESPONSE_ID, PENDING_GENERATIONS
+from core.state_store import (
+    LAST_QUERY_RESPONSE_ID,
+    LAST_SEARCH_PARAMS,
+    PENDING_GENERATIONS,
+)
 from core.state_store import clear_state, get_state, set_state
 
 logging.basicConfig(
@@ -644,13 +649,95 @@ def search_page(request: Request):
     if redirect is not None:
         return redirect
 
-    collection_name = request.query_params.get("collection_name", "")
+    params = get_search_params(request)
+    collection_name = request.query_params.get("collection_name") or params.value(
+        "collection_name", ""
+    )
     data = fetch_page_context(get_token(request), collection_name)
     if "error" in data:
         return render_api_error(request, data["error"])
     return render_page(
-        request, "search.html", selected_collection=collection_name, **data
+        request,
+        "search.html",
+        selected_collection=collection_name,
+        prompt=params.value("prompt", ""),
+        search_params=params.for_collection(collection_name),
+        **data,
     )
+
+
+@app.get("/search/params/reset", include_in_schema=False)
+def search_params_reset(request: Request):
+    """Forget the remembered sidebar options (back to the defaults)."""
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+    set_state(request, **{LAST_SEARCH_PARAMS: None})
+    collection_name = request.query_params.get("collection_name", "")
+    url = "/search"
+    if collection_name:
+        url += "?" + urlencode({"collection_name": collection_name})
+    return RedirectResponse(url=url, status_code=303)
+
+
+class SearchParams:
+    """Options of the last search, used to fill the parameters sidebar again.
+
+    ``values`` maps a form field to its submitted values. Empty means that
+    nothing was submitted yet and the template defaults apply.
+    """
+
+    # Fields filled per collection (their options depend on it)
+    COLLECTION_FIELDS = ("categories", "documents")
+
+    def __init__(self, values: dict[str, list[str]] | None = None) -> None:
+        self.values = values or {}
+
+    @classmethod
+    def from_form(cls, form: FormData) -> "SearchParams":
+        values: dict[str, list[str]] = {}
+        for key in form.keys():
+            if key == "question":
+                continue
+            texts = [value for value in form.getlist(key) if isinstance(value, str)]
+            if texts:
+                values[key] = texts
+        return cls(values)
+
+    def __bool__(self) -> bool:
+        return bool(self.values)
+
+    def value(self, name: str, default=""):
+        texts = [text for text in self.values.get(name, []) if text != ""]
+        return texts[0] if texts else default
+
+    def checked(self, name: str, default: bool = False) -> bool:
+        return name in self.values if self.values else default
+
+    def selected(self, name: str, value) -> bool:
+        return str(value) in self.values.get(name, [])
+
+    def for_collection(self, collection_name: str) -> "SearchParams":
+        """Copy without the filters when another collection is shown."""
+        if self.value("collection_name", "") == collection_name:
+            return self
+        return SearchParams(
+            {
+                key: texts
+                for key, texts in self.values.items()
+                if key not in self.COLLECTION_FIELDS
+            }
+        )
+
+
+def get_search_params(request: Request) -> SearchParams:
+    return SearchParams(get_state(request).get(LAST_SEARCH_PARAMS))
+
+
+def remember_search_params(request: Request, form: FormData) -> SearchParams:
+    params = SearchParams.from_form(form)
+    set_state(request, **{LAST_SEARCH_PARAMS: params.values})
+    return params
 
 
 @app.post("/search", include_in_schema=False)
@@ -669,6 +756,8 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
     search_options = options["search_options"]
     answer_options = options["answer_options"]
     run_models_options = options["run_models_options"]
+    # The sidebar keeps the chosen options instead of the defaults
+    search_params = remember_search_params(request, form)
 
     def page(**kwargs):
         data = fetch_page_context(token, collection_name)
@@ -680,6 +769,7 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
             selected_collection=collection_name,
             question=question,
             prompt=prompt,
+            search_params=search_params,
             **{**data, **kwargs},
         )
 

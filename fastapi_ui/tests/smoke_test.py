@@ -552,6 +552,45 @@ def main() -> int:
             unknown.status_code == 409 and unknown.json().get("status") is False,
             str(unknown.status_code),
         )
+
+        def kept_options(html: str) -> dict:
+            return {
+                "results_count": 'name="results_count" value="30"' in html,
+                "perc_rank": 'name="perc_rank_to_gen_qa" value="55"' in html,
+                "rerank": 'name="rerank_results" checked' in html,
+                "generative": 'name="use_qa_generative" checked' in html,
+                "extractive_off": 'name="use_qa_extractive" checked' not in html,
+                "model": 'value="llama-8b" selected' in html,
+                "category": re.search(r'value="a"\s+selected', html) is not None,
+                "prompt": "odpowiedz zwięźle</textarea>" in html,
+                "reset_link": "/search/params/reset" in html,
+            }
+
+        kept = kept_options(results_html)
+        check("search options are kept after the search", all(kept.values()), str(kept))
+        kept = kept_options(client.get("/search").text)
+        check(
+            "search options are kept on the search page", all(kept.values()), str(kept)
+        )
+        reset = client.get(
+            "/search/params/reset?collection_name=user_col", follow_redirects=False
+        )
+        check(
+            "restore defaults redirects back to the search page",
+            reset.status_code == 303
+            and reset.headers.get("location") == "/search?collection_name=user_col",
+            str(reset.status_code),
+        )
+        defaults_html = client.get("/search?collection_name=user_col").text
+        check(
+            "restore defaults brings back the default options",
+            f'name="results_count" value="{server.constants.DEFAULT_MAX_RESULTS}"'
+            in defaults_html
+            and 'name="use_qa_generative" checked' not in defaults_html
+            and 'name="rerank_results" checked' not in defaults_html
+            and "/search/params/reset" not in defaults_html,
+            "",
+        )
         check(
             "stats table shows document names",
             "doc-a.pdf" in response.text and "document" in response.text,

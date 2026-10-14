@@ -60,6 +60,11 @@ Dodatkowo (poza oryginałem):
   dokumenty) są — tak jak w oryginale — na stronie wyszukiwania.
 - `GET /lang/{pl|en}?next=/sciezka` — przełącza język interfejsu (ciasteczko
   `sse_lang`, rok ważności) i wraca na stronę `next` (tylko ścieżki lokalne).
+- `GET /search/params/reset?collection_name=…` — przywraca domyślne parametry
+  wyszukiwania. Opcje z panelu bocznego (liczba wyników, modele, opcje
+  generowania, filtry, prompt) są zapamiętywane w stanie sesji przy każdym
+  `POST /search` i wypełniają formularz po wyszukiwaniu, po ocenie odpowiedzi
+  i przy kolejnym wejściu na `/search`.
 - `POST /search/generate` (`generation_id`) — odpowiedź generatywna dla
   wyszukiwania, którego wyniki są już na stronie. `POST /search` nie czeka na
   model: od razu renderuje wyniki i kartę „Odpowiedź modelu” w stanie

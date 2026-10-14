@@ -833,10 +833,35 @@ svg {
   border-top: 1px dashed var(--border-strong);
 }
 
-.card__eyebrow + .section-title--rule {
+.card__eyebrow + .section-title--rule,
+.params-head + .section-title--rule {
   margin-top: var(--space-2);
   padding-top: 0;
   border-top: 0;
+}
+
+/* Sidebar head: eyebrow + "restore defaults" (shown once options are kept) */
+.params-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.params-reset {
+  margin-bottom: var(--space-2);
+  font-size: 0.78rem;
+  font-weight: 550;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.params-reset:hover,
+.params-reset:focus-visible {
+  color: var(--brand-500);
+  text-decoration: underline;
 }
 
 .section-heading {
