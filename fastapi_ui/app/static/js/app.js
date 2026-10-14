@@ -333,11 +333,266 @@ function initSliders() {
     if (!range) return;
 
     const sync = () => {
-      if (output) output.textContent = range.value;
+      if (output) {
+        output.textContent = `${range.value}${output.dataset.suffix || ""}`;
+        // Values that differ from the default are marked (search params)
+        const fallback = range.dataset.default;
+        const changed = fallback !== undefined && Number(fallback) !== Number(range.value);
+        output.classList.toggle("is-changed", changed);
+        output.title = changed ? t("changed_title", { value: fallback }, "Default: {value}") : "";
+      }
       paintRange(range);
     };
     range.addEventListener("input", sync);
     sync();
+  });
+}
+
+/* ------------------------------------------------------- search params */
+// Number stepper (− / +) and preset chips of "number of results".
+function initSteppers(root) {
+  root.querySelectorAll("[data-stepper]").forEach((stepper) => {
+    const input = stepper.querySelector("input[type='number']");
+    if (!input) return;
+    const clamp = (value) => {
+      const min = Number(input.min || 1);
+      const max = Number(input.max || 100);
+      return Math.min(max, Math.max(min, Math.round(value)));
+    };
+    stepper.querySelectorAll("[data-step]").forEach((button) => {
+      button.addEventListener("click", () => {
+        input.value = clamp((Number(input.value) || 0) + Number(button.dataset.step));
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    });
+  });
+
+  const chips = Array.from(root.querySelectorAll("[data-preset]"));
+  const syncChips = () => {
+    chips.forEach((chip) => {
+      const input = document.getElementById(chip.dataset.presetFor);
+      const active = input && Number(input.value) === Number(chip.dataset.preset);
+      chip.classList.toggle("is-active", Boolean(active));
+      chip.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  };
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const input = document.getElementById(chip.dataset.presetFor);
+      if (!input) return;
+      input.value = chip.dataset.preset;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  });
+  root.addEventListener("input", syncChips);
+  syncChips();
+}
+
+// A <select multiple> shown as a searchable list of toggles. The native
+// select stays in the form (hidden) and remains the source of truth, so
+// the submitted data and the collection refresh (fillSelect) are unchanged.
+function initPicker(select) {
+  const picker = document.createElement("div");
+  picker.className = "picker";
+  picker.innerHTML = `
+    <div class="picker__bar">
+      <input type="search" class="picker__search" autocomplete="off">
+      <button type="button" class="picker__clear" hidden></button>
+    </div>
+    <div class="picker__list" role="group"></div>
+    <p class="picker__status"></p>`;
+  const bar = picker.querySelector(".picker__bar");
+  const search = picker.querySelector(".picker__search");
+  const clear = picker.querySelector(".picker__clear");
+  const list = picker.querySelector(".picker__list");
+  const status = picker.querySelector(".picker__status");
+  search.placeholder = t("picker_search", {}, "Search…");
+  search.setAttribute("aria-label", t("picker_search", {}, "Search…"));
+  clear.textContent = t("picker_clear", {}, "Clear");
+
+  const label = select.id ? document.querySelector(`label[for='${select.id}']`) : null;
+  if (label) {
+    label.id = `${select.id}-label`;
+    list.setAttribute("aria-labelledby", label.id);
+    // The native select is hidden: the label focuses the picker instead
+    label.addEventListener("click", (event) => {
+      event.preventDefault();
+      (bar.hidden ? list.querySelector(".picker__opt") : search)?.focus();
+    });
+  }
+
+  const updateStatus = () => {
+    const options = Array.from(select.options);
+    const chosen = options.filter((option) => option.selected).length;
+    const query = search.value.trim();
+    const visible = list.querySelectorAll(".picker__opt:not([hidden])").length;
+    clear.hidden = chosen === 0;
+    picker.classList.toggle("has-selection", chosen > 0);
+    if (!options.length) {
+      status.textContent = t("picker_empty", {}, "No items.");
+    } else if (query && !visible) {
+      status.textContent = t("picker_nomatch", { query }, "Nothing matches “{query}”.");
+    } else if (chosen) {
+      status.textContent = t("picker_selected", { n: chosen, total: options.length }, "{n} of {total} selected");
+    } else {
+      status.textContent = t("picker_all", { n: options.length }, "No filter ({n})");
+    }
+  };
+
+  const filter = () => {
+    const words = search.value.toLowerCase().split(/\s+/).filter(Boolean);
+    list.querySelectorAll(".picker__opt").forEach((button) => {
+      const text = button.dataset.value.toLowerCase();
+      button.hidden = !words.every((word) => text.includes(word));
+    });
+    updateStatus();
+  };
+
+  const render = () => {
+    list.replaceChildren();
+    Array.from(select.options).forEach((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "picker__opt";
+      button.dataset.value = option.value;
+      button.setAttribute("aria-pressed", option.selected ? "true" : "false");
+      button.title = option.value;
+
+      const check = document.createElement("span");
+      check.className = "picker__check";
+      check.setAttribute("aria-hidden", "true");
+      const text = document.createElement("span");
+      text.className = "picker__label";
+      // "pl/01-context": the parent path is dimmed, the last part stands out
+      const cut = option.value.lastIndexOf("/");
+      if (cut > 0 && cut < option.value.length - 1) {
+        const parent = document.createElement("span");
+        parent.className = "picker__parent";
+        parent.textContent = option.value.slice(0, cut + 1);
+        text.append(parent, option.value.slice(cut + 1));
+      } else {
+        text.textContent = option.textContent;
+      }
+      button.append(check, text);
+
+      button.addEventListener("click", () => {
+        option.selected = !option.selected;
+        button.setAttribute("aria-pressed", option.selected ? "true" : "false");
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        updateStatus();
+      });
+      list.appendChild(button);
+    });
+    bar.hidden = select.options.length <= 6;
+    filter();
+  };
+
+  search.addEventListener("input", filter);
+  // The picker is inside the search form: Enter must not run a search
+  search.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") event.preventDefault();
+    if (event.key === "Escape" && search.value) {
+      event.preventDefault();
+      search.value = "";
+      filter();
+    }
+  });
+  clear.addEventListener("click", () => {
+    Array.from(select.options).forEach((option) => {
+      option.selected = false;
+    });
+    render();
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  select.addEventListener("picker:refresh", () => {
+    search.value = "";
+    render();
+  });
+
+  select.classList.add("picker-native");
+  select.tabIndex = -1;
+  select.setAttribute("aria-hidden", "true");
+  select.after(picker);
+  const hint = picker.nextElementSibling;
+  if (hint && hint.matches("[data-picker-hint]")) hint.hidden = true;
+  render();
+}
+
+// One-line summaries in the headers of the parameter groups.
+function initGroupSummaries(panel) {
+  const field = (name) => panel.querySelector(`[name='${name}']`);
+  const isOn = (name) => {
+    const input = field(name);
+    if (!input) return false;
+    return input.type === "checkbox" ? input.checked : Boolean(input.value);
+  };
+  const chosen = (name) => {
+    const select = field(name);
+    return select ? Array.from(select.selectedOptions).length : 0;
+  };
+
+  const summaries = {
+    collection: () => {
+      const collection = field("collection_name");
+      const parts = [];
+      parts.push(collection && collection.value ? collection.value : t("sum_no_collection", {}, "no collection"));
+      const count = Number(field("results_count")?.value) || 0;
+      parts.push(t("sum_results", { n: count }, "{n} results"));
+      if (isOn("rerank_results")) parts.push(t("sum_rerank", {}, "reranking"));
+      return parts.join(" · ");
+    },
+    models: () => {
+      const parts = [];
+      if (isOn("use_qa_generative")) {
+        parts.push(t("sum_generative", {}, "generative QA"));
+        const model = field("qa_gen_model");
+        if (model && model.value) parts.push(model.value.split("/").pop());
+      }
+      if (isOn("use_qa_extractive")) parts.push(t("sum_extractive", {}, "extractive QA"));
+      return parts.length ? parts.join(" · ") : t("sum_search_only", {}, "search only");
+    },
+    filters: () => {
+      const parts = [];
+      const categories = chosen("categories");
+      const documents = chosen("documents");
+      if (categories) parts.push(t("sum_categories", { n: categories }, "{n} categories"));
+      if (documents) parts.push(t("sum_documents", { n: documents }, "{n} documents"));
+      return parts.length ? parts.join(" · ") : t("sum_no_filters", {}, "no filters");
+    },
+  };
+
+  const tuning = panel.querySelector(".expander--tune");
+  const update = () => {
+    panel.querySelectorAll("[data-group]").forEach((group) => {
+      const target = group.querySelector("[data-group-summary]");
+      const summary = summaries[group.dataset.group];
+      if (target && summary) target.textContent = summary();
+    });
+    const group = panel.querySelector("[data-group='filters']");
+    if (group) group.classList.toggle("is-active", chosen("categories") + chosen("documents") > 0);
+
+    // Number of generation options that differ from their defaults
+    if (tuning) {
+      const counter = tuning.querySelector("[data-changed-count]");
+      const changed = Array.from(tuning.querySelectorAll("input[type='range'][data-default]"))
+        .filter((range) => !range.closest(".hidden"))
+        .filter((range) => Number(range.value) !== Number(range.dataset.default)).length;
+      if (counter) {
+        counter.hidden = changed === 0;
+        counter.textContent = t("sum_changed", { n: changed }, "changed: {n}");
+      }
+    }
+  };
+  panel.addEventListener("input", update);
+  panel.addEventListener("change", update);
+  update();
+}
+
+function initParamsPanel() {
+  document.querySelectorAll("[data-params]").forEach((panel) => {
+    initSteppers(panel);
+    panel.querySelectorAll("select[data-picker]").forEach(initPicker);
+    initGroupSummaries(panel);
   });
 }
 
@@ -617,6 +872,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initNavToggle();
   initTabs();
   initSliders();
+  initParamsPanel();
   initFileSummary();
   initDropzone();
   initChunkPreview();
@@ -644,6 +900,8 @@ function fillSelect(element, values) {
     option.textContent = value;
     element.appendChild(option);
   });
+  element.dispatchEvent(new Event("picker:refresh"));
+  element.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 document.addEventListener("change", async (event) => {

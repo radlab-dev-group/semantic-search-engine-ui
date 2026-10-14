@@ -137,7 +137,12 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
 - **Upload**: strefa drag & drop dla plików oraz podgląd chunkowania, który na
   żywo pokazuje stosunek `overlap` do rozmiaru chunka.
 - **Wyszukiwanie**: wyróżniona „konsola zapytania”, przykładowe pytania jako
-  klikalne chipy, panel parametrów w przyklejonym (sticky) sidebarze, karta
+  klikalne chipy, panel parametrów w przyklejonym (sticky) sidebarze
+  (`partials/search_params.html`: zwijane grupy Kolekcja / Modele / Filtry z
+  podsumowaniem w nagłówku, opcje jako kafelki z opisem, licznik wyników
+  z −/+ i szybkim wyborem, suwaki z opisem i oznaczeniem wartości innych niż
+  domyślne, filtry jako listy z wyszukiwaniem — natywne `<select multiple>`
+  zostają w formularzu jako źródło prawdy), karta
   odpowiedzi modelu z gradientowym akcentem nad wynikami, ocena odpowiedzi
   gwiazdkami. Przy generatywnym QA wyniki pokazują się od razu, a karta
   odpowiedzi ma animowany szkielet i licznik czasu, dopóki model nie skończy.
@@ -246,4 +251,6 @@ fastapi_ui/
 │   └── static/
 │       ├── css/style.css
 │       └── js/app.js
+```
+s/app.js
 ```

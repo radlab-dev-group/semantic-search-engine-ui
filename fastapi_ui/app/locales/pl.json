@@ -317,7 +317,23 @@
     "categories": "Kategorie w kolekcji",
     "categories_hint": "Przytrzymaj Ctrl/Cmd, aby zaznaczyć kilka kategorii.",
     "documents": "Dokumenty w kolekcji",
-    "documents_hint": "Przytrzymaj Ctrl/Cmd, aby zaznaczyć kilka dokumentów."
+    "documents_hint": "Przytrzymaj Ctrl/Cmd, aby zaznaczyć kilka dokumentów.",
+    "decrease": "Mniej wyników",
+    "increase": "Więcej wyników",
+    "presets": "Szybki wybór liczby wyników",
+    "rerank_desc": "Drugi model ponownie układa trafienia — trafniej, ale wolniej.",
+    "generative_desc": "Model pisze odpowiedź na podstawie znalezionych fragmentów.",
+    "perc_rank_short": "Kontekst dla modelu",
+    "perc_rank_desc": "Procent masy rankingu (od najlepszych wyników), który trafia do modelu.",
+    "doc_names_desc": "Odpowiedź wskazuje dokumenty źródłowe.",
+    "more_models": "Dodatkowe analizy",
+    "extractive_desc": "Wskazuje w fragmentach dokładne zdania z odpowiedzią.",
+    "factored_desc": "Dołącza do wyników pola współczynników.",
+    "temperature_desc": "Wyżej — odpowiedzi bardziej twórcze, niżej — bardziej przewidywalne.",
+    "top_p_desc": "Próbkowanie z najmniejszego zbioru słów o łącznym prawdopodobieństwie p.",
+    "top_k_desc": "Ile najbardziej prawdopodobnych słów rozważać w każdym kroku (0 = bez limitu).",
+    "typical_p_desc": "Odrzuca słowa nietypowe względem rozkładu modelu.",
+    "repetition_penalty_desc": "Powyżej 1 model rzadziej powtarza te same słowa."
   },
   "hits": {
     "filter_label": "Pokaż fragmenty z",
@@ -380,6 +396,43 @@
       "few": "Wybrano {n} pliki · {size}",
       "many": "Wybrano {n} plików · {size}",
       "other": "Wybrano {n} pliku · {size}"
-    }
+    },
+    "picker_search": "Szukaj…",
+    "picker_clear": "Wyczyść",
+    "picker_all": "Brak filtra — przeszukiwane są wszystkie ({n})",
+    "picker_selected": {
+      "one": "Zaznaczono {n} z {total}",
+      "few": "Zaznaczono {n} z {total}",
+      "many": "Zaznaczono {n} z {total}",
+      "other": "Zaznaczono {n} z {total}"
+    },
+    "picker_nomatch": "Nic nie pasuje do „{query}”.",
+    "picker_empty": "Brak pozycji w tej kolekcji.",
+    "sum_results": {
+      "one": "{n} wynik",
+      "few": "{n} wyniki",
+      "many": "{n} wyników",
+      "other": "{n} wyniku"
+    },
+    "sum_rerank": "reranking",
+    "sum_no_collection": "nie wybrano kolekcji",
+    "sum_generative": "generatywne QA",
+    "sum_extractive": "ekstrakcyjne QA",
+    "sum_search_only": "tylko wyszukiwanie",
+    "sum_no_filters": "bez filtrów — cała kolekcja",
+    "sum_categories": {
+      "one": "{n} kategoria",
+      "few": "{n} kategorie",
+      "many": "{n} kategorii",
+      "other": "{n} kategorii"
+    },
+    "sum_documents": {
+      "one": "{n} dokument",
+      "few": "{n} dokumenty",
+      "many": "{n} dokumentów",
+      "other": "{n} dokumentu"
+    },
+    "sum_changed": "zmienione: {n}",
+    "changed_title": "Wartość różni się od domyślnej ({value})"
   }
 }

@@ -307,7 +307,23 @@
     "categories": "Categories in collection",
     "categories_hint": "Hold Ctrl/Cmd to select multiple categories.",
     "documents": "Documents in collection",
-    "documents_hint": "Hold Ctrl/Cmd to select multiple documents."
+    "documents_hint": "Hold Ctrl/Cmd to select multiple documents.",
+    "decrease": "Fewer results",
+    "increase": "More results",
+    "presets": "Quick choice of the number of results",
+    "rerank_desc": "A second model re-orders the hits — more accurate, but slower.",
+    "generative_desc": "A model writes an answer from the passages found.",
+    "perc_rank_short": "Context for the model",
+    "perc_rank_desc": "Percent of the ranking mass (from the best hits) passed to the model.",
+    "doc_names_desc": "The answer points to its source documents.",
+    "more_models": "Additional analyses",
+    "extractive_desc": "Marks the exact answer sentences in the passages.",
+    "factored_desc": "Adds the factor fields to the results.",
+    "temperature_desc": "Higher — more creative answers, lower — more predictable.",
+    "top_p_desc": "Samples from the smallest set of words with total probability p.",
+    "top_k_desc": "How many most likely words to consider at each step (0 = no limit).",
+    "typical_p_desc": "Drops words that are atypical for the model distribution.",
+    "repetition_penalty_desc": "Above 1 the model repeats the same words less often."
   },
   "hits": {
     "filter_label": "Show passages from",
@@ -362,6 +378,35 @@
     "files_selected": {
       "one": "{n} file selected · {size}",
       "other": "{n} files selected · {size}"
-    }
+    },
+    "picker_search": "Search…",
+    "picker_clear": "Clear",
+    "picker_all": "No filter — all are searched ({n})",
+    "picker_selected": {
+      "one": "{n} of {total} selected",
+      "other": "{n} of {total} selected"
+    },
+    "picker_nomatch": "Nothing matches “{query}”.",
+    "picker_empty": "No items in this collection.",
+    "sum_results": {
+      "one": "{n} result",
+      "other": "{n} results"
+    },
+    "sum_rerank": "reranking",
+    "sum_no_collection": "no collection chosen",
+    "sum_generative": "generative QA",
+    "sum_extractive": "extractive QA",
+    "sum_search_only": "search only",
+    "sum_no_filters": "no filters — whole collection",
+    "sum_categories": {
+      "one": "{n} category",
+      "other": "{n} categories"
+    },
+    "sum_documents": {
+      "one": "{n} document",
+      "other": "{n} documents"
+    },
+    "sum_changed": "changed: {n}",
+    "changed_title": "The value differs from the default ({value})"
   }
 }
