@@ -21,6 +21,8 @@
         "generative_answer": "api/generative_answer",
         "rate_generative_answer": "api/rate_generative_answer",
         "upload_and_index_files": "api/upload_and_index_files",
+        "search_history": "api/search_history",
+        "get_search_history": "api/get_search_history",
         "new_chat": "api/new_chat",
         "add_user_message": "api/add_user_message"
       }

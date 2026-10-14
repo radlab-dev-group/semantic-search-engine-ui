@@ -1,21 +1,26 @@
+{#- rated_value / rated_comment: rating already saved (search from the history) -#}
 <section class="card" id="generative-feedback">
   <div class="card__header">
     <div>
       <p class="card__eyebrow">{{ t('search.feedback_eyebrow') }}</p>
       <h2>{{ t('search.feedback_heading') }}</h2>
       <p class="subtitle">{{ t('search.feedback_subtitle') }}</p>
+      {% if rated_value %}
+        <p class="muted">{{ t('history.rated', value=rated_value, max=constants.MAX_VAL_RATING_GENERATIVE_ANSWER) }}</p>
+      {% endif %}
     </div>
     <span class="badge">{{ t('search.badge_response') }} <span class="badge__value">{{ last_response_id }}</span></span>
   </div>
 
   <form method="post" action="/search/rate">
+    {% if history_view %}<input type="hidden" name="history_id" value="{{ history_current }}">{% endif %}
     <div class="grid-2">
       <div class="card card--subtle">
         <p class="section-title">{{ t('search.stars_title') }}</p>
         <fieldset class="star-rating">
           <legend class="sr-only">{{ t('search.stars_legend') }}</legend>
           {% for star in range(constants.MAX_VAL_RATING_GENERATIVE_ANSWER, 0, -1) %}
-            <input type="radio" id="rate_value_{{ star }}" name="rate_value" value="{{ star }}" {% if loop.first %}checked{% endif %}>
+            <input type="radio" id="rate_value_{{ star }}" name="rate_value" value="{{ star }}" {% if ((star == rated_value) if rated_value else loop.first) %}checked{% endif %}>
             <label for="rate_value_{{ star }}" title="{{ t.plural('search.stars', star) }}"><span class="sr-only">{{ t.plural('search.stars', star) }}</span>★</label>
           {% endfor %}
         </fieldset>
@@ -24,7 +29,7 @@
       <div class="card card--subtle">
         <p class="section-title">{{ t('search.comment') }}</p>
         <label for="rate_comment">{{ t('search.comment_label') }}</label>
-        <textarea id="rate_comment" name="rate_comment" placeholder="{{ t('search.comment_placeholder') }}"></textarea>
+        <textarea id="rate_comment" name="rate_comment" placeholder="{{ t('search.comment_placeholder') }}">{{ rated_comment or '' }}</textarea>
       </div>
     </div>
     <div class="btn-row">

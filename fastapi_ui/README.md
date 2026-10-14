@@ -60,6 +60,15 @@ Dodatkowo (poza oryginałem):
   dokumenty) są — tak jak w oryginale — na stronie wyszukiwania.
 - `GET /lang/{pl|en}?next=/sciezka` — przełącza język interfejsu (ciasteczko
   `sse_lang`, rok ważności) i wraca na stronę `next` (tylko ścieżki lokalne).
+- `GET /search/history/{query_response_id}` — wyszukiwanie z historii: pytanie,
+  instrukcja, zapisane wyniki i ostatnia wygenerowana odpowiedź (z formularzem
+  oceny, zapisana ocena jest zaznaczona). Panel „Historia wyszukiwań” pod
+  polem pytania pokazuje wyszukiwania użytkownika tylko w wybranej kolekcji
+  (silnik: `GET api/search_history?collection_name=…`, maks. 50, od
+  najnowszych); po zmianie kolekcji w panelu bocznym jest odświeżany przez
+  `GET /search/history?collection_name=…` (JSON z fragmentem HTML). Szczegóły
+  wpisu pobiera `GET api/get_search_history?query_response_id=…`. Gdy plik
+  konfiguracyjny nie zawiera tych endpointów, używane są domyślne ścieżki.
 - `GET /search/params/reset?collection_name=…` — przywraca domyślne parametry
   wyszukiwania. Opcje z panelu bocznego (liczba wyników, modele, opcje
   generowania, filtry, prompt) są zapamiętywane w stanie sesji przy każdym

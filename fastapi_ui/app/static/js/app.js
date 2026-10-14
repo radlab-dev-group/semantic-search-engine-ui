@@ -563,6 +563,54 @@ function initGenerativeAnswer() {
     });
 }
 
+/* ------------------------------------------------------ search history */
+// Client-side filter of the history panel (the list is short, max. 50).
+function initHistory(root = document) {
+  root.querySelectorAll("[data-history]").forEach((panel) => {
+    const input = panel.querySelector("[data-history-filter]");
+    if (!input) return;
+    const items = Array.from(panel.querySelectorAll("[data-history-item]"));
+    const nomatch = panel.querySelector("[data-history-nomatch]");
+
+    input.addEventListener("input", () => {
+      const words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+      let visible = 0;
+      items.forEach((item) => {
+        const show = words.every((word) => item.dataset.query.includes(word));
+        item.hidden = !show;
+        if (show) visible += 1;
+      });
+      if (nomatch) nomatch.hidden = visible > 0;
+    });
+    // The panel is inside the search form: Enter must not run a search
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") event.preventDefault();
+    });
+  });
+}
+
+// Another collection chosen in the sidebar: show its history.
+async function refreshHistory(collectionName) {
+  const panel = document.querySelector("[data-history]");
+  if (!panel) return;
+  try {
+    const response = await fetch(`/search/history?collection_name=${encodeURIComponent(collectionName)}`, {
+      credentials: "same-origin",
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    const fresh = fragmentFrom(payload.html).firstElementChild;
+    if (!fresh) return;
+    const box = panel.querySelector("[data-history-box]");
+    const freshBox = fresh.querySelector("[data-history-box]");
+    if (box && freshBox) freshBox.open = box.open;
+    panel.replaceWith(fresh);
+    initHistory(fresh.parentElement);
+  } catch (error) {
+    console.error("Cannot refresh the search history", error);
+  }
+}
+
 /* ---------------------------------------------------------------- init */
 document.addEventListener("DOMContentLoaded", () => {
   initThemeToggle();
@@ -583,6 +631,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initHighlights();
   initCopyButtons();
   initGenerativeAnswer();
+  initHistory();
 });
 
 /* ------------------------- refresh category/document filters on demand */
@@ -602,6 +651,7 @@ document.addEventListener("change", async (event) => {
   if (!select.matches("select[name='collection_name']")) return;
 
   const scope = select.closest("form") || document;
+  refreshHistory(select.value);
   const targets = {
     categories: scope.querySelector("select[name='categories']"),
     documents: scope.querySelector("select[name='documents']"),

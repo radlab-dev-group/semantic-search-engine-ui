@@ -260,6 +260,36 @@
     "warning_no_results": "Nie znaleziono wyników!",
     "error_prepare": "Nie można przygotować wyników: {error}"
   },
+  "history": {
+    "title": "Historia wyszukiwań",
+    "collection_title": "Historia dotyczy tylko tej kolekcji",
+    "choose_collection": "Wybierz kolekcję, aby zobaczyć historię jej wyszukiwań.",
+    "unavailable": "Nie udało się pobrać historii wyszukiwań z silnika.",
+    "empty": "W tej kolekcji nie było jeszcze wyszukiwań.",
+    "filter_placeholder": "Filtruj historię…",
+    "filter_label": "Filtruj historię wyszukiwań",
+    "open_title": "Pokaż pytanie, wyniki i odpowiedź z tego wyszukiwania",
+    "no_query": "(bez pytania)",
+    "snippets": {
+      "one": "{n} fragment",
+      "few": "{n} fragmenty",
+      "many": "{n} fragmentów",
+      "other": "{n} fragmentu"
+    },
+    "documents": {
+      "one": "{n} dokument",
+      "few": "{n} dokumenty",
+      "many": "{n} dokumentów",
+      "other": "{n} dokumentu"
+    },
+    "answered": "odpowiedź",
+    "rating_title": "Ocena wygenerowanej odpowiedzi",
+    "current": "wyświetlane",
+    "no_match": "Żadne wyszukiwanie nie pasuje do filtra.",
+    "badge": "Z historii",
+    "viewing_title": "Wyniki zapisane w historii. Kliknij „Szukaj”, aby wyszukać ponownie z bieżącymi parametrami.",
+    "rated": "Zapisana ocena: {value}/{max}. Możesz ją zmienić."
+  },
   "params": {
     "eyebrow": "Parametry wyszukiwania",
     "reset": "Przywróć domyślne",

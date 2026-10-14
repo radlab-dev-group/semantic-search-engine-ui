@@ -254,6 +254,32 @@
     "warning_no_results": "No results found!",
     "error_prepare": "Cannot prepare results: {error}"
   },
+  "history": {
+    "title": "Search history",
+    "collection_title": "The history covers this collection only",
+    "choose_collection": "Choose a collection to see the history of its searches.",
+    "unavailable": "Could not fetch the search history from the engine.",
+    "empty": "No searches in this collection yet.",
+    "filter_placeholder": "Filter the history…",
+    "filter_label": "Filter the search history",
+    "open_title": "Show the question, the results and the answer of this search",
+    "no_query": "(no question)",
+    "snippets": {
+      "one": "{n} passage",
+      "other": "{n} passages"
+    },
+    "documents": {
+      "one": "{n} document",
+      "other": "{n} documents"
+    },
+    "answered": "answer",
+    "rating_title": "Rating of the generated answer",
+    "current": "shown",
+    "no_match": "No search matches the filter.",
+    "badge": "From history",
+    "viewing_title": "Results saved in the history. Click “Search” to search again with the current parameters.",
+    "rated": "Saved rating: {value}/{max}. You can change it."
+  },
   "params": {
     "eyebrow": "Search parameters",
     "reset": "Restore defaults",

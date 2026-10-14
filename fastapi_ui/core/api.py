@@ -17,6 +17,8 @@ identical:
 - generative_answer:  POST {host}/api/generative_answer
 - rate_generative_answer: POST {host}/api/rate_generative_answer
 - upload_and_index_files: POST {host}/api/upload_and_index_files (multipart)
+- search_history:     GET  {host}/api/search_history?collection_name=...
+- get_search_history: GET  {host}/api/get_search_history?query_response_id=...
 
 Auth is a Django token: header ``Authorization: Token <token>``.
 """
@@ -171,6 +173,15 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             )
             self.upload_and_index_files = (
                 api_config.semantic_search_engine_endpoints["upload_and_index_files"]
+            )
+            # Newer endpoints: older configuration files do not list them
+            self.search_history = api_config.semantic_search_engine_endpoints.get(
+                "search_history", "api/search_history"
+            )
+            self.get_search_history = (
+                api_config.semantic_search_engine_endpoints.get(
+                    "get_search_history", "api/get_search_history"
+                )
             )
 
     def __init__(self, config_path: str = "configs/ui-configuration.json"):
@@ -336,6 +347,28 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             api_function=self._engine_ep.rate_generative_answer,
             params=None,
             data=data,
+        )
+        return response
+
+    def search_history(self, token: str, collection_name: str):
+        """Searches of the user in the collection, newest first."""
+        response = self.general_call_get(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.search_history,
+            params={"collection_name": collection_name},
+            data=None,
+        )
+        return response
+
+    def get_search_history(self, token: str, query_response_id: int):
+        """One search of the user: query, results and generated answers."""
+        response = self.general_call_get(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.get_search_history,
+            params={"query_response_id": int(query_response_id)},
+            data=None,
         )
         return response
 

@@ -62,6 +62,10 @@
             </div>
           </div>
 
+          {#- Collapsed once there are results, so they start right below -#}
+          {% set history_open = not has_results %}
+          {% include "partials/search_history.html" %}
+
           {% if not has_results %}
           <div class="examples">
             <p class="section-title">{{ t('search.examples') }}</p>

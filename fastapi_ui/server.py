@@ -422,6 +422,94 @@ def prepare_detailed_results_dataframe(results) -> list:
 
 
 # --------------------------------------------------------------------------- #
+# Search history (engine: search_history / get_search_history)
+# --------------------------------------------------------------------------- #
+# The history panel lists at most that many searches (newest first)
+HISTORY_LIMIT = 50
+
+
+def _size(data) -> int:
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except ValueError:
+            return 0
+    return len(data) if isinstance(data, (dict, list)) else 0
+
+
+def _history_results(entry: dict) -> tuple:
+    """Stats and detailed results of a history entry (both shapes)."""
+    results = entry.get("results") if isinstance(entry.get("results"), dict) else {}
+    stats = entry.get("stats") or results.get("stats") or {}
+    detailed = entry.get("detailed_results") or results.get("detailed_results") or {}
+    return stats, detailed
+
+
+def _history_answers(entry: dict) -> list:
+    return [answer for answer in entry.get("answers") or [] if isinstance(answer, dict)]
+
+
+def _history_generated_answer(entry: dict) -> dict | None:
+    """The newest generated answer of a history entry."""
+    for answer in reversed(_history_answers(entry)):
+        if answer.get("is_generative", True) and answer.get("generated_answer"):
+            return answer
+    if entry.get("generated_answer"):
+        return {"generated_answer": entry["generated_answer"]}
+    return None
+
+
+def history_row(entry) -> dict | None:
+    """One search of the history panel."""
+    if not isinstance(entry, dict) or entry.get("query_response_id") is None:
+        return None
+    stats, detailed = _history_results(entry)
+    answer = _history_generated_answer(entry)
+    rated = next(
+        (
+            item
+            for item in reversed(_history_answers(entry))
+            if item.get("rate_value") is not None
+        ),
+        None,
+    )
+    return {
+        "id": entry["query_response_id"],
+        "query": str(entry.get("query") or entry.get("query_str") or "").strip(),
+        "collection_name": entry.get("collection_name"),
+        "documents": _size(stats),
+        "snippets": _size(detailed),
+        "answered": answer is not None,
+        "rate_value": rated.get("rate_value") if rated else None,
+        "rate_value_max": (
+            rated.get("rate_value_max") if rated else None
+        )
+        or constants.MAX_VAL_RATING_GENERATIVE_ANSWER,
+    }
+
+
+def fetch_search_history(token: str, collection_name: str) -> list | None:
+    """Searches of the user in the collection; ``None`` when unavailable."""
+    if not collection_name:
+        return []
+    try:
+        response = sse_api_engine.search_history(
+            token=token, collection_name=collection_name
+        )
+    except Exception:  # noqa: BLE001 - the history must not break the page
+        logger.exception("Cannot fetch the search history")
+        return None
+    if not isinstance(response, dict) or response.get("status") is False:
+        return None
+    body = response.get("body") if isinstance(response.get("body"), dict) else {}
+    rows = [row for row in map(history_row, body.get("history") or []) if row]
+    rows = [
+        row for row in rows if row["collection_name"] in (None, "", collection_name)
+    ]
+    return rows[:HISTORY_LIMIT]
+
+
+# --------------------------------------------------------------------------- #
 # Routes
 # --------------------------------------------------------------------------- #
 @app.get("/", include_in_schema=False)
@@ -657,7 +745,8 @@ def search_page(request: Request):
     collection_name = request.query_params.get("collection_name") or params.value(
         "collection_name", ""
     )
-    data = fetch_page_context(get_token(request), collection_name)
+    token = get_token(request)
+    data = fetch_page_context(token, collection_name)
     if "error" in data:
         return render_api_error(request, data["error"])
     return render_page(
@@ -666,6 +755,7 @@ def search_page(request: Request):
         selected_collection=collection_name,
         prompt=params.value("prompt", ""),
         search_params=params.for_collection(collection_name),
+        history=fetch_search_history(token, collection_name),
         **data,
     )
 
@@ -774,6 +864,8 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
             question=question,
             prompt=prompt,
             search_params=search_params,
+            # Fetched after the search, so the new one is already listed
+            history=fetch_search_history(token, collection_name),
             **{**data, **kwargs},
         )
 
@@ -834,6 +926,7 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
         detailed=detailed,
         qa_results=qa_results,
         generation_id=generation_id,
+        history_current=body.get("query_response_id"),
     )
 
 
@@ -941,7 +1034,97 @@ def rate_submit(request: Request, form: FormData = Depends(parsed_form)):
     )
     logger.info("Starring with %s for response %s", rate_value, last_response_id)
     set_state(request, **{LAST_QUERY_RESPONSE_ID: None})
+    # A search opened from the history is shown again (with its new rating)
+    history_id = str(form.get("history_id") or "")
+    if history_id.isdigit():
+        return RedirectResponse(url=f"/search/history/{history_id}", status_code=303)
     return RedirectResponse(url="/search", status_code=303)
+
+
+@app.get("/search/history", include_in_schema=False)
+def search_history_panel(request: Request, collection_name: str = ""):
+    """History panel of a collection (HTML fragment, used when it changes)."""
+    if require_login(request) is not None:
+        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+    history = fetch_search_history(get_token(request), collection_name)
+    html = templates.env.get_template("partials/search_history.html").render(
+        t=translator(request),
+        history=history,
+        selected_collection=collection_name,
+        history_open=True,
+    )
+    return JSONResponse(
+        {"status": history is not None, "count": len(history or []), "html": html}
+    )
+
+
+@app.get("/search/history/{query_response_id}", include_in_schema=False)
+def search_history_entry(request: Request, query_response_id: int):
+    """A search from the history: its question, results and generated answer."""
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    token = get_token(request)
+    t = translator(request)
+    response = sse_api_engine.get_search_history(
+        token=token, query_response_id=query_response_id
+    )
+    if not isinstance(response, dict) or response.get("status") is False:
+        status_code = 404 if isinstance(response, dict) else 502
+        return render_api_error(request, response, status_code=status_code)
+    entry = response.get("body") if isinstance(response.get("body"), dict) else {}
+
+    collection_name = entry.get("collection_name") or ""
+    stats_raw, detailed_raw = _history_results(entry)
+    error = None
+    try:
+        stats = prepare_stats_dataframe(stats_raw) if stats_raw else []
+        detailed = prepare_detailed_results_dataframe(detailed_raw) if detailed_raw else []
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Cannot prepare results dataframes of a history entry")
+        stats, detailed = [], []
+        error = t("search.error_prepare", error=exc)
+
+    answer = _history_generated_answer(entry) or {}
+    qa_gen_results = None
+    last_response_id = None
+    if answer:
+        last_response_id = answer.get("response_id") or answer.get("id")
+        qa_gen_results = {
+            "response_id": last_response_id,
+            "answer": answer.get("generated_answer") or "",
+            "answer_translated": answer.get("generated_answer_translated"),
+            "generation_time": answer.get("generation_time"),
+        }
+    # The stored answer can be rated (again) with the feedback form
+    set_state(request, **{LAST_QUERY_RESPONSE_ID: last_response_id})
+
+    params = get_search_params(request)
+    data = fetch_page_context(token, collection_name)
+    if "error" in data:
+        return render_api_error(request, data["error"])
+    return render_page(
+        request,
+        "search.html",
+        selected_collection=collection_name,
+        question=str(entry.get("query") or entry.get("query_str") or ""),
+        prompt=answer.get("query_instruction_prompt") or params.value("prompt", ""),
+        search_params=params.for_collection(collection_name),
+        history=fetch_search_history(token, collection_name),
+        history_current=query_response_id,
+        history_view=True,
+        error=error,
+        stats=stats,
+        detailed=detailed,
+        qa_results=[],
+        qa_gen_results=qa_gen_results,
+        qa_gen_results_time=format_generation_time(answer.get("generation_time")),
+        last_response_id=last_response_id,
+        rated_value=answer.get("rate_value"),
+        rated_comment=answer.get("rate_comment") or "",
+        **data,
+    )
 
 
 # --- JSON endpoints (used by the page JS, no Streamlit counterpart) --------- #

@@ -1,0 +1,46 @@
+{#- Searches of the user in the selected collection, newest first. Rendered
+    with the search page and again by /search/history when another collection
+    is chosen. history: list of rows (server.history_row) or none when the
+    engine could not return it; history_current: query_response_id shown. -#}
+<section class="history" data-history aria-label="{{ t('history.title') }}">
+  <details class="history__box"{% if history_open %} open{% endif %} data-history-box>
+    <summary class="history__summary">
+      <span class="history__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7.5V12l3 2"/></svg></span>
+      <span class="history__title">{{ t('history.title') }}</span>
+      {% if history %}<span class="tabs__count" data-history-count>{{ history | length }}</span>{% endif %}
+      {% if selected_collection %}<span class="history__collection" title="{{ t('history.collection_title') }}">{{ selected_collection }}</span>{% endif %}
+    </summary>
+
+    <div class="history__body">
+      {% if not selected_collection %}
+        <p class="muted history__note">{{ t('history.choose_collection') }}</p>
+      {% elif history is none %}
+        <p class="muted history__note">{{ t('history.unavailable') }}</p>
+      {% elif not history %}
+        <p class="muted history__note">{{ t('history.empty') }}</p>
+      {% else %}
+        {% if history | length > 4 %}
+          <input type="search" class="history__filter" placeholder="{{ t('history.filter_placeholder') }}" aria-label="{{ t('history.filter_label') }}" data-history-filter>
+        {% endif %}
+        <ol class="history__list">
+          {% for item in history %}
+            {% set current = history_current is defined and item.id == history_current %}
+            <li data-history-item data-query="{{ item.query | lower }}">
+              <a class="history__item{% if current %} is-current{% endif %}" href="/search/history/{{ item.id }}"{% if current %} aria-current="true"{% endif %} title="{{ t('history.open_title') }}">
+                <span class="history__query">{{ item.query or t('history.no_query') }}</span>
+                <span class="history__meta">
+                  <span class="history__tag">{{ t.plural('history.snippets', item.snippets) }}</span>
+                  <span class="history__tag">{{ t.plural('history.documents', item.documents) }}</span>
+                  {% if item.answered %}<span class="history__tag history__tag--answer">✦ {{ t('history.answered') }}</span>{% endif %}
+                  {% if item.rate_value is not none %}<span class="history__tag history__tag--rating" title="{{ t('history.rating_title') }}">★ {{ item.rate_value }}/{{ item.rate_value_max }}</span>{% endif %}
+                  {% if current %}<span class="history__tag history__tag--current">{{ t('history.current') }}</span>{% endif %}
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ol>
+        <p class="muted history__note" data-history-nomatch hidden>{{ t('history.no_match') }}</p>
+      {% endif %}
+    </div>
+  </details>
+</section>

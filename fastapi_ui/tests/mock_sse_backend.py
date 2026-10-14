@@ -42,6 +42,66 @@ SEARCH_RESPONSE = {
     },
 }
 
+# SearchQueryController.format_search_history_entry (newest first)
+SEARCH_HISTORY = [
+    {
+        "query_id": 12,
+        "query_response_id": 42,
+        "query": "Jak wygląda proces ofertowy?",
+        "query_str": "Jak wygląda proces ofertowy?",
+        "collection_id": 1,
+        "collection_name": "user_col",
+        "query_options": {"max_results": 8},
+        "results": {
+            "query": "Jak wygląda proces ofertowy?",
+            "stats": SEARCH_RESPONSE["results"]["stats"],
+            "detailed_results": SEARCH_RESPONSE["results"]["detailed_results"],
+            "structured_results": [],
+        },
+        "stats": SEARCH_RESPONSE["results"]["stats"],
+        "detailed_results": SEARCH_RESPONSE["results"]["detailed_results"],
+        "structured_results": [],
+        "answers": [
+            {
+                "id": 98,
+                "response_id": 98,
+                "is_generative": True,
+                "answer_options": {},
+                "query_instruction_prompt": "odpowiedz krótko",
+                "generated_answer": "**Zapisana odpowiedź** z historii.",
+                "generated_answer_translated": None,
+                "rate_value": 4,
+                "rate_value_max": 5,
+                "rate_comment": "Dobra odpowiedź",
+                "generation_time": 3.25,
+            }
+        ],
+        "generated_answer": "**Zapisana odpowiedź** z historii.",
+    },
+    {
+        "query_id": 11,
+        "query_response_id": 41,
+        "query": "Wyniki pomiarów <b>2025</b>",
+        "collection_id": 1,
+        "collection_name": "user_col",
+        "query_options": {},
+        "results": {
+            "stats": {"doc-b.pdf": {"score_weighted": 0.5}},
+            "detailed_results": {"1": {"score": 0.5, "text": "pomiar"}},
+        },
+        "answers": [],
+    },
+    {
+        "query_id": 10,
+        "query_response_id": 40,
+        "query": "Pytanie z innej kolekcji",
+        "collection_id": 2,
+        "collection_name": "user_kol",
+        "results": {"stats": {}, "detailed_results": {}},
+        "answers": [],
+    },
+]
+
 # CollectionOfDocumentsSerializer: id, name, display_name, description, created_on
 COLLECTIONS = [
     {
@@ -117,6 +177,34 @@ class MockHandler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         path, _body = self._route()
         ep = path.split("/")[-1]
+        query = REQUEST_LOG[-1]["query"]
+        if ep == "search_history":
+            name = query.get("collection_name")
+            if name == "err_col":
+                return self._send({"status": False, "errors": [{"msg": "boom"}]})
+            return self._send(
+                _ok(
+                    {
+                        "history": [
+                            entry
+                            for entry in SEARCH_HISTORY
+                            if not name or entry["collection_name"] == name
+                        ]
+                    }
+                )
+            )
+        if ep == "get_search_history":
+            for entry in SEARCH_HISTORY:
+                if str(entry["query_response_id"]) == query.get("query_response_id"):
+                    return self._send(_ok(entry))
+            return self._send(
+                {
+                    "status": False,
+                    "errors": [
+                        {"code": "RESPONSE_ACCESS_DENIED", "msg": "Access denied"}
+                    ],
+                }
+            )
         if ep == "collections":
             return self._send(_ok({"collections": COLLECTIONS}))
         if ep == "generative_models":

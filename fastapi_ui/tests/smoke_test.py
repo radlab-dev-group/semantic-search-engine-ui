@@ -76,7 +76,7 @@ def last_request(method: str, endpoint: str) -> dict:
 
 UNTRANSLATED_KEY = re.compile(
     r"\b(?:base|nav|stepper|messages|home|login|error|collections|upload|search"
-    r"|params|hits|board|table|js)\.[a-z_]+\b"
+    r"|params|history|hits|board|table|js)\.[a-z_]+\b"
 )
 
 
@@ -791,6 +791,133 @@ def main() -> int:
                 ]
             ),
             "",
+        )
+
+        # --- Search history of the selected collection ---------------------- #
+        history_html = client.get("/search?collection_name=user_col").text
+        history_sent = last_request("GET", "api/search_history")
+        check(
+            "history is fetched for the selected collection",
+            history_sent.get("query", {}).get("collection_name") == "user_col"
+            and history_sent.get("auth") == "Token test-token-123",
+            str(history_sent),
+        )
+        check(
+            "history panel lists the searches of the collection only",
+            "data-history" in history_html
+            and 'href="/search/history/42"' in history_html
+            and 'href="/search/history/41"' in history_html
+            and "/search/history/40" not in history_html
+            and "Pytanie z innej kolekcji" not in history_html
+            and history_html.index("/search/history/42")
+            < history_html.index("/search/history/41"),
+            "",
+        )
+        check(
+            "history entries show results, answer and rating",
+            "Jak wygląda proces ofertowy?" in history_html
+            and "2 passages" in history_html
+            and "1 document" in history_html
+            and "✦ answer" in history_html
+            and "★ 4/5" in history_html
+            and "&lt;b&gt;2025&lt;/b&gt;" in history_html
+            and "<b>2025</b>" not in history_html,
+            "",
+        )
+        check(
+            "history panel is open when there are no results",
+            re.search(r'<details class="history__box" open', history_html) is not None,
+            "",
+        )
+        check(
+            "history panel is collapsed next to results, the new search is marked",
+            re.search(r'<details class="history__box" open', results_html) is None
+            and 'class="history__item is-current" href="/search/history/42"'
+            in results_html,
+            "",
+        )
+        # Forget the remembered collection (the last search used err_col)
+        no_collection_html = client.get("/search/params/reset").text
+        check(
+            "history asks for a collection when none is chosen",
+            "Choose a collection to see the history" in no_collection_html
+            and "/search/history/4" not in no_collection_html,
+            "",
+        )
+        unavailable_html = client.get("/search?collection_name=err_col").text
+        check(
+            "history failure is shown in the panel, the page still works",
+            "Could not fetch the search history" in unavailable_html
+            and 'name="question"' in unavailable_html,
+            "",
+        )
+
+        entry_html = client.get("/search/history/42").text
+        check(
+            "history entry shows its question, results and stored answer",
+            "Jak wygląda proces ofertowy?</textarea>" in entry_html
+            and "odpowiedz krótko</textarea>" in entry_html
+            and "fragment B" in entry_html
+            and "<strong>Zapisana odpowiedź</strong>" in entry_html
+            and "data-generate" not in entry_html
+            and "From history" in entry_html
+            and "0:00:03.250000" in entry_html,
+            "",
+        )
+        check(
+            "history entry can be rated again (saved rating preselected)",
+            'name="history_id" value="42"' in entry_html
+            and 'value="4" checked' in entry_html
+            and 'value="5" checked' not in entry_html
+            and "Dobra odpowiedź</textarea>" in entry_html
+            and 'class="history__item is-current" href="/search/history/42"'
+            in entry_html
+            and 'style="' not in entry_html,
+            "",
+        )
+        rated = client.post(
+            "/search/rate",
+            data={"rate_value": "2", "history_id": "42"},
+            follow_redirects=False,
+        )
+        rate_sent = last_request("POST", "api/rate_generative_answer")
+        check(
+            "rating a history entry rates its answer and goes back to it",
+            rated.status_code == 303
+            and rated.headers.get("location") == "/search/history/42"
+            and rate_sent.get("body", {}).get("answer_response_id") == "98"
+            and rate_sent.get("body", {}).get("rate_value") == "2",
+            str(rate_sent.get("body")),
+        )
+        plain_entry = client.get("/search/history/41").text
+        check(
+            "history entry without an answer has no answer card",
+            "Wyniki pomiarów &lt;b&gt;2025&lt;/b&gt;</textarea>" in plain_entry
+            and 'id="generative-answer"' not in plain_entry
+            and 'name="history_id"' not in plain_entry,
+            "",
+        )
+        denied = client.get("/search/history/999")
+        check(
+            "unknown history entry -> error page",
+            denied.status_code == 404 and "RESPONSE_ACCESS_DENIED" in denied.text,
+            str(denied.status_code),
+        )
+        panel = client.get("/search/history?collection_name=user_kol").json()
+        check(
+            "history panel endpoint follows the chosen collection",
+            panel.get("status") is True
+            and panel.get("count") == 1
+            and "/search/history/40" in panel.get("html", "")
+            and "/search/history/42" not in panel.get("html", ""),
+            str(panel)[:300],
+        )
+        broken = client.get("/search/history?collection_name=err_col").json()
+        check(
+            "history failure does not break the page",
+            broken.get("status") is False
+            and "Could not fetch the search history" in broken.get("html", ""),
+            str(broken)[:300],
         )
 
         # --- JSON options endpoint + static + logout ------------------------ #
