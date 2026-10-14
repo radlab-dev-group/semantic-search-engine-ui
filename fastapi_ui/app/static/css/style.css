@@ -702,6 +702,48 @@ svg {
   scrollbar-width: thin;
 }
 
+/* Search page: parameters column on the left, question + results stacked on
+   the right. The form is "transparent" for layout, so its sidebar and query
+   console become grid items next to the results (which live outside the form,
+   because the feedback form must not be nested in it). */
+.search-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  column-gap: var(--space-5);
+  row-gap: var(--space-5);
+  align-items: start;
+}
+
+.search-layout__form {
+  display: contents;
+}
+
+.search-layout__side {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+
+.search-layout__query {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.search-layout__results {
+  grid-column: 2;
+  grid-row: 2;
+  gap: var(--space-5);
+}
+
+.search-layout__results > .card {
+  padding: var(--space-5);
+}
+
+.search-layout--results .query-console__question {
+  min-height: 4.5rem;
+}
+
 /* --------------------------------------------------------------------------
    6. Cards
    -------------------------------------------------------------------------- */
@@ -2373,30 +2415,32 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.25rem;
   margin-bottom: var(--space-4);
   padding: 0.3rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--bg-inset);
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
 .tabs__btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  flex-shrink: 0;
-  padding: 0.5rem 0.95rem;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
   border: 0;
+  text-align: center;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
   font-size: 0.88rem;
   font-weight: 600;
+  line-height: 1.3;
   cursor: pointer;
   transition: color 0.15s var(--ease), background 0.15s var(--ease);
 }
@@ -3602,6 +3646,32 @@ input[type="range"]::-moz-range-thumb {
     position: static;
     max-height: none;
     order: 2;
+  }
+
+  .search-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .search-layout__side,
+  .search-layout__query,
+  .search-layout__results {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .search-layout__query {
+    order: 1;
+  }
+
+  .search-layout__side {
+    position: static;
+    max-height: none;
+    order: 2;
+  }
+
+  .search-layout__results {
+    order: 3;
   }
 
   .auth {

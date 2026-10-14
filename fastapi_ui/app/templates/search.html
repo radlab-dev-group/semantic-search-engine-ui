@@ -27,179 +27,58 @@
         </div>
       </div>
     </div>
+    {% include "partials/search_results.html" %}
   {% else %}
-    <form method="post" action="/search" class="grid-sidebar" data-busy-form>
-      <aside class="sidebar">
-        {% include "partials/search_params.html" %}
-      </aside>
+    {% set has_results = stats is defined %}
+    <div class="search-layout{% if has_results %} search-layout--results{% endif %}">
+      <form method="post" action="/search" class="search-layout__form" data-busy-form>
+        <aside class="sidebar search-layout__side">
+          {% include "partials/search_params.html" %}
+        </aside>
 
-      <div class="stack">
-        <div class="query-console">
-          <div class="query-console__head">
-            <span class="query-console__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>
-            <p class="section-title">{{ t('search.your_question') }}</p>
-          </div>
-          <label for="question">{{ t('search.question_label') }}</label>
-          <textarea id="question" name="question" class="query-console__question" placeholder="{{ t('search.question_placeholder') }}" required>{{ question or '' }}</textarea>
-
-          <label for="prompt">{{ t('search.prompt_label') }}</label>
-          <textarea id="prompt" name="prompt" placeholder="{{ t('search.prompt_placeholder') }}">{{ prompt or '' }}</textarea>
-
-          <div class="query-console__foot">
-            <div class="btn-row">
-              <button type="submit" class="btn btn-primary btn--lg" data-loading-label="{{ t('search.running') }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
-                {{ t('search.run') }}
-              </button>
-              <button type="reset" class="btn btn--ghost">{{ t('search.clear') }}</button>
+        <div class="stack search-layout__query">
+          <div class="query-console">
+            <div class="query-console__head">
+              <span class="query-console__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>
+              <p class="section-title">{{ t('search.your_question') }}</p>
             </div>
-            <span class="muted query-console__hint">{{ t('search.hint') }}</span>
-          </div>
-        </div>
+            <label for="question">{{ t('search.question_label') }}</label>
+            <textarea id="question" name="question" class="query-console__question" placeholder="{{ t('search.question_placeholder') }}" required>{{ question or '' }}</textarea>
 
-        <div class="examples">
-          <p class="section-title">{{ t('search.examples') }}</p>
-          <ul>
-            {% for number in range(1, 4) %}
-              <li><button type="button" class="example-chip" data-example>{{ t('search.example_' ~ number) }}</button></li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-    </form>
-  {% endif %}
+            <label for="prompt">{{ t('search.prompt_label') }}</label>
+            <textarea id="prompt" name="prompt" placeholder="{{ t('search.prompt_placeholder') }}">{{ prompt or '' }}</textarea>
 
-  {% if stats is defined %}
-    {% set answer = qa_gen_results.get('answer', '') if qa_gen_results else '' %}
-    {% set active_tab = 'search-generative' if answer else 'search-stats' %}
-    <section class="card results">
-      <div class="card__header">
-        <div>
-          <p class="card__eyebrow">{{ t('search.results_eyebrow') }}</p>
-          <h2>{{ t('search.results_heading') }}</h2>
-          {% if question %}
-            <p class="subtitle">{{ t('search.question_quote', question=question) }}</p>
-          {% endif %}
-        </div>
-        <div class="badge-row">
-          <span class="badge">{{ t('search.badge_documents') }} <span class="badge__value">{{ stats | length }}</span></span>
-          <span class="badge">{{ t('search.badge_snippets') }} <span class="badge__value">{{ detailed | length }}</span></span>
-          {% if answer %}
-            <span class="badge">{{ t('search.badge_gen_time') }} <span class="badge__value">{{ qa_gen_results_time }}</span></span>
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="tabs" role="tablist" aria-label="{{ t('search.results_label') }}" data-tabs>
-        <button type="button" class="tabs__btn {% if active_tab == 'search-stats' %}is-active{% endif %}"
-                role="tab" aria-selected="{% if active_tab == 'search-stats' %}true{% else %}false{% endif %}"
-                aria-controls="panel-stats" id="tab-stats">
-          {{ t('search.tab_stats') }} <span class="tabs__count">{{ stats | length }}</span>
-        </button>
-        <button type="button" class="tabs__btn {% if active_tab == 'search-results' %}is-active{% endif %}"
-                role="tab" aria-selected="{% if active_tab == 'search-results' %}true{% else %}false{% endif %}"
-                aria-controls="panel-results" id="tab-results">
-          {{ t('search.tab_results') }} <span class="tabs__count">{{ detailed | length }}</span>
-        </button>
-        <button type="button" class="tabs__btn {% if active_tab == 'search-extractive' %}is-active{% endif %}"
-                role="tab" aria-selected="{% if active_tab == 'search-extractive' %}true{% else %}false{% endif %}"
-                aria-controls="panel-extractive" id="tab-extractive">
-          {{ t('search.tab_extractive') }} <span class="tabs__count">{{ qa_results | length if qa_results else 0 }}</span>
-        </button>
-        <button type="button" class="tabs__btn {% if active_tab == 'search-generative' %}is-active{% endif %}"
-                role="tab" aria-selected="{% if active_tab == 'search-generative' %}true{% else %}false{% endif %}"
-                aria-controls="panel-generative" id="tab-generative">
-          {{ t('search.tab_generative') }} <span class="tabs__count">{% if answer %}1{% else %}0{% endif %}</span>
-        </button>
-      </div>
-
-      <div class="tab-panel {% if active_tab == 'search-stats' %}is-active{% endif %}" role="tabpanel"
-           id="panel-stats" aria-labelledby="tab-stats" tabindex="0">
-        {% if stats %}
-          {% set rows = stats %}
-          {% include "partials/doc_board.html" %}
-        {% else %}
-          <p class="muted">{{ t('search.no_stats') }}</p>
-        {% endif %}
-      </div>
-
-      <div class="tab-panel {% if active_tab == 'search-results' %}is-active{% endif %}" role="tabpanel"
-           id="panel-results" aria-labelledby="tab-results" tabindex="0">
-        {% if detailed %}
-          {% set rows = detailed %}
-          {% include "partials/hits.html" %}
-        {% else %}
-          <p class="muted">{{ t('search.no_detailed') }}</p>
-        {% endif %}
-      </div>
-
-      <div class="tab-panel {% if active_tab == 'search-extractive' %}is-active{% endif %}" role="tabpanel"
-           id="panel-extractive" aria-labelledby="tab-extractive" tabindex="0">
-        {% if qa_results %}
-          {% set rows = qa_results %}
-          {% include "partials/table.html" %}
-        {% else %}
-          <p class="muted">{{ t('search.no_extractive') }}</p>
-        {% endif %}
-      </div>
-
-      <div class="tab-panel {% if active_tab == 'search-generative' %}is-active{% endif %}" role="tabpanel"
-           id="panel-generative" aria-labelledby="tab-generative" tabindex="0">
-        {% if answer %}
-          <article class="answer">
-            <div class="answer__header">
-              <p class="section-title"><span class="answer__spark" aria-hidden="true">✦</span> {{ t('search.answer_title') }}</p>
-              <button type="button" class="btn btn--ghost btn--sm" data-copy="answer-body">{{ t('search.copy_answer') }}</button>
-            </div>
-            <div class="markdown" id="answer-body">{{ answer | markdown }}</div>
-            <details class="expander">
-              <summary>{{ t('search.show_json') }}</summary>
-              <div class="expander-body">
-                <pre class="json"><code>{{ qa_gen_results | tojson(indent=2) }}</code></pre>
+            <div class="query-console__foot">
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary btn--lg" data-loading-label="{{ t('search.running') }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
+                  {{ t('search.run') }}
+                </button>
+                <button type="reset" class="btn btn--ghost">{{ t('search.clear') }}</button>
               </div>
-            </details>
-          </article>
-        {% else %}
-          <p class="muted">{{ t('search.no_generative') }}</p>
-        {% endif %}
-      </div>
-    </section>
-
-    {% if last_response_id is not none %}
-      <section class="card">
-        <div class="card__header">
-          <div>
-            <p class="card__eyebrow">{{ t('search.feedback_eyebrow') }}</p>
-            <h2>{{ t('search.feedback_heading') }}</h2>
-            <p class="subtitle">{{ t('search.feedback_subtitle') }}</p>
+              <span class="muted query-console__hint">{{ t('search.hint') }}</span>
+            </div>
           </div>
-          <span class="badge">{{ t('search.badge_response') }} <span class="badge__value">{{ last_response_id }}</span></span>
+
+          {% if not has_results %}
+          <div class="examples">
+            <p class="section-title">{{ t('search.examples') }}</p>
+            <ul>
+              {% for number in range(1, 4) %}
+                <li><button type="button" class="example-chip" data-example>{{ t('search.example_' ~ number) }}</button></li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
         </div>
+      </form>
 
-        <form method="post" action="/search/rate">
-          <div class="grid-2">
-            <div class="card card--subtle">
-              <p class="section-title">{{ t('search.stars_title') }}</p>
-              <fieldset class="star-rating">
-                <legend class="sr-only">{{ t('search.stars_legend') }}</legend>
-                {% for star in range(constants.MAX_VAL_RATING_GENERATIVE_ANSWER, 0, -1) %}
-                  <input type="radio" id="rate_value_{{ star }}" name="rate_value" value="{{ star }}" {% if loop.first %}checked{% endif %}>
-                  <label for="rate_value_{{ star }}" title="{{ t.plural('search.stars', star) }}"><span class="sr-only">{{ t.plural('search.stars', star) }}</span>★</label>
-                {% endfor %}
-              </fieldset>
-              <p class="muted">{{ t('search.stars_scale', max=constants.MAX_VAL_RATING_GENERATIVE_ANSWER) }}</p>
-            </div>
-            <div class="card card--subtle">
-              <p class="section-title">{{ t('search.comment') }}</p>
-              <label for="rate_comment">{{ t('search.comment_label') }}</label>
-              <textarea id="rate_comment" name="rate_comment" placeholder="{{ t('search.comment_placeholder') }}"></textarea>
-            </div>
-          </div>
-          <div class="btn-row">
-            <button type="submit" class="btn btn-primary" data-loading-label="{{ t('search.sending') }}">{{ t('search.send_feedback') }}</button>
-          </div>
-        </form>
-      </section>
-    {% endif %}
+      {% if has_results %}
+        <div class="stack search-layout__results">
+          {% include "partials/search_results.html" %}
+        </div>
+      {% endif %}
+    </div>
   {% endif %}
+
 {% endblock %}

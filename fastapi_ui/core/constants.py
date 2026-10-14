@@ -5,9 +5,9 @@ CONFIGS_DIR = "configs"
 DEFAULT_CONFIG_PATH = "ui-configuration.json"
 
 # Search form defaults (mirrors Streamlit ui_utils.prepare_search_params)
-DEFAULT_MAX_RESULTS = 25
+DEFAULT_MAX_RESULTS = 8
 MAX_RESULTS_LIMIT = 100
-DEFAULT_PERC_RANK_TO_GEN_QA = 40
+DEFAULT_PERC_RANK_TO_GEN_QA = 100
 
 # Generative model defaults (mirrors Streamlit generation options)
 DEFAULT_TOP_K = 50
