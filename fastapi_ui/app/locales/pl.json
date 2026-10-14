@@ -208,6 +208,7 @@
     "run": "Szukaj",
     "running": "Wyszukiwanie…",
     "clear": "Wyczyść",
+    "clear_title": "Wyczyść pytanie, instrukcję i wyniki (opcje wyszukiwania zostają)",
     "hint": "Wyniki są szeregowane według podobieństwa semantycznego do pytania.",
     "examples": "Przykłady",
     "example_1": "Przykładowe pytanie.....",

@@ -204,6 +204,7 @@
     "run": "Run",
     "running": "Searching…",
     "clear": "Clear",
+    "clear_title": "Clear the question, the instruction and the results (the search options stay)",
     "hint": "Results are ranked by semantic similarity to your question.",
     "examples": "Examples",
     "example_1": "Sample question.....",

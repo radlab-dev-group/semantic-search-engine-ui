@@ -650,6 +650,10 @@ def search_page(request: Request):
         return redirect
 
     params = get_search_params(request)
+    if request.query_params.get("clear"):
+        # "Clear" empties the question and the instruction, other options stay
+        params.values.pop("prompt", None)
+        set_state(request, **{LAST_SEARCH_PARAMS: params.values or None})
     collection_name = request.query_params.get("collection_name") or params.value(
         "collection_name", ""
     )

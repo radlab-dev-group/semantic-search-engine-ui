@@ -572,6 +572,37 @@ def main() -> int:
         check(
             "search options are kept on the search page", all(kept.values()), str(kept)
         )
+        clear_link = re.search(r'<a class="btn btn--ghost" href="([^"]+)"[^>]*>Clear</a>', results_html)
+        check(
+            "clear is a link back to the empty search page",
+            clear_link is not None
+            and clear_link.group(1) == "/search?clear=1&amp;collection_name=user_col"
+            and 'type="reset"' not in results_html,
+            clear_link.group(0) if clear_link else "",
+        )
+        if clear_link:
+            cleared_html = client.get(clear_link.group(1).replace("&amp;", "&")).text
+            cleared = kept_options(cleared_html)
+            prompt_kept = cleared.pop("prompt")
+            check(
+                "clear drops the question, the instruction and the results, keeps the options",
+                'class="query-console__question" placeholder="' in cleared_html
+                and re.search(r'name="question"[^>]*required></textarea>', cleared_html)
+                is not None
+                and re.search(r'name="prompt"[^>]*></textarea>', cleared_html)
+                is not None
+                and not prompt_kept
+                and "search-layout--results" not in cleared_html
+                and all(cleared.values()),
+                str(cleared),
+            )
+            again = client.get("/search").text
+            check(
+                "cleared instruction stays empty on the next visit",
+                "odpowiedz zwięźle</textarea>" not in again
+                and 'name="results_count" value="30"' in again,
+                "",
+            )
         reset = client.get(
             "/search/params/reset?collection_name=user_col", follow_redirects=False
         )
