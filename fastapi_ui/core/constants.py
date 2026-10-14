@@ -25,9 +25,9 @@ ANSWER_LANGUAGES = ["pl", "en-us", "en-gb", "de", "cs"]
 INDEX_TYPES = ["IVF_FLAT", "HNSW"]
 
 # Upload indexing defaults (mirrors Streamlit 2_Upload_Documents.py)
-DEFAULT_MAX_TOKENS_IN_CHUNK = 200
+DEFAULT_MAX_TOKENS_IN_CHUNK = 400
 MAX_TOKENS_IN_CHUNK_LIMIT = 1000
-DEFAULT_OVERLAP_TOKENS = 20
+DEFAULT_OVERLAP_TOKENS = 60
 OVERLAP_TOKENS_LIMIT = 200
 
 # Accepted file types for document upload
