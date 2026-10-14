@@ -37,7 +37,13 @@ SEARCH_RESPONSE = {
         },
         "detailed_results": {
             "1": {"score": 0.11, "text": "fragment A", "page": 2},
-            "2": {"score": 0.94, "text": "fragment B", "page": 7},
+            "2": {
+                "score": 0.94,
+                "text": "fragment B\n\n## Sekcja\n\n**pogrubiony** <script>x</script>",
+                "page": 7,
+                "left_context": "kontekst **przed**",
+                "right_context": [{"text_number": 9, "text_str": "kontekst po"}],
+            },
         },
     },
 }

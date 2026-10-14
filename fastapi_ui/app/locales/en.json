@@ -348,7 +348,14 @@
     "more_fields": {
       "one": "{n} more field",
       "other": "{n} more fields"
-    }
+    },
+    "context": "Context",
+    "context_title": "Show the neighbouring chunks (before and after the passage)",
+    "context_before": "Before",
+    "context_after": "After",
+    "show_context": "Show full context",
+    "markdown": "Markdown",
+    "markdown_title": "Render the passages as Markdown (off — plain text)"
   },
   "board": {
     "summary": {

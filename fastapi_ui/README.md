@@ -151,7 +151,13 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   stroną/chunkiem/językiem, skorem i paskiem względem najlepszego trafienia
   oraz tekstem fragmentu z podświetlonymi słowami pytania (dopasowanie po
   rdzeniu, więc łapie też odmiany). Długie fragmenty można rozwinąć, skopiować,
-  a pozostałe pola są w „more field(s)”. Chipy nad listą filtrują fragmenty po
+  a pozostałe pola są w „more field(s)”. Nad i pod fragmentem widać jego
+  kontekst (`left_context` / `right_context` z silnika — sąsiednie chunki,
+  przycięte do kilku linii i rozwijane razem z fragmentem). Tekst fragmentów i
+  kontekstu jest renderowany jako Markdown (surowy HTML jest escapowany);
+  przełączniki „Kontekst” i „Markdown” w pasku narzędzi pozwalają ukryć
+  kontekst lub wrócić do zwykłego tekstu (zapamiętywane w `localStorage`).
+  „Kopiuj” zawsze kopiuje oryginalny tekst. Chipy nad listą filtrują fragmenty po
   dokumencie. Statystyki (`partials/doc_board.html`) to ranking dokumentów z
   udziałem w masie rankingu. Surowa tabela jest nadal dostępna przełącznikiem
   „Table” (wybór zapamiętywany w `localStorage`).

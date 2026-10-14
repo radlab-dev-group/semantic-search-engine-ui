@@ -362,7 +362,14 @@
       "few": "{n} dodatkowe pola",
       "many": "{n} dodatkowych pól",
       "other": "{n} dodatkowego pola"
-    }
+    },
+    "context": "Kontekst",
+    "context_title": "Pokaż sąsiednie chunki (przed fragmentem i po nim)",
+    "context_before": "Wcześniej",
+    "context_after": "Dalej",
+    "show_context": "Pokaż cały kontekst",
+    "markdown": "Markdown",
+    "markdown_title": "Formatuj fragmenty jako Markdown (wyłączone — zwykły tekst)"
   },
   "board": {
     "summary": {

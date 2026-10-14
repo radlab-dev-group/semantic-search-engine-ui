@@ -3657,20 +3657,221 @@ input[type="range"]::-moz-range-thumb {
 
 .hit__passage {
   margin: 0;
-  white-space: pre-line;
   overflow-wrap: anywhere;
 }
 
+/* long passages are cut to ~5 lines with a fade until "show full passage" */
 .hit__passage.is-clamped {
-  display: -webkit-box;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
+  max-height: 8.3em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(#000 62%, transparent);
+  mask-image: linear-gradient(#000 62%, transparent);
+}
+
+.hit__text.is-open .hit__passage.is-clamped {
+  max-height: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* each text is rendered twice: Markdown (default) and plain (.is-plain) */
+.hit__raw {
+  white-space: pre-line;
+}
+
+.hits:not(.is-plain) .hit__raw,
+.hits.is-plain .hit__md {
+  display: none;
+}
+
+.markdown--passage {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.markdown--passage p {
+  margin: 0 0 0.6em;
+}
+
+.markdown--passage > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown--passage h3,
+.markdown--passage h4,
+.markdown--passage h5,
+.markdown--passage h6 {
+  margin: 0.8em 0 0.35em;
+  font-size: 0.98rem;
+  line-height: 1.4;
+}
+
+.markdown--passage > h3:first-child,
+.markdown--passage > h4:first-child,
+.markdown--passage > h5:first-child,
+.markdown--passage > h6:first-child {
+  margin-top: 0;
+}
+
+.markdown--passage ul,
+.markdown--passage ol {
+  margin: 0 0 0.6em;
+}
+
+.markdown--passage blockquote {
+  margin: 0.4em 0 0.6em;
+  padding: 0.3rem 0.8rem;
+  background: var(--bg-solid);
+}
+
+.markdown--passage pre,
+.markdown--passage table {
+  margin: 0.4em 0 0.6em;
+  font-size: 0.85rem;
+}
+
+.markdown--passage hr {
+  margin: 0.8em 0;
+  border: 0;
+  border-top: 1px dashed var(--border-strong);
+}
+
+/* left / right context: neighbouring chunks, dimmed and cut to ~3 lines
+   (the left one shows its end, the right one its beginning) */
+.hit__ctx {
+  position: relative;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.hit__ctx--left {
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px dashed var(--border-strong);
+}
+
+.hit__ctx--right {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border-strong);
+}
+
+.hit__ctx-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.3rem;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hit__ctx--left .hit__ctx-label::before {
+  content: "↑";
+}
+
+.hit__ctx--right .hit__ctx-label::before {
+  content: "↓";
+}
+
+.hit__ctx-body {
+  display: flex;
+  flex-direction: column;
+  max-height: 4.9em;
   overflow: hidden;
 }
 
-.hit__passage.is-clamped.is-open {
-  display: block;
-  -webkit-line-clamp: unset;
+.hit__ctx--left .hit__ctx-body {
+  justify-content: flex-end;
+  -webkit-mask-image: linear-gradient(transparent, #000 55%);
+  mask-image: linear-gradient(transparent, #000 55%);
+}
+
+.hit__ctx--right .hit__ctx-body {
+  -webkit-mask-image: linear-gradient(#000 45%, transparent);
+  mask-image: linear-gradient(#000 45%, transparent);
+}
+
+.hit__ctx-body > * {
+  flex-shrink: 0;
+}
+
+.hit__text.is-open .hit__ctx-body {
+  max-height: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* with context around it the passage itself gets an accent rule */
+.hits:not(.no-context) .hit__text:has(.hit__ctx) .hit__passage {
+  margin-left: calc(-1 * var(--space-4) + 2px);
+  padding-left: calc(var(--space-4) - 5px);
+  border-left: 3px solid var(--brand-500);
+}
+
+.hits.no-context .hit__ctx,
+.hits.no-context [data-ctx-only] {
+  display: none;
+}
+
+/* toolbar switches: Markdown / context */
+.hits-switches {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.hits-switches + .segmented {
+  margin-left: 0;
+}
+
+.switch-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.4rem 0.75rem 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-inset);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch-chip::before {
+  content: "";
+  width: 26px;
+  height: 15px;
+  border-radius: var(--radius-pill);
+  background: radial-gradient(circle at 7.5px 50%, var(--bg-solid) 5px, transparent 5.5px), var(--border-strong);
+  transition: background 0.2s var(--ease);
+}
+
+.switch-chip:has(input:checked) {
+  color: var(--text);
+  border-color: rgb(124 108 255 / 40%);
+}
+
+.switch-chip:has(input:checked)::before {
+  background: radial-gradient(circle at 18.5px 50%, #fff 5px, transparent 5.5px), var(--gradient-score);
+}
+
+.switch-chip:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
 }
 
 .hit__mark {

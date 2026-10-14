@@ -633,6 +633,25 @@ def main() -> int:
             "",
         )
         check(
+            "passages show the left and right context",
+            'class="hit__ctx hit__ctx--left"' in response.text
+            and 'class="hit__ctx hit__ctx--right"' in response.text
+            and "kontekst <strong>przed</strong>" in response.text
+            and "kontekst po" in response.text
+            and 'data-hits-toggle="context"' in response.text
+            and "<dt>left_context</dt>" not in response.text,
+            "",
+        )
+        check(
+            "passages are rendered as Markdown with a plain-text twin",
+            "<h4>Sekcja</h4>" in response.text
+            and "<strong>pogrubiony</strong>" in response.text
+            and "**pogrubiony**" in response.text
+            and "<script>x</script>" not in response.text
+            and 'data-hits-toggle="markdown"' in response.text,
+            "",
+        )
+        check(
             "generative answer is rendered as Markdown",
             "<h4>Podsumowanie</h4>" in answer_html
             and "<strong>To jest odpowiedź.</strong>" in answer_html

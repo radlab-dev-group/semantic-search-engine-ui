@@ -235,6 +235,40 @@ function initHitExpanders() {
   });
 }
 
+/* ------------------------- results: Markdown / context switches (toolbar) */
+// [data-hits-toggle="markdown"] switches the passages between rendered
+// Markdown and plain text, [data-hits-toggle="context"] shows / hides the
+// left and right context. Both choices are remembered.
+function initHitsToggles() {
+  document.querySelectorAll("[data-hits-switches]").forEach((group) => {
+    const root = group.closest("[data-view-switch]") || document;
+    const list = root.querySelector("[data-hits]");
+    if (!list) return;
+    const classes = { markdown: "is-plain", context: "no-context" };
+
+    group.querySelectorAll("[data-hits-toggle]").forEach((input) => {
+      const name = input.dataset.hitsToggle;
+      const key = `sse-hits-${name}`;
+      const apply = () => list.classList.toggle(classes[name], !input.checked);
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved !== null) input.checked = saved === "on";
+      } catch (error) {
+        /* storage unavailable */
+      }
+      apply();
+      input.addEventListener("change", () => {
+        apply();
+        try {
+          localStorage.setItem(key, input.checked ? "on" : "off");
+        } catch (error) {
+          /* storage unavailable */
+        }
+      });
+    });
+  });
+}
+
 /* ------------------------------------ results: highlight the query words */
 // Words of the question (4+ letters) are matched by their stem, so inflected
 // forms ("ofertowe" / "ofertowego") are highlighted too. Works on text nodes
@@ -884,6 +918,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initViewSwitches();
   initHitFilters();
   initHitExpanders();
+  initHitsToggles();
   initHighlights();
   initCopyButtons();
   initGenerativeAnswer();
