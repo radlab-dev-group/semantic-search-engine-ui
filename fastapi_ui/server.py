@@ -1157,16 +1157,19 @@ def search_page(request: Request):
 
 @app.get("/search/params/reset", include_in_schema=False)
 def search_params_reset(request: Request):
-    """Forget the remembered sidebar options (back to the defaults)."""
+    """Forget the remembered sidebar options (back to the defaults).
+
+    ``params_reset=1`` tells the browser to drop its own copy of the sidebar
+    (app.js remembers the fields and the folded groups in local storage).
+    """
     redirect = require_login(request)
     if redirect is not None:
         return redirect
     set_state(request, **{LAST_SEARCH_PARAMS: None})
     collection_name = request.query_params.get("collection_name", "")
-    url = "/search"
-    if collection_name:
-        url += "?" + urlencode({"collection_name": collection_name})
-    return RedirectResponse(url=url, status_code=303)
+    query = {"collection_name": collection_name} if collection_name else {}
+    query["params_reset"] = "1"
+    return RedirectResponse(url="/search?" + urlencode(query), status_code=303)
 
 
 class SearchParams:

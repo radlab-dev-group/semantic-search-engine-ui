@@ -923,7 +923,8 @@ def main() -> int:
         check(
             "restore defaults redirects back to the search page",
             reset.status_code == 303
-            and reset.headers.get("location") == "/search?collection_name=user_col",
+            and reset.headers.get("location")
+            == "/search?collection_name=user_col&params_reset=1",
             str(reset.status_code),
         )
         defaults_html = client.get("/search?collection_name=user_col").text
@@ -934,7 +935,8 @@ def main() -> int:
             and 'name="hybrid_search" checked' in defaults_html
             and 'name="use_qa_generative" checked' not in defaults_html
             and 'name="rerank_results" checked' not in defaults_html
-            and "/search/params/reset" not in defaults_html,
+            # The link stays: options changed without a search live in the browser
+            and "/search/params/reset" in defaults_html,
             "",
         )
         check(

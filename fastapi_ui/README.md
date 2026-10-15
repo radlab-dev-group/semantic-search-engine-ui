@@ -69,7 +69,14 @@ Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-conf
   wyszukiwania. Opcje z panelu bocznego (liczba wyników, modele, opcje
   generowania, filtry, prompt) są zapamiętywane w stanie sesji przy każdym
   `POST /search` i wypełniają formularz po wyszukiwaniu, po ocenie odpowiedzi
-  i przy kolejnym wejściu na `/search`.
+  i przy kolejnym wejściu na `/search`. Niezależnie od tego przeglądarka
+  zapamiętuje panel w `localStorage` (`sse-search-params`, `app.js` →
+  `initParamsMemory`): wartości pól oraz zwinięcie/rozwinięcie grup Kolekcja /
+  Modele / Filtry i „Opcje generowania” wracają przy następnej wizycie także bez
+  uruchomienia wyszukiwania (filtry tylko dla kolekcji, w której je wybrano;
+  `?collection_name=` w adresie ma pierwszeństwo przed zapamiętaną kolekcją).
+  Reset przekierowuje na `/search?…&params_reset=1`, co każe przeglądarce
+  zapomnieć również swoją kopię.
 - `POST /search/generate` (`generation_id`) — odpowiedź generatywna dla
   wyszukiwania, którego wyniki są już na stronie. `POST /search` nie czeka na
   model: od razu renderuje wyniki i kartę „Odpowiedź modelu” w stanie

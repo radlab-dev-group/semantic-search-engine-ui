@@ -630,6 +630,149 @@ function initGroupSummaries(panel) {
   update();
 }
 
+// The sidebar remembers itself in the browser: the values of its fields and
+// which groups are folded survive leaving the page and coming back, also
+// without running a search (the server only keeps the options of the last
+// one). Runs before the other initialisers so that they see the restored
+// state.
+const PARAMS_KEY = "sse-search-params";
+// Fields whose options belong to a collection: kept only for that collection
+const COLLECTION_FIELDS = ["categories", "documents"];
+
+function readParamsMemory() {
+  try {
+    const data = JSON.parse(localStorage.getItem(PARAMS_KEY));
+    return data && typeof data === "object" ? data : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeParamsMemory(data) {
+  try {
+    if (data) localStorage.setItem(PARAMS_KEY, JSON.stringify(data));
+    else localStorage.removeItem(PARAMS_KEY);
+  } catch (error) {
+    /* storage unavailable */
+  }
+}
+
+function paramsFields(panel) {
+  return Array.from(panel.querySelectorAll("input[name], select[name]"))
+    .filter((field) => field.type !== "hidden");
+}
+
+function paramsGroups(panel) {
+  return Array.from(panel.querySelectorAll("details[data-group], details[data-remember]"));
+}
+
+function groupKey(group) {
+  return group.dataset.remember || group.dataset.group;
+}
+
+function snapshotParams(panel) {
+  const fields = {};
+  paramsFields(panel).forEach((field) => {
+    if (field.type === "checkbox") {
+      fields[field.name] = field.checked;
+    } else if (field.multiple) {
+      fields[field.name] = Array.from(field.selectedOptions, (option) => option.value);
+    } else {
+      fields[field.name] = field.value;
+    }
+  });
+  const open = {};
+  paramsGroups(panel).forEach((group) => {
+    open[groupKey(group)] = group.open;
+  });
+  return { fields, open };
+}
+
+function restoreParams(panel, memory, collectionFromUrl) {
+  if (!memory) return;
+  const fields = memory.fields || {};
+  const open = memory.open || {};
+
+  paramsGroups(panel).forEach((group) => {
+    const saved = open[groupKey(group)];
+    if (typeof saved === "boolean") group.open = saved;
+  });
+
+  const hasOption = (select, value) =>
+    Array.from(select.options).some((option) => option.value === String(value));
+
+  // A collection named in the address (e.g. "Search" on a collection card)
+  // wins over the remembered one
+  const collection = panel.querySelector("select[name='collection_name']");
+  let switched = false;
+  if (
+    collection
+    && !collectionFromUrl
+    && typeof fields.collection_name === "string"
+    && fields.collection_name
+    && fields.collection_name !== collection.value
+    && hasOption(collection, fields.collection_name)
+  ) {
+    collection.value = fields.collection_name;
+    switched = true;
+  }
+
+  const applyField = (field) => {
+    const saved = fields[field.name];
+    if (saved === undefined) return;
+    if (field.type === "checkbox") {
+      field.checked = Boolean(saved);
+    } else if (field.multiple) {
+      const wanted = new Set(Array.isArray(saved) ? saved : []);
+      Array.from(field.options).forEach((option) => {
+        option.selected = wanted.has(option.value);
+      });
+    } else if (field.tagName === "SELECT") {
+      if (hasOption(field, saved)) field.value = String(saved);
+    } else if (typeof saved === "string" || typeof saved === "number") {
+      field.value = String(saved);
+    }
+  };
+
+  const filtersBelongHere = Boolean(collection) && fields.collection_name === collection.value;
+  paramsFields(panel).forEach((field) => {
+    if (field.name === "collection_name") return;
+    if (!COLLECTION_FIELDS.includes(field.name)) {
+      applyField(field);
+    } else if (switched) {
+      // The options of the other collection arrive with fillSelect
+      field.addEventListener("picker:refresh", () => applyField(field), { once: true });
+    } else if (filtersBelongHere) {
+      applyField(field);
+    }
+  });
+
+  // Loads the filters and the history of the remembered collection
+  if (switched) collection.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function initParamsMemory() {
+  const panel = document.querySelector("[data-params]");
+  if (!panel) return;
+  const url = new URL(window.location.href);
+  const save = () => writeParamsMemory(snapshotParams(panel));
+
+  if (url.searchParams.has("params_reset")) {
+    // "Restore defaults": the server forgot its copy, forget ours too; the
+    // marker is dropped so that a refresh does not reset the sidebar again
+    writeParamsMemory(null);
+    url.searchParams.delete("params_reset");
+    window.history.replaceState(window.history.state, "", url);
+  } else {
+    restoreParams(panel, readParamsMemory(), url.searchParams.has("collection_name"));
+  }
+
+  panel.addEventListener("input", save);
+  panel.addEventListener("change", save);
+  paramsGroups(panel).forEach((group) => group.addEventListener("toggle", save));
+  save();
+}
+
 function initParamsPanel() {
   document.querySelectorAll("[data-params]").forEach((panel) => {
     initSteppers(panel);
@@ -1267,6 +1410,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initThemeToggle();
   initNavToggle();
   initTabs();
+  initParamsMemory();
   initSliders();
   initParamsPanel();
   initFileSummary();
