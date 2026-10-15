@@ -26,10 +26,13 @@
 <p class="section-title">{{ t('upload.indexing_options') }}</p>
 
 {#- data-ref-*: the settings of the collection (or the defaults of the
-    engine), shown again by the sliders when "collection" is picked back -#}
+    engine), shown again by the sliders when "collection" is picked back;
+    data-custom-*: where the sliders start when "custom" is picked -#}
 <fieldset class="chunk-mode{% if strict %} is-strict{% endif %}" data-chunk-mode
           data-ref-chunk="{{ reference.max_tokens_in_chunk if reference else '' }}"
-          data-ref-overlap="{{ reference.number_of_overlap_tokens if reference else '' }}">
+          data-ref-overlap="{{ reference.number_of_overlap_tokens if reference else '' }}"
+          data-custom-chunk="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}"
+          data-custom-overlap="{{ constants.DEFAULT_OVERLAP_TOKENS }}">
   <legend class="chunk-mode__legend">{{ t('upload.chunking_legend') }}</legend>
 
   <label class="chunk-mode__opt" for="{{ io_prefix }}chunking_mode_collection">

@@ -31,9 +31,10 @@ INDEX_TYPES = ["IVF_FLAT", "HNSW"]
 
 # Chunking sliders of the indexing forms. The values the engine actually uses
 # come from the collection (metadata_json) or from GET filter_options
-# (chunking_defaults); DEFAULT_* only place the sliders when neither is known,
-# and *_LIMIT is the slider range (stretched when the collection asks for more).
-DEFAULT_MAX_TOKENS_IN_CHUNK = 400
+# (chunking_defaults); DEFAULT_* is where the sliders start when "custom
+# values" is picked (and when neither source is known), and *_LIMIT is the
+# slider range (stretched when the collection asks for more).
+DEFAULT_MAX_TOKENS_IN_CHUNK = 300
 MAX_TOKENS_IN_CHUNK_LIMIT = 1000
 DEFAULT_OVERLAP_TOKENS = 60
 OVERLAP_TOKENS_LIMIT = 200

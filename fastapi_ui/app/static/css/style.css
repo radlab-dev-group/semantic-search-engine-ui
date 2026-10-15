@@ -1882,9 +1882,11 @@ input[type="checkbox"]:focus-visible {
 }
 
 .field-slider > span {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.87rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
 }
 
 .field-slider output {
@@ -2048,9 +2050,14 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
   color: var(--text-muted);
+}
+
+.chunk-preview__label {
+  font-weight: 600;
+  color: var(--text);
 }
 
 .chunk-preview__track {
@@ -6370,9 +6377,10 @@ input.is-invalid:focus {
 }
 
 .chunk-mode__desc {
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
   font-weight: 400;
+  line-height: 1.45;
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }

@@ -1115,16 +1115,32 @@ function initChunkingMode() {
       max_tokens_in_chunk: mode.dataset.refChunk,
       number_of_overlap_tokens: mode.dataset.refOverlap,
     };
+    // Where the sliders start when "custom" is picked (a sensible own
+    // setting, not a copy of the collection one)
+    const customStart = {
+      max_tokens_in_chunk: mode.dataset.customChunk,
+      number_of_overlap_tokens: mode.dataset.customOverlap,
+    };
+    const setSlider = (slider, value) => {
+      if (value === undefined || value === "") return;
+      const max = Number(slider.max);
+      slider.value = Number.isFinite(max) && max > 0 ? Math.min(Number(value), max) : value;
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    };
 
-    const apply = () => {
+    // `picked` is true for a change made by the user (not the initial state,
+    // which may show the values refused by the engine)
+    const apply = (picked = false) => {
       const custom = radios.some((radio) => radio.checked && radio.value === "custom");
       if (fields) fields.classList.toggle("is-locked", !custom);
       sliders.forEach((slider) => {
         slider.disabled = !custom;
-        // Back to the collection settings: the sliders show them again
-        if (!custom && reference[slider.name] !== undefined && reference[slider.name] !== "") {
-          slider.value = reference[slider.name];
-          slider.dispatchEvent(new Event("input", { bubbles: true }));
+        if (custom && picked) {
+          // Own values: start from the proposed custom setting
+          setSlider(slider, customStart[slider.name]);
+        } else if (!custom) {
+          // Back to the collection settings: the sliders show them again
+          setSlider(slider, reference[slider.name]);
         }
       });
       if (warning) warning.hidden = !custom;
@@ -1136,7 +1152,7 @@ function initChunkingMode() {
         if (note) note.hidden = true;
       }
     };
-    radios.forEach((radio) => radio.addEventListener("change", apply));
+    radios.forEach((radio) => radio.addEventListener("change", () => apply(true)));
     apply();
   });
 }

@@ -406,6 +406,14 @@ def check_chunking(client) -> None:
         page.count('name="chunking_mode" value="collection" checked') == 2
         and page.count("512 tokens · overlap 32") == 2
         and page.count('data-ref-chunk="512"') == 2
+        and page.count(
+            f'data-custom-chunk="{server.constants.DEFAULT_MAX_TOKENS_IN_CHUNK}"'
+        )
+        == 2
+        and page.count(
+            f'data-custom-overlap="{server.constants.DEFAULT_OVERLAP_TOKENS}"'
+        )
+        == 2
         and page.count('class="chunk-fields is-locked"') == 2
         and 'name="max_tokens_in_chunk" min="10" max="1000" step="1"\n           value="512"\n           disabled'
         in page,

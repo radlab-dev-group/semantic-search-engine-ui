@@ -164,7 +164,10 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
     wybór `chunking_mode`: **Ustawienia kolekcji** (domyślnie — do
     `indexing_options` nie trafiają klucze chunkingu, silnik dzieli tak, jak
     deklaruje kolekcja albo wg swoich domyślnych) lub **Własne wartości**
-    (wysyłane są oba klucze). Przy kolekcji `strict` wybór własnych wartości od
+    (wysyłane są oba klucze; po wybraniu tej opcji suwaki startują od
+    `DEFAULT_MAX_TOKENS_IN_CHUNK` = 300 tokenów i `DEFAULT_OVERLAP_TOKENS`
+    = 60 tokenów zakładki, a powrót do „Ustawienia kolekcji” przywraca
+    wartości kolekcji). Przy kolekcji `strict` wybór własnych wartości od
     razu ostrzega, że silnik odpowie `CHUNKING_MISMATCH`.
   - **Błędy chunkingu silnika** (`errors[].error_code`, HTTP 200):
     `000005_DATA` (CHUNKING_TOO_LONG) wraca na formularz z podświetlonym
