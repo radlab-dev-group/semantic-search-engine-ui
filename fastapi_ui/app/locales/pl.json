@@ -126,6 +126,8 @@
     "heading": "Kolekcje w SSE",
     "subtitle": "Twoje kolekcje i kolekcje Twojej organizacji zwrócone przez silnik. Każda z nich to osobny indeks wektorowy.",
     "list_title": "Lista kolekcji",
+    "list_heading": "Dostępne kolekcje",
+    "list_subtitle": "Z poziomu karty przejdziesz do dokumentów kolekcji, dodasz do niej treść albo od razu zaczniesz w niej szukać.",
     "count": {
       "one": "kolekcja",
       "few": "kolekcje",
@@ -139,7 +141,8 @@
     "delete_confirm": "Kolekcja „{name}” zostanie trwale usunięta razem ze wszystkimi zaindeksowanymi dokumentami, fragmentami i wektorami.",
     "delete_title": "Bezpowrotnie usuń tę kolekcję",
     "deleted_success": "Kolekcja „{name}” została usunięta.",
-    "upload": "Wgraj",
+    "upload": "Dodaj treść",
+    "upload_title": "Wgraj dokumenty lub wklej tekst do tej kolekcji",
     "search": "Szukaj",
     "empty": "Nie ma jeszcze żadnych kolekcji — utwórz pierwszą poniżej i wgraj do niej dokumenty.",
     "new_eyebrow": "Nowy indeks wektorowy",

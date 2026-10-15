@@ -10,7 +10,9 @@
   <div class="card">
     <div class="card__header">
       <div>
-        <p class="section-title">{{ t('collections.list_title') }}</p>
+        <p class="card__eyebrow">{{ t('collections.list_title') }}</p>
+        <h2>{{ t('collections.list_heading') }}</h2>
+        <p class="subtitle">{{ t('collections.list_subtitle') }}</p>
       </div>
       <div class="badge-row">
         <span class="badge badge--brand"><span class="badge__value">{{ collections | length }}</span> {{ t.plural('collections.count', collections | length) }}</span>
@@ -27,8 +29,8 @@
             <div class="collection__head">
               <span class="collection__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg></span>
               <div class="collection__title">
-                <h3>{{ coll.display_name }}</h3>
-                <span class="mono">{{ coll.name }}</span>
+                <h3 title="{{ coll.display_name }}">{{ coll.display_name }}</h3>
+                <span class="mono" title="{{ coll.name }}">{{ coll.name }}</span>
               </div>
               <form method="post" action="/collections/delete" class="inline-form collection__delete"
                     data-confirm="{{ t('collections.delete_confirm', name=coll.display_name or coll.name) }}"
@@ -39,17 +41,29 @@
                 <button type="submit" class="btn btn--danger-ghost btn--sm btn--icon" title="{{ t('collections.delete_title') }}" aria-label="{{ t('collections.delete_title') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l.9 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12"/><path d="M10 11v5.5M14 11v5.5"/></svg></button>
               </form>
             </div>
-            <p class="collection__desc">
+            <p class="collection__desc"{% if coll.description %} title="{{ coll.description }}"{% endif %}>
               {% if coll.description %}{{ coll.description }}{% else %}<span class="muted">{{ t('collections.no_description') }}</span>{% endif %}
             </p>
             <div class="collection__foot">
               <span class="collection__date">
-                {% if coll.created_on %}{{ t('collections.created_on', date=coll.created_on) }}{% else %}<span class="muted">—</span>{% endif %}
+                {% if coll.created_on %}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                  {{ t('collections.created_on', date=coll.created_on) }}
+                {% else %}<span class="muted">—</span>{% endif %}
               </span>
               <span class="collection__actions">
-                <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ coll.name | urlencode }}">{{ t('collections.documents') }}</a>
-                <a class="btn btn--ghost btn--sm btn--icon" href="/documents/upload?collection_name={{ coll.name | urlencode }}" title="{{ t('collections.upload') }}" aria-label="{{ t('collections.upload') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
-                <a class="btn btn-primary btn--sm" href="/search?collection_name={{ coll.name | urlencode }}">{{ t('collections.search') }}</a>
+                <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ coll.name | urlencode }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+                  {{ t('collections.documents') }}
+                </a>
+                <a class="btn btn--ghost btn--sm" href="/documents/upload?collection_name={{ coll.name | urlencode }}" title="{{ t('collections.upload_title') }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  {{ t('collections.upload') }}
+                </a>
+                <a class="btn btn-primary btn--sm" href="/search?collection_name={{ coll.name | urlencode }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+                  {{ t('collections.search') }}
+                </a>
               </span>
             </div>
           </li>

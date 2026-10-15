@@ -228,12 +228,17 @@ def fetch_collections(token: str) -> dict:
 
 
 def format_created_on(value) -> str:
-    """Engine timestamps are ISO strings; the date is all the list shows."""
+    """Engine timestamps are ISO strings; the date is all the list shows.
+
+    The engine emits ``...Z`` (UTC) suffixes, which ``fromisoformat`` accepts
+    only from Python 3.11 on, so the designator is normalised first.
+    """
     text = str(value or "").strip()
     if not text:
         return ""
+    iso = text[:-1] + "+00:00" if text.endswith(("Z", "z")) else text
     try:
-        return datetime.datetime.fromisoformat(text).strftime("%Y-%m-%d")
+        return datetime.datetime.fromisoformat(iso).strftime("%Y-%m-%d")
     except ValueError:
         return text
 

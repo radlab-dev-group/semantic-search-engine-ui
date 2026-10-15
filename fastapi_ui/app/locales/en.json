@@ -126,6 +126,8 @@
     "heading": "Collections in SSE",
     "subtitle": "Collections of your organisation and of yours, as returned by the engine. Each one is a separate vector index.",
     "list_title": "List of collections",
+    "list_heading": "Available collections",
+    "list_subtitle": "From a card you can open the documents of the collection, add content to it or start searching in it right away.",
     "count": {
       "one": "collection",
       "other": "collections"
@@ -137,7 +139,8 @@
     "delete_confirm": "Collection “{name}” will be permanently deleted together with all its indexed documents, chunks and vectors.",
     "delete_title": "Permanently delete this collection",
     "deleted_success": "Collection “{name}” has been deleted.",
-    "upload": "Upload",
+    "upload": "Add content",
+    "upload_title": "Upload documents or paste text into this collection",
     "search": "Search",
     "empty": "There are no collections yet — create the first one below and upload documents to it.",
     "new_eyebrow": "New vector index",

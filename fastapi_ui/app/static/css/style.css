@@ -864,23 +864,58 @@ svg {
   text-decoration: underline;
 }
 
-/* Search parameters: collapsible groups with a live one-line summary */
+/* Search parameters: collapsible groups with a live one-line summary.
+   Each group is its own bordered tile so Collection / Models / Filters read
+   as separate blocks instead of one long column of controls. */
 .params {
-  padding-bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  padding-bottom: var(--space-4);
 }
 
-.pgroup + .pgroup {
-  border-top: 1px dashed var(--border-strong);
+.params > .params-head {
+  padding: 0 var(--space-1);
+}
+
+.pgroup {
+  margin: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-solid);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.pgroup[open] {
+  border-color: rgb(124 108 255 / 32%);
+  box-shadow: var(--shadow-sm), 0 0 0 3px rgb(124 108 255 / 5%);
+}
+
+.pgroup.is-active {
+  border-color: rgb(124 108 255 / 45%);
 }
 
 .pgroup__head {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
+  padding: var(--space-3) var(--space-3);
   cursor: pointer;
   list-style: none;
-  border-radius: var(--radius-xs);
+  background: linear-gradient(180deg, var(--bg-subtle), transparent), var(--bg-solid);
+  transition: background 0.15s var(--ease);
+}
+
+.pgroup__head:hover {
+  background: linear-gradient(135deg, rgb(20 211 190 / 5%), rgb(124 108 255 / 8%)), var(--bg-solid);
+}
+
+.pgroup[open] > .pgroup__head {
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, rgb(20 211 190 / 5%), rgb(124 108 255 / 8%)), var(--bg-solid);
 }
 
 .pgroup__head::-webkit-details-marker {
@@ -909,7 +944,7 @@ svg {
 
 .pgroup__head:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: inset var(--focus-ring);
 }
 
 .pgroup__icon {
@@ -963,10 +998,18 @@ svg {
 }
 
 .pgroup__body {
-  padding: var(--space-1) 0 var(--space-4);
+  padding: var(--space-3) var(--space-3) var(--space-4);
 }
 
+.pgroup__body > label:first-child {
+  margin-top: 0;
+}
+
+/* sub-section caption inside a group, separated from what is above */
 .pgroup__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: var(--space-5) 0 var(--space-2);
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -976,15 +1019,29 @@ svg {
   color: var(--text-faint);
 }
 
+.pgroup__label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-strong);
+}
+
 /* option tiles: icon + title + description + toggle */
 .opt-list {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin: var(--space-4) 0 0;
 }
 
 .opt-list:first-child {
   margin-top: 0;
+}
+
+/* a toggle list placed after plain fields gets its own divider */
+.pgroup__body > :not(.opt-list, .pgroup__label) + .opt-list {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--border-strong);
 }
 
 label.opt {
@@ -993,10 +1050,10 @@ label.opt {
   align-items: start;
   gap: 0.7rem;
   margin: 0;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--border);
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: var(--bg-solid);
+  background: var(--bg-subtle);
   font-weight: 500;
   cursor: pointer;
   transition: border-color 0.15s var(--ease), background 0.15s var(--ease), box-shadow 0.15s var(--ease);
@@ -1008,6 +1065,7 @@ label.opt:not(:has(.opt__icon)) {
 
 label.opt:hover {
   border-color: var(--brand-400);
+  background: var(--bg-solid);
 }
 
 label.opt:has(input:checked) {
@@ -1090,28 +1148,32 @@ label.opt--primary:has(input:checked) .opt__icon {
 /* options that only apply when the generative QA is on */
 .opt-nest {
   position: relative;
-  margin: var(--space-2) 0 0 0.55rem;
-  padding: var(--space-1) 0 var(--space-1) 0.8rem;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + 3px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
 }
 
 .opt-nest label.opt {
   padding: 0.55rem 0.65rem;
   gap: 0.6rem;
+  background: var(--bg-solid);
 }
 
 .opt-nest::before {
   content: "";
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: var(--space-2);
+  bottom: var(--space-2);
   left: 0;
-  width: 2px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, var(--violet-500), rgb(124 108 255 / 8%));
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--violet-500), rgb(124 108 255 / 15%));
 }
 
 .opt-nest > label:first-child {
-  margin-top: var(--space-3);
+  margin-top: 0;
 }
 
 .opt-sub {
@@ -2801,7 +2863,7 @@ input[type="range"]::-moz-range-thumb {
    -------------------------------------------------------------------------- */
 .collection-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: var(--space-4);
   margin: 0;
   padding: 0;
@@ -2809,14 +2871,32 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .collection {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--bg-solid);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
   transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+/* brand accent along the top edge, like the knowledge-base switcher icon */
+.collection::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--gradient-brand);
+  opacity: 0.55;
+  transition: opacity 0.2s var(--ease);
+}
+
+.collection:hover::before {
+  opacity: 1;
 }
 
 .collection:hover {
@@ -2827,7 +2907,7 @@ input[type="range"]::-moz-range-thumb {
 
 .collection__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
 }
 
@@ -2854,51 +2934,86 @@ input[type="range"]::-moz-range-thumb {
   min-width: 0;
 }
 
+/* the full display name fits in two lines instead of being cut after one */
 .collection__title h3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   margin: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 1.02rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .collection__title .mono {
+  margin-top: 0.2rem;
   color: var(--text-faint);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .collection__desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   flex: 1;
   margin: 0;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: 0.89rem;
+  line-height: 1.5;
 }
 
 .collection__foot {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  padding-top: var(--space-3);
-  border-top: 1px dashed var(--border);
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--bg-subtle);
 }
 
 .collection__date {
-  flex-basis: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-family: var(--font-mono);
   font-size: 0.74rem;
   color: var(--text-faint);
 }
 
+.collection__date svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 .collection__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
-  margin-left: auto;
+}
+
+.collection__actions .btn {
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding-inline: 0.5rem;
+  white-space: nowrap;
+}
+
+.collection__actions .btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.collection__actions .btn--ghost {
+  background: var(--bg-solid);
 }
 
 .collection__delete {
@@ -4994,11 +5109,23 @@ input[type="range"]::-moz-range-thumb {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+}
+
+.doc-selection-actions .btn {
+  border-radius: var(--radius-pill);
+}
+
+.doc-selection-actions .btn--ghost:not(:disabled) {
+  background: var(--bg-solid);
 }
 
 .doc-table-wrap {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
   background: var(--bg-solid);
   max-height: 420px;
   overflow-y: auto;
@@ -5018,27 +5145,93 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .doc-table th {
-  background: var(--bg-subtle);
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: var(--text-muted);
   position: sticky;
   top: 0;
   z-index: 1;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+  background: var(--bg-subtle);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--border-strong);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.doc-table td {
+  transition: background 0.12s var(--ease);
 }
 
 .doc-table tr:last-child td {
   border-bottom: 0;
 }
 
-.doc-table tr:hover td {
+.doc-table tbody tr:hover td {
   background: var(--bg-subtle);
+}
+
+.doc-name-text {
+  font-weight: 500;
 }
 
 .doc-th--check,
 .doc-td--check {
-  width: 32px;
+  width: 40px;
   text-align: center;
+}
+
+/* Row selection uses square check boxes: the pill switch is reserved for
+   the "in search" state so the two controls cannot be confused. */
+.doc-table input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  vertical-align: middle;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-solid);
+}
+
+.doc-table input[type="checkbox"]::after {
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 5px;
+  border-radius: 0;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  background: none;
+  box-shadow: none;
+  transform: translate(-50%, -65%) rotate(-45deg) scale(0);
+  transition: transform 0.15s var(--ease);
+}
+
+.doc-table input[type="checkbox"]:hover {
+  border-color: var(--brand-500);
+}
+
+.doc-table input[type="checkbox"]:checked,
+.doc-table input[type="checkbox"]:indeterminate {
+  background: var(--gradient-brand);
+  border-color: transparent;
+}
+
+.doc-table input[type="checkbox"]:checked::after {
+  background: none;
+  box-shadow: none;
+  transform: translate(-50%, -65%) rotate(-45deg) scale(1);
+}
+
+.doc-table input[type="checkbox"]:indeterminate::after {
+  width: 10px;
+  height: 2px;
+  border: 0;
+  border-radius: 1px;
+  background: #fff;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .doc-th--action,
@@ -5456,12 +5649,25 @@ input[type="range"]::-moz-range-thumb {
   max-height: 560px;
 }
 
-.doc-row.is-selected td {
-  background: rgb(225 29 72 / 7%);
+/* selected rows are highlighted in the brand colour (red is kept for errors) */
+.doc-table tbody tr.doc-row.is-selected td {
+  background: rgb(124 108 255 / 9%);
+}
+
+.doc-row.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--violet-500);
 }
 
 .doc-selection-count {
-  font-size: 0.82rem;
+  padding: 0 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--brand-500);
+  white-space: nowrap;
+}
+
+.doc-selection-count:empty {
+  display: none;
 }
 
 .doc-empty-filter {
