@@ -1,0 +1,55 @@
+{#
+  Shared header of the knowledge base pages: tabs Collections / Documents /
+  Add content and the switcher of the collection the last two work on.
+  Context variables:
+    kb_tab (str): "collections" | "documents" | "add"
+    kb_heading, kb_subtitle (str)
+    collections (list of collection rows), selected_collection (str)
+    documents (list, only on the documents / add tabs)
+#}
+{% set kb_query = ('?collection_name=' ~ (selected_collection | urlencode)) if selected_collection else '' %}
+{% set kb_tabs = [
+  ('collections', '/collections', t('kb.tab_collections'), collections | length),
+  ('documents', '/collections/manage' ~ kb_query, t('kb.tab_documents'), (documents | length) if documents is defined and kb_tab != 'collections' else none),
+  ('add', '/documents/upload' ~ kb_query, t('kb.tab_add'), none),
+] %}
+<header class="page-header kb-header">
+  <div>
+    <p class="card__eyebrow">{{ t('kb.eyebrow') }}</p>
+    <h1>{{ kb_heading }}</h1>
+    <p class="subtitle">{{ kb_subtitle }}</p>
+  </div>
+
+  {% if kb_tab != 'collections' and collections %}
+    <form class="kb-switch" method="get" action="{{ '/collections/manage' if kb_tab == 'documents' else '/documents/upload' }}" data-autosubmit>
+      <label class="kb-switch__label" for="kb_collection">{{ t('kb.working_on') }}</label>
+      <span class="kb-switch__control">
+        <svg class="kb-switch__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg>
+        <select id="kb_collection" name="collection_name">
+          {% for coll in collections %}
+            <option value="{{ coll.name }}" {% if coll.name == selected_collection %}selected{% endif %}>{{ coll.display_name }}{% if coll.display_name != coll.name %} · {{ coll.name }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </span>
+      <noscript><button type="submit" class="btn btn--ghost btn--sm">{{ t('kb.switch') }}</button></noscript>
+    </form>
+  {% endif %}
+</header>
+
+<nav class="kb-tabs" aria-label="{{ t('kb.tabs_label') }}">
+  {% for key, href, label, count in kb_tabs %}
+    <a class="kb-tabs__link {% if key == kb_tab %}is-active{% endif %}" href="{{ href }}" {% if key == kb_tab %}aria-current="page"{% endif %}>
+      <svg class="kb-tabs__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        {%- if key == 'collections' -%}<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>
+        {%- elif key == 'documents' -%}<path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"/>
+        {%- else -%}<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>
+        {%- endif -%}
+      </svg>
+      <span>{{ label }}</span>
+      {% if count is not none %}<span class="kb-tabs__count">{{ count }}</span>{% endif %}
+    </a>
+  {% endfor %}
+  <a class="kb-tabs__search" href="/search{{ kb_query }}">
+    {{ t('kb.open_search') }} <span aria-hidden="true">→</span>
+  </a>
+</nav>

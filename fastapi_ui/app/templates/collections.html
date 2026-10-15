@@ -2,15 +2,10 @@
 {% block title %}{{ t('collections.title') }}{% endblock %}
 {% block page_class %}page--wide{% endblock %}
 {% block content %}
-  <header class="page-header">
-    <div>
-      <p class="card__eyebrow">{{ t('collections.eyebrow') }}</p>
-      <h1>{{ t('collections.heading') }}</h1>
-      <p class="subtitle">{{ t('collections.subtitle') }}</p>
-    </div>
-    {% set current_step = 1 %}
-    {% include "partials/stepper.html" %}
-  </header>
+  {% set kb_tab = 'collections' %}
+  {% set kb_heading = t('collections.heading') %}
+  {% set kb_subtitle = t('collections.subtitle') %}
+  {% include "partials/kb_header.html" %}
 
   <div class="card">
     <div class="card__header">
@@ -35,6 +30,14 @@
                 <h3>{{ coll.display_name }}</h3>
                 <span class="mono">{{ coll.name }}</span>
               </div>
+              <form method="post" action="/collections/delete" class="inline-form collection__delete"
+                    data-confirm="{{ t('collections.delete_confirm', name=coll.display_name or coll.name) }}"
+                    data-confirm-title="{{ t('confirm.delete_collection_title') }}"
+                    data-confirm-ok="{{ t('collections.delete') }}"
+                    data-confirm-phrase="{{ coll.name }}">
+                <input type="hidden" name="collection_name" value="{{ coll.name }}">
+                <button type="submit" class="btn btn--danger-ghost btn--sm btn--icon" title="{{ t('collections.delete_title') }}" aria-label="{{ t('collections.delete_title') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l.9 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12"/><path d="M10 11v5.5M14 11v5.5"/></svg></button>
+              </form>
             </div>
             <p class="collection__desc">
               {% if coll.description %}{{ coll.description }}{% else %}<span class="muted">{{ t('collections.no_description') }}</span>{% endif %}
@@ -44,13 +47,9 @@
                 {% if coll.created_on %}{{ t('collections.created_on', date=coll.created_on) }}{% else %}<span class="muted">—</span>{% endif %}
               </span>
               <span class="collection__actions">
-                <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ coll.name | urlencode }}">{{ t('collections.manage') }}</a>
-                <a class="btn btn--ghost btn--sm" href="/documents/upload?collection_name={{ coll.name | urlencode }}">{{ t('collections.upload') }}</a>
+                <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ coll.name | urlencode }}">{{ t('collections.documents') }}</a>
+                <a class="btn btn--ghost btn--sm btn--icon" href="/documents/upload?collection_name={{ coll.name | urlencode }}" title="{{ t('collections.upload') }}" aria-label="{{ t('collections.upload') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
                 <a class="btn btn-primary btn--sm" href="/search?collection_name={{ coll.name | urlencode }}">{{ t('collections.search') }}</a>
-                <form method="post" action="/collections/delete" class="inline-form" onsubmit="return confirm('{{ t('collections.delete_confirm', name=coll.display_name or coll.name) }}');">
-                  <input type="hidden" name="collection_name" value="{{ coll.name }}">
-                  <button type="submit" class="btn btn--danger-ghost btn--sm" title="{{ t('collections.delete_title') }}">{{ t('collections.delete') }}</button>
-                </form>
               </span>
             </div>
           </li>

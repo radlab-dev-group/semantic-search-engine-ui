@@ -759,12 +759,24 @@ function initFormBusyStates(root = document) {
     return form.querySelector("button[type='submit'], button:not([type])");
   }
 
-  root.querySelectorAll("form").forEach((form) => {
+  root.querySelectorAll("form:not([method='dialog'])").forEach((form) => {
     form.addEventListener("submit", (event) => {
       // Buttons can live outside the form (linked via the form attribute),
       // so resolve the actually submitted control first.
       const button = busyButtonFor(event);
       if (!button || button.dataset.busy === "true") return;
+
+      // A disabled submitter is left out of the submitted data, so its
+      // name/value (e.g. document_name of a row) goes in a hidden field.
+      if (button.name && button.form === form) {
+        const carrier = document.createElement("input");
+        carrier.type = "hidden";
+        carrier.name = button.name;
+        carrier.value = button.value;
+        carrier.dataset.submitterCopy = "";
+        form.append(carrier);
+        window.addEventListener("pageshow", () => carrier.remove(), { once: true });
+      }
 
       button.dataset.busy = "true";
       button.dataset.originalLabel = button.innerHTML;
@@ -787,6 +799,191 @@ function initFormBusyStates(root = document) {
         button.dataset.busy = "false";
         if (progress) progress.classList.add("hidden");
       }, { once: true });
+    });
+  });
+}
+
+/* ------------------------------------------------ delete confirmations */
+// Forms (or their submit buttons) with data-confirm open the styled dialog
+// of base.html instead of submitting right away. Optional attributes, read
+// from the button first and then from the form:
+//   data-confirm-title, data-confirm-ok   - heading / label of the button
+//   data-confirm-items                    - one name listed in the dialog
+//   data-confirm-items-from="<field>"     - ids typed in a field of the form
+//   data-confirm-phrase                   - text to type before confirming
+function confirmAttr(name, submitter, form) {
+  if (submitter && submitter.dataset[name] !== undefined) return submitter.dataset[name];
+  return form.dataset[name];
+}
+
+function confirmItems(submitter, form) {
+  if (submitter && submitter.matches("[data-doc-delete-selected]")) {
+    return Array.from(form.querySelectorAll(".doc-checkbox:checked")).map((box) => box.value);
+  }
+  const single = confirmAttr("confirmItems", submitter, form);
+  if (single) return [single];
+  const fieldName = confirmAttr("confirmItemsFrom", submitter, form);
+  const field = fieldName ? form.elements.namedItem(fieldName) : null;
+  if (field && field.value) {
+    return field.value.split(/[\s,]+/).filter((part) => /^\d+$/.test(part)).map((id) => `#${id}`);
+  }
+  return [];
+}
+
+function initConfirmDialogs() {
+  const dialog = document.getElementById("confirm-dialog");
+  if (!dialog) return;
+  const title = dialog.querySelector(".confirm-dialog__title");
+  const message = dialog.querySelector(".confirm-dialog__message");
+  const list = dialog.querySelector("[data-confirm-list]");
+  const phraseBox = dialog.querySelector("[data-confirm-phrase-box]");
+  const phraseLabel = dialog.querySelector("[data-confirm-phrase-label]");
+  const phraseInput = phraseBox.querySelector("input");
+  const okButton = dialog.querySelector("[data-confirm-ok]");
+  const defaults = { title: title.textContent, ok: okButton.textContent };
+  const canShowModal = typeof dialog.showModal === "function";
+
+  document.addEventListener("submit", (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || form.method === "dialog") return;
+    const submitter = event.submitter || null;
+    const text = confirmAttr("confirm", submitter, form);
+    if (text === undefined) return;
+    if (form.dataset.confirmed === "true") {
+      delete form.dataset.confirmed;
+      return;
+    }
+
+    // Not confirmed yet: keep the other submit handlers (busy state) quiet
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const items = confirmItems(submitter, form);
+    let question = text;
+    if (submitter && submitter.matches("[data-doc-delete-selected]")) {
+      question = t("confirm_docs_selected", { n: items.length }, text);
+    }
+    const phrase = confirmAttr("confirmPhrase", submitter, form) || "";
+
+    if (!canShowModal) {
+      if (window.confirm(question)) {
+        form.dataset.confirmed = "true";
+        form.requestSubmit(submitter);
+      }
+      return;
+    }
+
+    title.textContent = confirmAttr("confirmTitle", submitter, form) || defaults.title;
+    okButton.textContent = confirmAttr("confirmOk", submitter, form) || defaults.ok;
+    message.textContent = question;
+
+    list.replaceChildren(...items.slice(0, 8).map((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      return li;
+    }));
+    if (items.length > 8) {
+      const more = document.createElement("li");
+      more.className = "confirm-dialog__more";
+      more.textContent = t("confirm_more", { n: items.length - 8 }, "+{n} more");
+      list.append(more);
+    }
+    list.classList.toggle("hidden", !items.length);
+
+    phraseBox.classList.toggle("hidden", !phrase);
+    phraseInput.value = "";
+    okButton.disabled = Boolean(phrase);
+    if (phrase) {
+      phraseLabel.textContent = t("confirm_type", { phrase }, "Type {phrase} to confirm");
+      phraseInput.oninput = () => {
+        okButton.disabled = phraseInput.value.trim() !== phrase;
+      };
+    }
+
+    dialog.onclose = () => {
+      dialog.onclose = null;
+      if (dialog.returnValue !== "ok") return;
+      form.dataset.confirmed = "true";
+      form.requestSubmit(submitter);
+    };
+    dialog.returnValue = "";
+    dialog.showModal();
+    (phrase ? phraseInput : dialog.querySelector("[data-confirm-cancel]")).focus();
+  }, true);
+
+  // A click on the backdrop cancels
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close("cancel");
+  });
+}
+
+/* ------------------------------------------- knowledge base: documents */
+function initDocList() {
+  document.querySelectorAll("[data-doc-list]").forEach((form) => {
+    const boxes = Array.from(form.querySelectorAll(".doc-checkbox"));
+    const master = form.querySelector("[data-doc-master]");
+    const filter = form.querySelector("[data-doc-filter]");
+    const counter = form.querySelector("[data-doc-selected]");
+    const button = form.querySelector("[data-doc-delete-selected]");
+    const noMatch = form.querySelector("[data-doc-nomatch]");
+    const visible = () => boxes.filter((box) => !box.closest(".doc-row").classList.contains("hidden"));
+
+    const update = () => {
+      const checked = boxes.filter((box) => box.checked).length;
+      if (button) button.disabled = checked === 0;
+      if (counter) counter.textContent = checked ? t("docs_selected", { n: checked }, "{n} selected") : "";
+      boxes.forEach((box) => box.closest(".doc-row").classList.toggle("is-selected", box.checked));
+      if (master) {
+        const shown = visible();
+        const shownChecked = shown.filter((box) => box.checked).length;
+        master.checked = shown.length > 0 && shownChecked === shown.length;
+        master.indeterminate = shownChecked > 0 && shownChecked < shown.length;
+      }
+    };
+
+    boxes.forEach((box) => box.addEventListener("change", update));
+    if (master) {
+      master.addEventListener("change", () => {
+        visible().forEach((box) => { box.checked = master.checked; });
+        update();
+      });
+    }
+    if (filter) {
+      filter.addEventListener("input", () => {
+        const query = filter.value.toLowerCase().trim();
+        let shown = 0;
+        boxes.forEach((box) => {
+          const row = box.closest(".doc-row");
+          const match = !query || (row.dataset.name || "").includes(query);
+          row.classList.toggle("hidden", !match);
+          if (match) shown += 1;
+        });
+        if (noMatch) noMatch.classList.toggle("hidden", shown > 0);
+        update();
+      });
+      // Enter in the filter must not submit the delete form
+      filter.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") event.preventDefault();
+      });
+    }
+    update();
+  });
+}
+
+/* ----------------------------------------------- small page behaviours */
+function initAutosubmit() {
+  document.querySelectorAll("form[data-autosubmit]").forEach((form) => {
+    form.querySelectorAll("select").forEach((select) => {
+      select.addEventListener("change", () => form.requestSubmit());
+    });
+  });
+}
+
+function initDismiss() {
+  document.querySelectorAll("[data-dismiss]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const alert = button.closest(".alert");
+      if (alert) alert.remove();
     });
   });
 }
@@ -928,6 +1125,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initCopyButtons();
   initGenerativeAnswer();
   initHistory();
+  initConfirmDialogs();
+  initDocList();
+  initAutosubmit();
+  initDismiss();
 });
 
 /* ------------------------- refresh category/document filters on demand */
@@ -947,6 +1148,8 @@ function fillSelect(element, values) {
 document.addEventListener("change", async (event) => {
   const select = event.target;
   if (!select.matches("select[name='collection_name']")) return;
+  // The knowledge base switcher reloads the page with the other collection
+  if (select.closest("form[data-autosubmit]")) return;
 
   const scope = select.closest("form") || document;
   refreshHistory(select.value);

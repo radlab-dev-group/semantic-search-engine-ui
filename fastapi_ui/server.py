@@ -634,6 +634,33 @@ def logout(request: Request):
     return RedirectResponse(url="/login", status_code=303)
 
 
+# --- Knowledge base: collections, documents, adding content ----------------- #
+# The three pages share one header with tabs and a collection switcher; the
+# collection chosen on one of them is remembered for the others.
+KB_COLLECTION = "kb_collection"
+
+
+def kb_collection_name(request: Request, explicit: str = "") -> str:
+    """Collection asked for in the request, else the last one used."""
+    name = str(explicit or "").strip()
+    if name:
+        set_state(request, **{KB_COLLECTION: name})
+        return name
+    return get_state(request).get(KB_COLLECTION) or ""
+
+
+def render_kb_page(
+    request: Request, name: str, collection_name: str = "", **extra
+) -> HTMLResponse:
+    """Documents / add content tab of the selected collection."""
+    context = fetch_manage_collection_context(
+        get_token(request), kb_collection_name(request, collection_name)
+    )
+    if "error" in context:
+        return render_api_error(request, context["error"])
+    return render_page(request, name, **{**context, **extra})
+
+
 # --- Collections (streamlit_ui/pages/1_New_Collection.py) ------------------- #
 def render_collections_page(request: Request, **context) -> HTMLResponse:
     """List of the collections plus the form that creates a new one."""
@@ -649,12 +676,15 @@ def render_collections_page(request: Request, **context) -> HTMLResponse:
     if "error" in data:
         return render_api_error(request, data["error"])
 
+    remembered = kb_collection_name(request)
+    names = [row["name"] for row in data["collections"]]
     return render_page(
         request,
         "collections.html",
         embedders=embedders,
         rerankers=rerankers,
         collections=data["collections"],
+        selected_collection=remembered if remembered in names else "",
         **context,
     )
 
@@ -726,10 +756,16 @@ def delete_collection_submit(
     if not result.get("status"):
         return render_api_error(request, result)
 
+    if get_state(request).get(KB_COLLECTION) == collection_name:
+        set_state(request, **{KB_COLLECTION: None})
+
     t = translator(request)
     return render_collections_page(
         request,
-        success=t("collections.deleted_success", name=collection_name),
+        deleted={
+            "title": t("collections.deleted_success", name=collection_name),
+            "note": t("collections.deleted_note"),
+        },
     )
 
 
@@ -740,16 +776,10 @@ def manage_collection_page(request: Request):
     if redirect is not None:
         return redirect
 
-    token = get_token(request)
-    collection_name = request.query_params.get("collection_name", "")
-    context = fetch_manage_collection_context(token, collection_name)
-    if "error" in context:
-        return render_api_error(request, context["error"])
-
-    return render_page(
+    return render_kb_page(
         request,
         "manage_collection.html",
-        **context,
+        request.query_params.get("collection_name", ""),
     )
 
 
@@ -803,18 +833,15 @@ def manage_add_text_submit(
     if not result.get("status"):
         return render_api_error(request, result)
 
-    context = fetch_manage_collection_context(token, collection_name)
-    if "error" in context:
-        return render_api_error(request, context["error"])
-
     body = result.get("body") or {}
     indexed_chunks = body.get("indexed_chunks", 1)
 
-    return render_page(
+    return render_kb_page(
         request,
-        "manage_collection.html",
+        "upload_documents.html",
+        collection_name,
+        add_method="text",
         success=t("manage.add_text_success", chunks=indexed_chunks),
-        **context,
     )
 
 
@@ -848,26 +875,24 @@ def manage_delete_documents_submit(
     if not result.get("status"):
         return render_api_error(request, result)
 
-    context = fetch_manage_collection_context(token, collection_name)
-    if "error" in context:
-        return render_api_error(request, context["error"])
-
     body = result.get("body") or {}
     deleted = body.get("deleted") or {}
     docs_count = deleted.get("documents", len(doc_names))
     texts_count = deleted.get("texts", 0)
     vectors_count = body.get("deleted_vectors", 0)
 
-    return render_page(
+    return render_kb_page(
         request,
         "manage_collection.html",
-        success=t(
-            "manage.delete_docs_success",
-            docs=docs_count,
-            texts=texts_count,
-            vectors=vectors_count,
-        ),
-        **context,
+        collection_name,
+        deleted={
+            "title": t.plural("manage.deleted_docs", docs_count),
+            "items": doc_names,
+            "stats": [
+                t.plural("manage.deleted_chunks", texts_count),
+                t.plural("manage.deleted_vectors", vectors_count),
+            ],
+        },
     )
 
 
@@ -903,24 +928,30 @@ def manage_delete_texts_submit(
     if not result.get("status"):
         return render_api_error(request, result)
 
-    context = fetch_manage_collection_context(token, collection_name)
-    if "error" in context:
-        return render_api_error(request, context["error"])
-
     body = result.get("body") or {}
     deleted = body.get("deleted") or {}
     texts_count = deleted.get("texts", len(chunk_ids))
     vectors_count = body.get("deleted_vectors", 0)
+    not_found = {str(chunk_id) for chunk_id in body.get("not_found") or []}
 
-    return render_page(
+    return render_kb_page(
         request,
         "manage_collection.html",
-        success=t(
-            "manage.delete_texts_success",
-            texts=texts_count,
-            vectors=vectors_count,
-        ),
-        **context,
+        collection_name,
+        deleted={
+            "title": t.plural("manage.deleted_texts", texts_count),
+            "items": [
+                f"#{chunk_id}" for chunk_id in chunk_ids
+                if str(chunk_id) not in not_found
+            ],
+            "stats": [t.plural("manage.deleted_vectors", vectors_count)],
+            "note": t(
+                "manage.not_found",
+                ids=", ".join(f"#{chunk_id}" for chunk_id in sorted(not_found)),
+            )
+            if not_found
+            else "",
+        },
     )
 
 
@@ -931,12 +962,10 @@ def upload_documents_page(request: Request):
     if redirect is not None:
         return redirect
 
-    collection_name = request.query_params.get("collection_name", "")
-    data = fetch_page_context(get_token(request), collection_name)
-    if "error" in data:
-        return render_api_error(request, data["error"])
-    return render_page(
-        request, "upload_documents.html", selected_collection=collection_name, **data
+    return render_kb_page(
+        request,
+        "upload_documents.html",
+        request.query_params.get("collection_name", ""),
     )
 
 
@@ -952,14 +981,8 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
     uploaded_files = form.getlist("files[]")
 
     def page(**kwargs):
-        data = fetch_page_context(token, collection_name)
-        if "error" in data:
-            return render_api_error(request, data["error"])
-        return render_page(
-            request,
-            "upload_documents.html",
-            selected_collection=collection_name,
-            **{**data, **kwargs},
+        return render_kb_page(
+            request, "upload_documents.html", collection_name, **kwargs
         )
 
     if not len(uploaded_files):

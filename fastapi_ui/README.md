@@ -44,8 +44,8 @@ Konfiguracja hostów/endpointów backendu to ten sam plik co w wersji Streamlit:
 | `Home.py` | `GET /home` | Strona główna z opisem projektu |
 | `pages/0_Login.py` | `GET/POST /login`, `GET /logout` | Logowanie (token Django `Authorization: Token ...`) |
 | `pages/1_New_Collection.py` | `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Lista kolekcji** (`GET api/collections`, odpowiednik `SSEClient.list_collections()`) + tworzenie kolekcji + usuwanie kolekcji (`POST api/delete_collection`) |
-| — | `GET /collections/manage`, `POST /collections/manage/*` | **Zarządzanie kolekcją**: dodawanie dokumentów tekstowych (`api/add_and_index_texts`), usuwanie dokumentów (`api/delete_documents`), usuwanie chunków tekstu (`api/delete_texts`) oraz usuwanie kolekcji |
-| `pages/2_Upload_Documents.py` | `GET/POST /documents/upload` | Upload `pdf/docx/txt/html/md/zip` + opcje indeksowania |
+| — | `GET /collections/manage`, `POST /collections/manage/delete-*` | **Baza wiedzy → Dokumenty**: lista dokumentów kolekcji, usuwanie dokumentów (`api/delete_documents`), usuwanie chunków tekstu (`api/delete_texts`) oraz usuwanie kolekcji |
+| `pages/2_Upload_Documents.py` | `GET/POST /documents/upload`, `POST /collections/manage/add-text` | **Baza wiedzy → Dodaj treść**: upload `pdf/docx/txt/html/md/zip` + opcje indeksowania albo wklejenie tekstu (`api/add_and_index_texts`) |
 | `pages/3_Semantic_Search_Engine.py` | `GET/POST /search`, `POST /search/generate`, `POST /search/rate` | Wyszukiwanie + odpowiedź generatywna (doczytywana po wynikach) + ocenianie (gwiazdki) |
 | `pages/4_Conversational_Search.py` | — | **Wycofane**: zakładka Chat nie istnieje w tej aplikacji |
 | `pages/src/api.py` | `core/api.py` | Klient REST API (bez zależności od Streamlita) |
@@ -133,10 +133,24 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   skorami cosinusowymi), schemat pipeline'u RAG (Chunk → Embed → Retrieve &
   rerank → Generate) i skróty do kolejnych kroków.
 - **Stepper pipeline'u** (`partials/stepper.html`): Collection → Index → Search
-  w nagłówku stron kolekcji, uploadu i wyszukiwania.
-- **Kolekcje** jako karty (nazwa, opis, data, akcje Upload/Search).
-- **Upload**: strefa drag & drop dla plików oraz podgląd chunkowania, który na
-  żywo pokazuje stosunek `overlap` do rozmiaru chunka.
+  w nagłówku strony wyszukiwania.
+- **Baza wiedzy** — jedna pozycja w nawigacji zamiast trzech. Strony kolekcji,
+  dokumentów i dodawania treści mają wspólny nagłówek (`partials/kb_header.html`)
+  z zakładkami Kolekcje / Dokumenty / Dodaj treść i przełącznikiem kolekcji;
+  wybrana kolekcja jest zapamiętywana w stanie sesji (`kb_collection`), więc
+  przechodzenie między zakładkami jej nie gubi.
+  - **Kolekcje** jako karty (nazwa, opis, data, akcje Dokumenty / + / Szukaj,
+    usuwanie ikoną kosza).
+  - **Dokumenty**: lista z filtrem i zaznaczaniem wielu pozycji, obok panel
+    usuwania chunków po ID i strefa usunięcia kolekcji.
+  - **Dodaj treść**: przełącznik „Wgraj pliki” (drag & drop + podgląd
+    chunkowania pokazujący stosunek `overlap` do rozmiaru chunka) /
+    „Wklej tekst”.
+- **Usuwanie**: zamiast `confirm()` przeglądarki stylowany dialog
+  (`<dialog id="confirm-dialog">` w `base.html`, atrybuty `data-confirm*` na
+  formularzu lub przycisku) z listą usuwanych pozycji; usunięcie kolekcji
+  wymaga wpisania jej nazwy. Wynik pokazuje alert `alert-deleted` z ikoną
+  kosza, przekreślonymi nazwami / ID i liczbą usuniętych chunków i wektorów.
 - **Wyszukiwanie**: wyróżniona „konsola zapytania”, przykładowe pytania jako
   klikalne chipy, panel parametrów w przyklejonym (sticky) sidebarze
   (`partials/search_params.html`: zwijane grupy Kolekcja / Modele / Filtry z
@@ -255,7 +269,7 @@ fastapi_ui/
 │   ├── locales/           # en.json, pl.json — teksty interfejsu
 │   ├── templates/         # Jinja2: base, home, login, error, collections,
 │   │   │                  #        upload_documents, search
-│   │   └── partials/      # search_params.html, table.html, messages.html, stepper.html
+│   │   └── partials/      # search_params.html, table.html, messages.html, stepper.html, kb_header.html
 │   └── static/
 │       ├── css/style.css
 │       └── js/app.js

@@ -16,10 +16,18 @@
   },
   "nav": {
     "home": "Home",
-    "collections": "Collections",
-    "manage": "Manage",
-    "upload": "Upload documents",
+    "knowledge_base": "Knowledge base",
     "search": "Search engine"
+  },
+  "kb": {
+    "eyebrow": "Knowledge base",
+    "tabs_label": "Knowledge base sections",
+    "tab_collections": "Collections",
+    "tab_documents": "Documents",
+    "tab_add": "Add content",
+    "working_on": "Collection",
+    "switch": "Switch",
+    "open_search": "Search in collection"
   },
   "stepper": {
     "label": "Pipeline step {current} of {total}",
@@ -31,7 +39,17 @@
     "search_hint": "retrieve · answer"
   },
   "messages": {
-    "error_processing": "Error occurred while processing"
+    "error_processing": "Error occurred while processing",
+    "dismiss": "Dismiss"
+  },
+  "confirm": {
+    "title": "Confirm deletion",
+    "ok": "Delete",
+    "cancel": "Cancel",
+    "irreversible": "This cannot be undone.",
+    "delete_collection_title": "Delete collection?",
+    "delete_documents_title": "Delete documents?",
+    "delete_texts_title": "Delete text chunks?"
   },
   "home": {
     "title": "SSSUI · Semantic search engine",
@@ -115,9 +133,8 @@
     "add_new": "+ Add new collection",
     "no_description": "No description",
     "created_on": "Created {date}",
-    "manage": "Manage",
     "delete": "Delete",
-    "delete_confirm": "Are you sure you want to permanently delete collection “{name}” and all its indexed data?",
+    "delete_confirm": "Collection “{name}” will be permanently deleted together with all its indexed documents, chunks and vectors.",
     "delete_title": "Permanently delete this collection",
     "deleted_success": "Collection “{name}” has been deleted.",
     "upload": "Upload",
@@ -152,25 +169,18 @@
     "create": "Create collection",
     "creating": "Creating…",
     "cancel": "Cancel",
-    "created": "Collection has been created. Add documents to start searching."
+    "created": "Collection has been created. Add documents to start searching.",
+    "documents": "Documents",
+    "deleted_note": "All its documents, text chunks and vectors were removed."
   },
   "manage": {
     "title": "SSE - manage collection",
-    "eyebrow": "Data management",
-    "heading": "Manage collection",
-    "subtitle": "Add and remove documents and text chunks in the selected collection.",
-    "select_collection": "Choose collection",
-    "collection_label": "Active collection",
+    "heading": "Documents",
+    "subtitle": "Browse the documents of the collection and remove documents or single text chunks.",
     "no_collections": "You do not have any collections yet. Create one first.",
     "create_collection": "Create collection",
-    "open_search": "Search in collection",
-    "tab_add_doc": "Add to collection",
-    "tab_delete_doc": "Delete documents",
     "tab_delete_text": "Delete text chunks",
     "tab_danger": "Delete collection",
-    "add_method_upload": "Upload files",
-    "add_method_upload_desc": "Upload PDF, DOCX, TXT, HTML, MD or ZIP files to this collection.",
-    "add_method_text": "Add text directly",
     "add_method_text_desc": "Index a text snippet or page without uploading a file.",
     "doc_filepath": "Document path / file name",
     "doc_filepath_placeholder": "e.g. document.txt or notes/article.md",
@@ -182,37 +192,55 @@
     "add_text_submitting": "Indexing text…",
     "add_text_success": "Text document has been indexed ({chunks} chunks).",
     "doc_list_heading": "Documents in collection",
-    "doc_list_count": {
-      "one": "{n} document",
-      "other": "{n} documents"
-    },
     "no_documents": "No documents in this collection yet.",
     "doc_filter_placeholder": "Filter documents…",
     "select_all": "Select all",
-    "deselect_all": "Deselect all",
     "delete_selected": "Delete selected",
     "delete_doc_btn": "Delete",
-    "delete_doc_confirm": "Are you sure you want to delete document “{name}”?",
-    "delete_doc_selected_confirm": "Are you sure you want to delete {count} selected document(s)?",
-    "delete_docs_success": "Deleted {docs} document(s) ({texts} chunks, {vectors} vectors).",
+    "delete_doc_confirm": "Document “{name}” will be removed from the collection together with its chunks and vectors.",
+    "delete_doc_selected_confirm": "The selected documents will be removed from the collection together with their chunks and vectors.",
     "delete_texts_heading": "Delete text chunks by ID",
     "delete_texts_desc": "Enter one or more chunk IDs (separated by commas or spaces) to remove specific chunks and their vectors.",
     "chunk_ids_label": "Chunk IDs (texts IDs)",
     "chunk_ids_placeholder": "e.g. 101, 102, 103",
     "delete_texts_submit": "Delete text chunks",
     "delete_texts_submitting": "Deleting…",
-    "delete_texts_confirm": "Are you sure you want to delete these text chunks?",
-    "delete_texts_success": "Deleted {texts} text chunk(s) and {vectors} vector(s).",
+    "delete_texts_confirm": "These text chunks and their vectors will be removed from the collection.",
     "danger_heading": "Permanently delete collection",
     "danger_desc": "Deleting the collection will permanently remove all its indexed documents, text chunks, and vector embeddings from the database and vector store.",
     "danger_btn": "Delete collection",
-    "danger_confirm": "Are you sure you want to permanently delete collection “{name}”?"
+    "danger_confirm": "Collection “{name}” will be permanently deleted together with all its documents, chunks and vectors.",
+    "add_content": "+ Add content",
+    "doc_list_count_word": {
+      "one": "document",
+      "other": "documents"
+    },
+    "doc_filter_nomatch": "No documents match the filter.",
+    "chunk_ids_title": "Numbers separated by commas or spaces",
+    "text_indexing_options": "Text indexing options",
+    "deleted_docs": {
+      "one": "Deleted {n} document",
+      "other": "Deleted {n} documents"
+    },
+    "deleted_texts": {
+      "one": "Deleted {n} text chunk",
+      "other": "Deleted {n} text chunks"
+    },
+    "deleted_chunks": {
+      "one": "{n} chunk",
+      "other": "{n} chunks"
+    },
+    "deleted_vectors": {
+      "one": "{n} vector",
+      "other": "{n} vectors"
+    },
+    "not_found": "Not found (skipped): {ids}"
   },
   "upload": {
     "title": "SSE - upload documents",
     "eyebrow": "Indexing",
-    "heading": "Upload documents to SSE",
-    "subtitle": "Files are chunked, embedded and indexed on the engine side — this can take a while.",
+    "heading": "Add content to the collection",
+    "subtitle": "Upload files or paste text — it is chunked, embedded and indexed on the engine side, which can take a while.",
     "summary": "Indexing summary",
     "collection": "Collection",
     "files": "Files",
@@ -225,9 +253,6 @@
     "search_in_collection": "Search in this collection",
     "no_collections": "You do not have any collections of documents yet — create one to start indexing.",
     "create_collection": "Create a new collection",
-    "target_collection": "Target collection",
-    "collection_name": "Collection name",
-    "choose_collection": "Choose collection...",
     "add_files": "Add files to collection",
     "dropzone_html": "Drop files here or <u>browse</u>",
     "no_files_selected": "No files selected yet.",
@@ -244,10 +269,13 @@
     "merge_pages": "Merge whole document to single page and process it",
     "start": "Start indexing",
     "starting": "Uploading and indexing…",
-    "go_to_search": "Go to search engine",
     "error_no_files": "There are no files to upload!",
     "error_upload": "Problem while uploading files to engine backend",
-    "success": "Files are uploaded and indexed! Go to the Search Engine page and ask about knowledge from the indexed documents."
+    "success": "Files are uploaded and indexed! Go to the Search Engine page and ask about knowledge from the indexed documents.",
+    "methods_label": "How to add content",
+    "method_files": "Upload files",
+    "method_text": "Paste text",
+    "see_documents": "See documents"
   },
   "search": {
     "title": "SSE - semantic search engine",
@@ -478,6 +506,16 @@
       "other": "{n} documents"
     },
     "sum_changed": "changed: {n}",
-    "changed_title": "The value differs from the default ({value})"
+    "changed_title": "The value differs from the default ({value})",
+    "confirm_docs_selected": {
+      "one": "{n} selected document will be removed from the collection together with its chunks and vectors.",
+      "other": "{n} selected documents will be removed from the collection together with their chunks and vectors."
+    },
+    "confirm_more": "+{n} more",
+    "confirm_type": "Type {phrase} to confirm",
+    "docs_selected": {
+      "one": "{n} selected",
+      "other": "{n} selected"
+    }
   }
 }

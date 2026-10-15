@@ -16,10 +16,18 @@
   },
   "nav": {
     "home": "Start",
-    "collections": "Kolekcje",
-    "manage": "Zarządzanie",
-    "upload": "Wgraj dokumenty",
+    "knowledge_base": "Baza wiedzy",
     "search": "Wyszukiwarka"
+  },
+  "kb": {
+    "eyebrow": "Baza wiedzy",
+    "tabs_label": "Sekcje bazy wiedzy",
+    "tab_collections": "Kolekcje",
+    "tab_documents": "Dokumenty",
+    "tab_add": "Dodaj treść",
+    "working_on": "Kolekcja",
+    "switch": "Przełącz",
+    "open_search": "Szukaj w kolekcji"
   },
   "stepper": {
     "label": "Etap {current} z {total}",
@@ -31,7 +39,17 @@
     "search_hint": "wyniki · odpowiedź"
   },
   "messages": {
-    "error_processing": "Wystąpił błąd podczas przetwarzania"
+    "error_processing": "Wystąpił błąd podczas przetwarzania",
+    "dismiss": "Zamknij"
+  },
+  "confirm": {
+    "title": "Potwierdź usunięcie",
+    "ok": "Usuń",
+    "cancel": "Anuluj",
+    "irreversible": "Tej operacji nie można cofnąć.",
+    "delete_collection_title": "Usunąć kolekcję?",
+    "delete_documents_title": "Usunąć dokumenty?",
+    "delete_texts_title": "Usunąć fragmenty tekstu?"
   },
   "home": {
     "title": "SSSUI · Wyszukiwarka semantyczna",
@@ -117,9 +135,8 @@
     "add_new": "+ Dodaj nową kolekcję",
     "no_description": "Brak opisu",
     "created_on": "Utworzono {date}",
-    "manage": "Zarządzaj",
     "delete": "Usuń",
-    "delete_confirm": "Czy na pewno chcesz bezpowrotnie usunąć kolekcję „{name}” wraz ze wszystkimi dokumentami i wektorami?",
+    "delete_confirm": "Kolekcja „{name}” zostanie trwale usunięta razem ze wszystkimi zaindeksowanymi dokumentami, fragmentami i wektorami.",
     "delete_title": "Bezpowrotnie usuń tę kolekcję",
     "deleted_success": "Kolekcja „{name}” została usunięta.",
     "upload": "Wgraj",
@@ -154,25 +171,18 @@
     "create": "Utwórz kolekcję",
     "creating": "Tworzenie…",
     "cancel": "Anuluj",
-    "created": "Kolekcja została utworzona. Dodaj dokumenty, aby zacząć wyszukiwać."
+    "created": "Kolekcja została utworzona. Dodaj dokumenty, aby zacząć wyszukiwać.",
+    "documents": "Dokumenty",
+    "deleted_note": "Usunięto wszystkie jej dokumenty, fragmenty tekstu i wektory."
   },
   "manage": {
     "title": "SSE - zarządzanie kolekcją",
-    "eyebrow": "Zarządzanie danymi",
-    "heading": "Zarządzanie kolekcją",
-    "subtitle": "Dodawaj i usuwaj dokumenty oraz fragmenty tekstów w wybranej kolekcji.",
-    "select_collection": "Wybierz kolekcję",
-    "collection_label": "Aktywna kolekcja",
+    "heading": "Dokumenty",
+    "subtitle": "Przeglądaj dokumenty kolekcji i usuwaj dokumenty albo pojedyncze fragmenty tekstu.",
     "no_collections": "Nie masz jeszcze żadnych kolekcji. Najpierw utwórz kolekcję.",
     "create_collection": "Utwórz kolekcję",
-    "open_search": "Szukaj w kolekcji",
-    "tab_add_doc": "Dodaj do kolekcji",
-    "tab_delete_doc": "Usuń dokumenty",
     "tab_delete_text": "Usuń fragmenty tekstów",
     "tab_danger": "Usuń kolekcję",
-    "add_method_upload": "Wgraj pliki",
-    "add_method_upload_desc": "Wgraj pliki PDF, DOCX, TXT, HTML, MD lub ZIP do tej kolekcji.",
-    "add_method_text": "Dodaj tekst bezpośrednio",
     "add_method_text_desc": "Zaindeksuj treść tekstową lub stronę bez wgrywania pliku.",
     "doc_filepath": "Nazwa / ścieżka pliku",
     "doc_filepath_placeholder": "np. dokument.txt lub notes/artykul.md",
@@ -184,39 +194,65 @@
     "add_text_submitting": "Indeksowanie tekstu…",
     "add_text_success": "Dokument tekstowy został zaindeksowany ({chunks} fragmentów).",
     "doc_list_heading": "Dokumenty w kolekcji",
-    "doc_list_count": {
-      "one": "{n} dokument",
-      "few": "{n} dokumenty",
-      "many": "{n} dokumentów",
-      "other": "{n} dokumentów"
-    },
     "no_documents": "W tej kolekcji nie ma jeszcze żadnych dokumentów.",
     "doc_filter_placeholder": "Filtruj dokumenty…",
     "select_all": "Zaznacz wszystkie",
-    "deselect_all": "Odznacz wszystkie",
     "delete_selected": "Usuń zaznaczone",
     "delete_doc_btn": "Usuń",
-    "delete_doc_confirm": "Czy na pewno chcesz usunąć dokument „{name}”?",
-    "delete_doc_selected_confirm": "Czy na pewno chcesz usunąć {count} zaznaczonych dokumentów?",
-    "delete_docs_success": "Usunięto {docs} dokumentów ({texts} fragmentów, {vectors} wektorów).",
+    "delete_doc_confirm": "Dokument „{name}” zostanie usunięty z kolekcji razem z jego fragmentami i wektorami.",
+    "delete_doc_selected_confirm": "Zaznaczone dokumenty zostaną usunięte z kolekcji razem z ich fragmentami i wektorami.",
     "delete_texts_heading": "Usuń fragmenty tekstów według ID",
     "delete_texts_desc": "Wpisz jeden lub więcej identyfikatorów fragmentów (oddzielonych przecinkami lub spacjami), aby usunąć konkretne chunki i ich wektory.",
     "chunk_ids_label": "Identyfikatory fragmentów (chunk IDs)",
     "chunk_ids_placeholder": "np. 101, 102, 103",
     "delete_texts_submit": "Usuń fragmenty tekstów",
     "delete_texts_submitting": "Usuwanie…",
-    "delete_texts_confirm": "Czy na pewno chcesz usunąć te fragmenty tekstów?",
-    "delete_texts_success": "Usunięto {texts} fragmentów tekstu i {vectors} wektorów.",
+    "delete_texts_confirm": "Te fragmenty tekstu i ich wektory zostaną usunięte z kolekcji.",
     "danger_heading": "Trwałe usunięcie kolekcji",
     "danger_desc": "Usunięcie kolekcji spowoduje bezpowrotne usunięcie wszystkich zaindeksowanych dokumentów, fragmentów tekstu oraz wektorów z bazy danych i bazy wektorowej.",
     "danger_btn": "Usuń kolekcję",
-    "danger_confirm": "Czy na pewno chcesz bezpowrotnie usunąć kolekcję „{name}”?"
+    "danger_confirm": "Kolekcja „{name}” zostanie trwale usunięta razem ze wszystkimi dokumentami, fragmentami i wektorami.",
+    "add_content": "+ Dodaj treść",
+    "doc_list_count_word": {
+      "one": "dokument",
+      "few": "dokumenty",
+      "many": "dokumentów",
+      "other": "dokumentu"
+    },
+    "doc_filter_nomatch": "Żaden dokument nie pasuje do filtra.",
+    "chunk_ids_title": "Liczby oddzielone przecinkami lub spacjami",
+    "text_indexing_options": "Opcje indeksowania tekstu",
+    "deleted_docs": {
+      "one": "Usunięto {n} dokument",
+      "few": "Usunięto {n} dokumenty",
+      "many": "Usunięto {n} dokumentów",
+      "other": "Usunięto {n} dokumentu"
+    },
+    "deleted_texts": {
+      "one": "Usunięto {n} fragment tekstu",
+      "few": "Usunięto {n} fragmenty tekstu",
+      "many": "Usunięto {n} fragmentów tekstu",
+      "other": "Usunięto {n} fragmentu tekstu"
+    },
+    "deleted_chunks": {
+      "one": "{n} fragment",
+      "few": "{n} fragmenty",
+      "many": "{n} fragmentów",
+      "other": "{n} fragmentu"
+    },
+    "deleted_vectors": {
+      "one": "{n} wektor",
+      "few": "{n} wektory",
+      "many": "{n} wektorów",
+      "other": "{n} wektora"
+    },
+    "not_found": "Nie znaleziono (pominięto): {ids}"
   },
   "upload": {
     "title": "SSE - wgrywanie dokumentów",
     "eyebrow": "Indeksowanie",
-    "heading": "Wgraj dokumenty do SSE",
-    "subtitle": "Pliki są dzielone na chunki, zamieniane na embeddingi i indeksowane po stronie silnika — to może chwilę potrwać.",
+    "heading": "Dodaj treść do kolekcji",
+    "subtitle": "Wgraj pliki albo wklej tekst — zostanie podzielony na chunki, zamieniony na embeddingi i zaindeksowany po stronie silnika, co może chwilę potrwać.",
     "summary": "Podsumowanie indeksowania",
     "collection": "Kolekcja",
     "files": "Pliki",
@@ -231,9 +267,6 @@
     "search_in_collection": "Szukaj w tej kolekcji",
     "no_collections": "Nie masz jeszcze żadnych kolekcji dokumentów — utwórz kolekcję, aby zacząć indeksowanie.",
     "create_collection": "Utwórz nową kolekcję",
-    "target_collection": "Kolekcja docelowa",
-    "collection_name": "Nazwa kolekcji",
-    "choose_collection": "Wybierz kolekcję...",
     "add_files": "Dodaj pliki do kolekcji",
     "dropzone_html": "Upuść pliki tutaj lub <u>wybierz z dysku</u>",
     "no_files_selected": "Nie wybrano jeszcze plików.",
@@ -250,10 +283,13 @@
     "merge_pages": "Scal cały dokument w jedną stronę i przetwórz go",
     "start": "Rozpocznij indeksowanie",
     "starting": "Wgrywanie i indeksowanie…",
-    "go_to_search": "Przejdź do wyszukiwarki",
     "error_no_files": "Brak plików do wgrania!",
     "error_upload": "Problem podczas wysyłania plików do silnika wyszukiwania",
-    "success": "Pliki zostały wgrane i zaindeksowane! Przejdź do wyszukiwarki i zapytaj o wiedzę z zaindeksowanych dokumentów."
+    "success": "Pliki zostały wgrane i zaindeksowane! Przejdź do wyszukiwarki i zapytaj o wiedzę z zaindeksowanych dokumentów.",
+    "methods_label": "Sposób dodania treści",
+    "method_files": "Wgraj pliki",
+    "method_text": "Wklej tekst",
+    "see_documents": "Zobacz dokumenty"
   },
   "search": {
     "title": "SSE - wyszukiwarka semantyczna",
@@ -506,6 +542,20 @@
       "other": "{n} dokumentu"
     },
     "sum_changed": "zmienione: {n}",
-    "changed_title": "Wartość różni się od domyślnej ({value})"
+    "changed_title": "Wartość różni się od domyślnej ({value})",
+    "confirm_docs_selected": {
+      "one": "{n} zaznaczony dokument zostanie usunięty z kolekcji razem z fragmentami i wektorami.",
+      "few": "{n} zaznaczone dokumenty zostaną usunięte z kolekcji razem z fragmentami i wektorami.",
+      "many": "{n} zaznaczonych dokumentów zostanie usuniętych z kolekcji razem z fragmentami i wektorami.",
+      "other": "{n} zaznaczonego dokumentu zostanie usunięte z kolekcji."
+    },
+    "confirm_more": "+{n} więcej",
+    "confirm_type": "Wpisz {phrase}, aby potwierdzić",
+    "docs_selected": {
+      "one": "zaznaczono {n}",
+      "few": "zaznaczono {n}",
+      "many": "zaznaczono {n}",
+      "other": "zaznaczono {n}"
+    }
   }
 }

@@ -148,11 +148,13 @@ def check_i18n(client) -> None:
     check(
         "polish interface",
         '<html lang="pl"' in pages["/search"]
-        and ">Kolekcje</a>" in pages["/search"]
+        and ">Baza wiedzy</a>" in pages["/search"]
         and "Parametry wyszukiwania" in pages["/search"]
         and "Szukaj po <span" in pages["/home"]
         and "Lista kolekcji" in pages["/collections"]
-        and "Zarządzanie kolekcją" in pages["/collections/manage"]
+        and "Sekcje bazy wiedzy" in pages["/collections/manage"]
+        and ">Baza wiedzy</a>" in pages["/collections"]
+        and "Dodaj treść do kolekcji" in pages["/documents/upload"]
         and "Opcje indeksowania dokumentów" in pages["/documents/upload"]
         and '"lang": "pl"' in pages["/search"],
         "",
@@ -310,10 +312,27 @@ def main() -> int:
             "",
         )
         check(
-            "navigation tab is named Collections",
-            ">Collections</a>" in response.text
+            "one navigation entry for the knowledge base",
+            ">Knowledge base</a>" in response.text
             and ">New collection</a>" not in response.text
+            and ">Manage</a>" not in response.text
+            and ">Upload documents</a>" not in response.text
             and "nav__link is-active" in response.text,
+            "",
+        )
+        check(
+            "knowledge base tabs on the collections page",
+            'class="kb-tabs"' in response.text
+            and 'kb-tabs__link is-active" href="/collections"' in response.text
+            and 'href="/collections/manage"' in response.text
+            and 'href="/documents/upload"' in response.text,
+            "",
+        )
+        check(
+            "collection deletion asks in the styled dialog",
+            'id="confirm-dialog"' in response.text
+            and 'data-confirm-phrase="user_col"' in response.text
+            and "return confirm(" not in response.text,
             "",
         )
 
@@ -389,6 +408,12 @@ def main() -> int:
             str(response.status_code),
         )
         check(
+            "collection deletion shows the styled deletion alert",
+            'class="alert alert-deleted"' in response.text
+            and "vectors were removed" in response.text,
+            "",
+        )
+        check(
             "delete collection sent collection_name",
             sent.get("body", {}).get("collection_name") == "user_col",
             str(sent),
@@ -402,6 +427,22 @@ def main() -> int:
             and "b.pdf" in response.text
             and "a.pdf" in response.text,
             str(response.status_code),
+        )
+        check(
+            "documents tab: switcher, tab links keep the collection",
+            '<option value="user_col" selected>' in response.text
+            and 'kb-tabs__link is-active" href="/collections/manage?collection_name=user_col"'
+            in response.text
+            and 'href="/documents/upload?collection_name=user_col"' in response.text
+            and 'data-confirm-items="a.pdf"' in response.text
+            and "return confirm(" not in response.text,
+            "",
+        )
+        check(
+            "knowledge base remembers the collection",
+            '<option value="user_col" selected>'
+            in client.get("/documents/upload").text,
+            "",
         )
 
         response = client.post(
@@ -421,6 +462,13 @@ def main() -> int:
             "add text document succeeded",
             response.status_code == 200 and "indexed" in response.text,
             str(response.status_code),
+        )
+        check(
+            "add text returns to the add content tab with the text form open",
+            'kb-tabs__link is-active" href="/documents/upload' in response.text
+            and 'class="tab-panel is-active" role="tabpanel" id="panel-add-text"'
+            in response.text,
+            "",
         )
         check(
             "add text sent collection and texts payload",
@@ -444,6 +492,13 @@ def main() -> int:
             str(response.status_code),
         )
         check(
+            "document deletion shows what was deleted",
+            'class="alert alert-deleted"' in response.text
+            and "Deleted 1 document" in response.text
+            and "<li>a.pdf</li>" in response.text,
+            "",
+        )
+        check(
             "delete document sent document name",
             sent.get("body", {}).get("collection_name") == "user_col"
             and sent.get("body", {}).get("documents[]") == ["a.pdf"],
@@ -462,6 +517,13 @@ def main() -> int:
             "delete texts succeeded",
             response.status_code == 200 and "Deleted" in response.text,
             str(response.status_code),
+        )
+        check(
+            "chunk deletion lists the deleted ids",
+            'class="alert alert-deleted"' in response.text
+            and "Deleted 2 text chunks" in response.text
+            and "<li>#10</li>" in response.text,
+            "",
         )
         check(
             "delete texts sent chunk IDs",
