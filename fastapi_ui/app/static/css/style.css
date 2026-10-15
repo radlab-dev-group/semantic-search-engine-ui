@@ -667,8 +667,10 @@ svg {
   margin-bottom: var(--space-1);
 }
 
+/* The subtitle may use the full width of the heading column: with nothing
+   next to it a narrow measure only wraps one sentence into two lines */
 .page-header .subtitle {
-  max-width: 60ch;
+  max-width: none;
   margin: 0;
 }
 
