@@ -6143,6 +6143,272 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* --------------------------------------------------------------------------
+   18.6 Chunking: collection cards, new collection form, indexing options
+   -------------------------------------------------------------------------- */
+/* Collection card: date and the declared chunking stacked in the footer */
+.collection__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem var(--space-4);
+}
+
+.collection__chunking {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.collection__chunking svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--brand-500);
+}
+
+.collection__chunking.is-undeclared {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.collection__chunking.is-undeclared svg {
+  color: var(--text-faint);
+}
+
+/* "strict": the collection refuses other chunking than its own */
+.badge--strict {
+  padding: 0.05rem 0.5rem;
+  border-color: rgb(240 169 42 / 55%);
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.kv dd .badge--strict {
+  margin-left: 0.5rem;
+}
+
+/* New collection: the chunking card spans both form columns */
+.chunking-card {
+  grid-column: 1 / -1;
+}
+
+.chunking-card__lead {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+}
+
+.chunking-card.has-error {
+  border-color: rgb(240 68 106 / 45%);
+}
+
+.chunking-card .form-row--split {
+  gap: 0 var(--space-5);
+}
+
+.model-info {
+  min-height: 1.2em;
+  font-family: var(--font-mono);
+  font-size: 0.76rem !important;
+}
+
+.model-info:empty {
+  display: none;
+}
+
+/* Inline notes under a field: validation error / soft warning */
+.field-msg {
+  margin: var(--space-2) 0 0;
+  padding: 0.4rem 0.65rem;
+  border-left: 3px solid;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.field-msg[hidden] {
+  display: none;
+}
+
+.field-msg--error {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+  color: var(--error-fg);
+}
+
+.field-msg--warn {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+}
+
+input.is-invalid,
+input.is-invalid:focus {
+  border-color: var(--error-border);
+  box-shadow: 0 0 0 3px rgb(240 68 106 / 18%);
+}
+
+/* A switch with a title and a description (strict chunking) */
+.check-row--boxed {
+  align-items: flex-start;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.check-row--boxed input[type="checkbox"] {
+  margin-top: 3px;
+}
+
+.check-row--boxed label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.check-row__title {
+  font-weight: 600;
+}
+
+.check-row__desc {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Indexing: collection settings vs. custom values */
+.chunk-mode {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.chunk-mode__legend {
+  padding: 0 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.chunk-mode.is-strict {
+  border-color: rgb(240 169 42 / 45%);
+}
+
+.chunk-mode__opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0 0 var(--space-2);
+  padding: 0.5rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+
+.chunk-mode__opt:hover {
+  background: var(--bg-subtle);
+}
+
+.chunk-mode__opt:has(input:checked) {
+  border-color: rgb(124 108 255 / 45%);
+  background: rgb(124 108 255 / 8%);
+}
+
+.chunk-mode__opt input[type="radio"] {
+  appearance: none;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--bg-solid);
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.chunk-mode__opt input[type="radio"]:checked {
+  border-color: var(--brand-500);
+  box-shadow: inset 0 0 0 4px var(--bg-solid);
+  background: var(--brand-500);
+}
+
+.chunk-mode__opt input[type="radio"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.chunk-mode__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.chunk-mode__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.chunk-mode__desc {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.chunk-mode__note {
+  margin: var(--space-2) 0 var(--space-2);
+}
+
+/* Sliders of the collection settings: visible, but not editable */
+.chunk-fields {
+  transition: opacity 0.2s var(--ease);
+}
+
+.chunk-fields.is-locked {
+  opacity: 0.55;
+}
+
+.chunk-fields.is-locked input[type="range"] {
+  cursor: not-allowed;
+}
+
+.field-slider.is-invalid > span,
+.field-slider.is-invalid output {
+  color: var(--error-fg);
+}
+
+.field-slider.is-invalid output {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+}
+
+.field-slider.is-invalid input[type="range"] {
+  box-shadow: inset 0 0 0 1px var(--error-border), 0 0 0 3px rgb(240 68 106 / 18%);
+}
+
+/* --------------------------------------------------------------------------
    19. Print
    -------------------------------------------------------------------------- */
 @media print {

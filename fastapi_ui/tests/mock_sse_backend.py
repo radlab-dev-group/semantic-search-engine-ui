@@ -6,8 +6,10 @@ response shapes as the real backend: {"status": True, "body": {...}} and
 {"status": False, "errors": [...]}.
 """
 
+import email.policy
 import json
 import threading
+from email.parser import BytesParser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -108,7 +110,8 @@ SEARCH_HISTORY = [
     },
 ]
 
-# CollectionOfDocumentsSerializer: id, name, display_name, description, created_on
+# CollectionOfDocumentsSerializer: id, name, display_name, description,
+# created_on, metadata_json (chunking declared on the collection; null = none)
 COLLECTIONS = [
     {
         "id": 1,
@@ -116,6 +119,10 @@ COLLECTIONS = [
         "display_name": "Moje dokumenty",
         "description": "Kolekcja użytkownika",
         "created_on": "2026-09-30T11:20:33.123456+02:00",
+        "metadata_json": {
+            "chunking": {"max_tokens_in_chunk": 512, "number_of_overlap_tokens": 32},
+            "strict_chunking": False,
+        },
     },
     {
         "id": 2,
@@ -123,8 +130,109 @@ COLLECTIONS = [
         "display_name": "",
         "description": "",
         "created_on": None,
+        "metadata_json": None,
+    },
+    {
+        "id": 3,
+        "name": "user_strict",
+        "display_name": "Sztywny podział",
+        "description": "Kolekcja z wymuszonym podziałem",
+        "created_on": "2026-10-01T08:00:00Z",
+        "metadata_json": {
+            "chunking": {"max_tokens_in_chunk": 256, "number_of_overlap_tokens": 0},
+            "strict_chunking": True,
+        },
     },
 ]
+
+# GET filter_options: what the engine uses for an undeclared collection
+CHUNKING_DEFAULTS = {"max_tokens_in_chunk": 500, "number_of_overlap_tokens": 0}
+
+# GET embedders / rerankers: "models" (names) plus "models_info"
+EMBEDDERS_INFO = [
+    {"name": "embedder-a", "vector_size": 768, "max_model_length": 512, "device": "cuda"},
+    {"name": "embedder-b", "vector_size": 1024, "max_model_length": None, "device": "cpu"},
+]
+RERANKERS_INFO = [{"name": "reranker-a", "max_model_length": 512, "device": "cuda"}]
+
+# errors[] of the engine (HTTP 200, status False), messages per language
+CHUNKING_ERRORS = {
+    "CHUNKING_TOO_LONG": {
+        "error_code": "000005_DATA",
+        "pl": "Chunk jest dłuższy niż maksymalna długość wejścia embedera.",
+        "en": "The chunk is longer than the maximum input length of the embedder.",
+    },
+    "CHUNKING_MISMATCH": {
+        "error_code": "000006_DATA",
+        "pl": "Parametry fragmentowania są niezgodne z ustawionymi dla kolekcji.",
+        "en": "Chunking settings differ from the ones of the collection.",
+    },
+}
+
+
+def _chunking_error(name, lang):
+    error = CHUNKING_ERRORS[name]
+    return {
+        "status": False,
+        "errors": [
+            {
+                "error_code": error["error_code"],
+                "message": error.get(lang if lang in ("pl", "en") else "pl"),
+            }
+        ],
+    }
+
+
+def _collection(name):
+    return next((c for c in COLLECTIONS if c["name"] == name), None)
+
+
+def _refused_chunking(collection_name, indexing_options, lang):
+    """Chunking checks of upload_and_index_files / add_and_index_texts."""
+    options = indexing_options
+    if isinstance(options, str):
+        try:
+            options = json.loads(options)
+        except ValueError:
+            options = {}
+    if not isinstance(options, dict):
+        options = {}
+    collection = _collection(collection_name) or {}
+    metadata = collection.get("metadata_json") or {}
+    declared = metadata.get("chunking") or CHUNKING_DEFAULTS
+    requested = options.get("max_tokens_in_chunk")
+    overlap = options.get("number_of_overlap_tokens")
+    if requested is None and overlap is None:
+        return None
+    if requested is None:
+        requested = declared["max_tokens_in_chunk"]
+    if overlap is None:
+        overlap = declared["number_of_overlap_tokens"]
+    if metadata.get("strict_chunking") and (
+        requested != declared["max_tokens_in_chunk"]
+        or overlap != declared["number_of_overlap_tokens"]
+    ):
+        return _chunking_error("CHUNKING_MISMATCH", lang)
+    if requested > EMBEDDERS_INFO[0]["max_model_length"]:
+        return _chunking_error("CHUNKING_TOO_LONG", lang)
+    return None
+
+
+def _multipart_fields(raw: bytes, content_type: str) -> dict:
+    """Text fields of a multipart/form-data body (file parts are skipped)."""
+    message = BytesParser(policy=email.policy.HTTP).parsebytes(
+        f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode("utf-8")
+        + raw
+    )
+    fields = {}
+    for part in message.iter_parts():
+        if part.get_filename():
+            continue
+        name = part.get_param("name", header="content-disposition")
+        if name:
+            fields[name] = part.get_payload(decode=True).decode("utf-8", "replace")
+    return fields
+
 
 # Documents of the collection with their use_in_search flag; GET documents
 # lists only the enabled ones, unless with_disabled=true is asked for
@@ -167,7 +275,13 @@ class MockHandler(BaseHTTPRequestHandler):
                     return parsed_json
             except Exception:
                 pass
-        return {"_raw": raw, "_content_type": content_type}
+        body = {"_raw": raw, "_content_type": content_type}
+        if content_type.startswith("multipart/form-data"):
+            try:
+                body.update(_multipart_fields(raw, content_type))
+            except Exception:
+                pass
+        return body
 
     def _route(self):
         parsed = urlparse(self.path)
@@ -229,9 +343,29 @@ class MockHandler(BaseHTTPRequestHandler):
                 _ok({"llama-8b": {"ctx": 4096}, "qwen-7b": {"ctx": 8192}})
             )
         if ep == "embedders":
-            return self._send(_ok({"models": ["embedder-a", "embedder-b"]}))
+            return self._send(
+                _ok(
+                    {
+                        "models": ["embedder-a", "embedder-b"],
+                        "models_info": EMBEDDERS_INFO,
+                    }
+                )
+            )
         if ep == "rerankers":
-            return self._send(_ok({"models": ["reranker-a"]}))
+            return self._send(
+                _ok({"models": ["reranker-a"], "models_info": RERANKERS_INFO})
+            )
+        if ep == "filter_options":
+            return self._send(
+                _ok(
+                    {
+                        "templates": {},
+                        "urls": [],
+                        "categories": ["a", "b"],
+                        "chunking_defaults": CHUNKING_DEFAULTS,
+                    }
+                )
+            )
         if ep == "categories":
             return self._send(_ok({"categories": ["b", "a", None, "c"]}))
         if ep == "documents":
@@ -269,8 +403,34 @@ class MockHandler(BaseHTTPRequestHandler):
                 return self._send({"token": "test-token-123"})
             return self._send({"detail": "Invalid credentials"}, status=401)
         if ep == "new_collection":
-            return self._send(_ok({"collection_id": 7}))
+            # Optional "chunking" (JSON string in the form) and strict_chunking
+            chunking = body.get("chunking")
+            if isinstance(chunking, str):
+                chunking = json.loads(chunking)
+            if not isinstance(chunking, dict):
+                chunking = dict(CHUNKING_DEFAULTS)
+            if chunking["max_tokens_in_chunk"] > EMBEDDERS_INFO[0]["max_model_length"]:
+                return self._send(
+                    _chunking_error("CHUNKING_TOO_LONG", body.get("lang"))
+                )
+            strict = str(body.get("strict_chunking", "false")).lower() == "true"
+            return self._send(
+                _ok(
+                    {
+                        "collection_id": 7,
+                        "chunking": chunking,
+                        "strict_chunking": strict,
+                    }
+                )
+            )
         if ep == "upload_and_index_files":
+            refused = _refused_chunking(
+                body.get("collection_name"),
+                body.get("indexing_options"),
+                body.get("lang"),
+            )
+            if refused is not None:
+                return self._send(refused)
             return self._send(_ok({"documents": 2, "indexed_chunks": 42}))
         if ep == "search_with_options":
             if body.get("collection_name") == "err_col":
@@ -352,6 +512,13 @@ class MockHandler(BaseHTTPRequestHandler):
                 )
             )
         if ep == "add_and_index_texts":
+            refused = _refused_chunking(
+                body.get("collection_name"),
+                body.get("indexing_options"),
+                body.get("lang"),
+            )
+            if refused is not None:
+                return self._send(refused)
             return self._send(_ok({"indexed_documents": 1, "indexed_chunks": 3}))
         return self._send(_ok({}))
 

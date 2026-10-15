@@ -20,10 +20,22 @@
         <dd class="mono">{{ uploaded.collection_name }}</dd>
         <dt>{{ t('upload.files') }}</dt>
         <dd>{{ t.plural('upload.files_count', uploaded.files) }}</dd>
-        <dt>{{ t('upload.tokens_per_chunk') }}</dt>
-        <dd>{{ uploaded.max_tokens_in_chunk }}</dd>
-        <dt>{{ t('upload.overlap_tokens') }}</dt>
-        <dd>{{ uploaded.number_of_overlap_tokens }}</dd>
+        {#- Without the chunk keys the texts were split as the collection declares -#}
+        {% if uploaded.chunking %}
+          <dt>{{ t('upload.tokens_per_chunk') }}</dt>
+          <dd>{{ uploaded.chunking.max_tokens_in_chunk }}</dd>
+          <dt>{{ t('upload.overlap_tokens') }}</dt>
+          <dd>{{ uploaded.chunking.number_of_overlap_tokens }}</dd>
+        {% else %}
+          <dt>{{ t('upload.chunking_legend') }}</dt>
+          <dd>
+            {% if active_coll_info and active_coll_info.chunking %}
+              {{ t('upload.chunking_collection') }}: {{ t('collections.chunking_summary', chunk=active_coll_info.chunking.max_tokens_in_chunk, overlap=active_coll_info.chunking.number_of_overlap_tokens) }}
+            {% else %}
+              {{ t('upload.chunking_collection') }}
+            {% endif %}
+          </dd>
+        {% endif %}
       </dl>
 
       <div class="btn-row">
@@ -71,6 +83,7 @@
 
             <div class="card card--subtle">
               {% set io_prefix = '' %}
+              {% set io_form = 'files' %}
               {% include "partials/indexing_options.html" %}
             </div>
           </div>
@@ -90,13 +103,15 @@
             <div class="card card--subtle">
               <p class="muted">{{ t('manage.add_method_text_desc') }}</p>
               <div class="form-row form-row--split">
+                {#- text_draft: the text typed before a refused indexing -#}
+                {% set draft = text_draft or {} %}
                 <div>
                   <label for="doc_filepath">{{ t('manage.doc_filepath') }}</label>
-                  <input type="text" id="doc_filepath" name="filepath" placeholder="{{ t('manage.doc_filepath_placeholder') }}" required value="doc_1.txt">
+                  <input type="text" id="doc_filepath" name="filepath" placeholder="{{ t('manage.doc_filepath_placeholder') }}" required value="{{ draft.filepath or 'doc_1.txt' }}">
                 </div>
                 <div>
                   <label for="doc_category">{{ t('manage.doc_category') }}</label>
-                  <input type="text" id="doc_category" name="category" placeholder="{{ t('manage.doc_category_placeholder') }}" list="categories_list">
+                  <input type="text" id="doc_category" name="category" placeholder="{{ t('manage.doc_category_placeholder') }}" list="categories_list" value="{{ draft.category or '' }}">
                   {% if categories %}
                     <datalist id="categories_list">
                       {% for cat in categories if cat %}
@@ -108,11 +123,12 @@
               </div>
 
               <label for="doc_content">{{ t('manage.doc_content') }}</label>
-              <textarea id="doc_content" name="page_content" rows="9" placeholder="{{ t('manage.doc_content_placeholder') }}" required></textarea>
+              <textarea id="doc_content" name="page_content" rows="9" placeholder="{{ t('manage.doc_content_placeholder') }}" required>{{ draft.page_content or '' }}</textarea>
             </div>
 
             <div class="card card--subtle">
               {% set io_prefix = 'text_' %}
+              {% set io_form = 'text' %}
               {% include "partials/indexing_options.html" %}
             </div>
           </div>

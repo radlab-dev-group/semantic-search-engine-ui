@@ -39,9 +39,9 @@ Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-conf
 | --- | --- |
 | `GET /home` | Strona główna z opisem projektu i schematem pipeline'u RAG |
 | `GET/POST /login`, `GET /logout` | Logowanie użytkownika (token Django `Authorization: Token ...`) i wylogowanie |
-| `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Baza wiedzy → Kolekcje**: lista kolekcji (`GET api/collections`), tworzenie nowej kolekcji oraz usuwanie kolekcji (`POST api/delete_collection`) |
+| `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Baza wiedzy → Kolekcje**: lista kolekcji (`GET api/collections`, z chunkingiem z `metadata_json`), tworzenie nowej kolekcji (`api/embedders` / `api/rerankers` z `models_info`, `api/filter_options` → `chunking_defaults`, opcjonalne `chunking` + `strict_chunking` w `POST api/new_collection`) oraz usuwanie kolekcji (`POST api/delete_collection`) |
 | `GET /collections/manage`, `POST /collections/manage/delete-*` | **Baza wiedzy → Dokumenty**: lista dokumentów kolekcji, usuwanie dokumentów (`api/delete_documents`), usuwanie chunków tekstu (`api/delete_texts`), włączanie/wyłączanie dokumentów w wyszukiwaniu (`POST /collections/manage/visibility` → `api/set_documents_use_in_search`) oraz usuwanie kolekcji |
-| `GET/POST /documents/upload`, `POST /collections/manage/add-text` | **Baza wiedzy → Dodaj treść**: upload plików (`pdf/docx/txt/html/md/zip`) z opcjami indeksowania albo wklejenie surowego tekstu (`api/add_and_index_texts`) |
+| `GET/POST /documents/upload`, `POST /collections/manage/add-text` | **Baza wiedzy → Dodaj treść**: upload plików (`pdf/docx/txt/html/md/zip`) z opcjami indeksowania albo wklejenie surowego tekstu (`api/add_and_index_texts`); klucze chunkingu w `indexing_options` są opcjonalne (domyślnie ustawienia kolekcji), błędy `000005_DATA` / `000006_DATA` wracają na formularz |
 | `GET/POST /search`, `POST /search/generate`, `POST /search/rate` | **Wyszukiwanie**: wyszukiwanie semantyczne/hybrydowe, odpowiedź generatywna (doczytywana asynchronicznie po wynikach) oraz ocenianie (gwiazdki i komentarz) |
 | `core/api.py` | Klient REST API backendu SSE |
 | `core/state_store.py` | Pamięciowy magazyn stanu sesji użytkownika |
@@ -132,8 +132,22 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   z zakładkami Kolekcje / Dokumenty / Dodaj treść i przełącznikiem kolekcji;
   wybrana kolekcja jest zapamiętywana w stanie sesji (`kb_collection`), więc
   przechodzenie między zakładkami jej nie gubi.
-  - **Kolekcje** jako karty (nazwa, opis, data, akcje Dokumenty / + / Szukaj,
-    usuwanie ikoną kosza).
+  - **Kolekcje** jako karty (nazwa, opis, data, zadeklarowany podział na
+    chunki z `metadata_json` — „512 tokenów · zakładka 32” plus odznaka
+    `strict`, albo „podział niezadeklarowany” gdy `metadata_json` jest `null`;
+    akcje Dokumenty / Dodaj treść / Szukaj, usuwanie ikoną kosza).
+  - **Nowa kolekcja**: oprócz modeli i typu indeksu karta „Podział na chunki”
+    (`max_tokens_in_chunk`, `number_of_overlap_tokens`, przełącznik
+    `strict_chunking`). Pola są wypełnione `chunking_defaults` z
+    `GET api/filter_options`; `chunking` trafia do `POST api/new_collection`
+    tylko wtedy, gdy użytkownik je zmienił (`app.js` ustawia ukryte
+    `chunking_edited`, serwer porównuje też z wartościami wyrenderowanymi w
+    formularzu). Opcje embedderów i rerankerów niosą `models_info`
+    (`data-max-length`, `data-vector-size`, `data-device`): sufit rozmiaru
+    chunka to `max_model_length` wybranego embedera (brak = bez sufitu), zakładka
+    musi mieścić się w `[0, chunk)`, a chunk ≥ `max_model_length` rerankera
+    daje tylko ostrzeżenie. Nic nie jest w kodzie zaszyte na sztywno — bez
+    `filter_options` pola są puste („wg silnika”).
   - **Dokumenty**: lista z filtrem i zaznaczaniem wielu pozycji, obok panel
     usuwania chunków po ID i strefa usunięcia kolekcji. Przy każdym dokumencie,
     obok kosza, jest przełącznik „W wyszukiwaniu” (`use_in_search`): wyłączony
@@ -146,7 +160,17 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
     będzie widać.
   - **Dodaj treść**: przełącznik „Wgraj pliki” (drag & drop + podgląd
     chunkowania pokazujący stosunek `overlap` do rozmiaru chunka) /
-    „Wklej tekst”.
+    „Wklej tekst”. Oba formularze (`partials/indexing_options.html`) mają
+    wybór `chunking_mode`: **Ustawienia kolekcji** (domyślnie — do
+    `indexing_options` nie trafiają klucze chunkingu, silnik dzieli tak, jak
+    deklaruje kolekcja albo wg swoich domyślnych) lub **Własne wartości**
+    (wysyłane są oba klucze). Przy kolekcji `strict` wybór własnych wartości od
+    razu ostrzega, że silnik odpowie `CHUNKING_MISMATCH`.
+  - **Błędy chunkingu silnika** (`errors[].error_code`, HTTP 200):
+    `000005_DATA` (CHUNKING_TOO_LONG) wraca na formularz z podświetlonym
+    polem/suwakiem rozmiaru chunka i komunikatem silnika (w języku UI, parametr
+    `lang`), `000006_DATA` (CHUNKING_MISMATCH) czyści nadpisanie i proponuje
+    wartości kolekcji; wklejony tekst nie ginie (`text_draft`).
 - **Usuwanie**: zamiast `confirm()` przeglądarki stylowany dialog
   (`<dialog id="confirm-dialog">` w `base.html`, atrybuty `data-confirm*` na
   formularzu lub przycisku) z listą usuwanych pozycji; usunięcie kolekcji

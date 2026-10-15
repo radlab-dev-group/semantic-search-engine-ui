@@ -922,6 +922,204 @@ function initChunkPreview() {
   });
 }
 
+/* ------------------------------------------- new collection: chunking */
+// The chunk size of a new collection is capped by max_model_length of the
+// chosen embedder (data-max-length of the <option>, empty = no known limit);
+// the overlap has to stay within [0, chunk). A chunk which does not fit the
+// reranker is only reported (the query shares that budget), never blocked.
+// Any edit of the two fields flags "chunking_edited", so that the server
+// sends "chunking" to the engine only when the defaults were touched.
+function modelOption(select) {
+  return select && select.value ? select.selectedOptions[0] : null;
+}
+
+function modelLimit(select) {
+  const option = modelOption(select);
+  const limit = option ? Number(option.dataset.maxLength) : NaN;
+  return option && option.dataset.maxLength !== "" && Number.isFinite(limit) && limit > 0
+    ? limit
+    : null;
+}
+
+function describeModel(select, target) {
+  if (!target) return;
+  const option = modelOption(select);
+  if (!option) {
+    target.textContent = "";
+    return;
+  }
+  const parts = [];
+  if (option.dataset.vectorSize) {
+    parts.push(t("model_vector", { n: option.dataset.vectorSize }, "vector {n}"));
+  }
+  const limit = modelLimit(select);
+  parts.push(
+    limit
+      ? t("model_max_length", { n: limit }, "max input {n} tokens")
+      : t("model_no_limit", {}, "no known length limit")
+  );
+  if (option.dataset.device) parts.push(option.dataset.device);
+  target.textContent = parts.join(" · ");
+}
+
+function initCollectionChunking() {
+  const form = document.querySelector("[data-collection-form]");
+  if (!form) return;
+  const embedder = form.querySelector("[data-model-select='embedder']");
+  const reranker = form.querySelector("[data-model-select='reranker']");
+  const chunk = form.querySelector("[data-chunk-size]");
+  const overlap = form.querySelector("[data-chunk-overlap]");
+  const edited = form.querySelector("[data-chunking-edited]");
+  const chunkMsg = form.querySelector("[data-chunk-msg]");
+  const overlapMsg = form.querySelector("[data-overlap-msg]");
+  const rerankerMsg = form.querySelector("[data-reranker-msg]");
+  const limitHint = form.querySelector("[data-chunk-limit]");
+  const defaultHint = limitHint ? limitHint.textContent : "";
+  if (!chunk || !overlap) return;
+
+  const setInvalid = (field, message, note) => {
+    field.classList.toggle("is-invalid", Boolean(message));
+    if (message) field.setAttribute("aria-invalid", "true");
+    else field.removeAttribute("aria-invalid");
+    field.setCustomValidity(message || "");
+    if (note) {
+      note.textContent = message || "";
+      note.hidden = !message;
+    }
+  };
+
+  const validate = () => {
+    const limit = modelLimit(embedder);
+    const model = embedder ? (modelOption(embedder)?.textContent || "").trim() : "";
+    // null = no ceiling: the attribute is dropped, not set to a magic number
+    if (limit) chunk.max = String(limit);
+    else chunk.removeAttribute("max");
+    if (limitHint) {
+      limitHint.textContent = limit
+        ? t("chunk_limit_hint", { model, n: limit }, "Ceiling for the embedder {model}: {n} tokens.")
+        : model
+          ? t("chunk_no_limit_hint", { model }, "The embedder {model} reports no length limit — no ceiling.")
+          : defaultHint;
+    }
+
+    const size = chunk.value === "" ? null : Number(chunk.value);
+    const over = overlap.value === "" ? null : Number(overlap.value);
+
+    let chunkError = "";
+    if (size !== null && limit && size > limit) {
+      chunkError = t("chunk_too_long", { n: limit, model }, "The chunk cannot exceed {n} tokens (max input of the embedder {model}).");
+    } else if (size !== null && (!Number.isFinite(size) || size < 1)) {
+      chunkError = t("chunk_size_error", {}, "The chunk size must be a whole number above 0.");
+    }
+    setInvalid(chunk, chunkError, chunkMsg);
+
+    let overlapError = "";
+    if (size !== null && size >= 1) {
+      overlap.max = String(size - 1);
+      if (over !== null && !(over >= 0 && over < size)) {
+        overlapError = t("chunk_overlap_error", { n: size - 1 }, "The overlap must be a number from 0 to {n}.");
+      }
+    } else {
+      overlap.removeAttribute("max");
+      if (over !== null && over < 0) {
+        overlapError = t("chunk_overlap_error", { n: 0 }, "The overlap must be a number from 0 to {n}.");
+      }
+    }
+    setInvalid(overlap, overlapError, overlapMsg);
+
+    // Soft warning only: a chunk at or above the reranker input is truncated
+    // there, the engine still accepts it
+    if (rerankerMsg) {
+      const rerankLimit = modelLimit(reranker);
+      const rerankModel = reranker ? (modelOption(reranker)?.textContent || "").trim() : "";
+      const warn = size !== null && rerankLimit && size >= rerankLimit;
+      rerankerMsg.hidden = !warn;
+      rerankerMsg.textContent = warn
+        ? t(
+            "chunk_reranker_warning",
+            { chunk: size, model: rerankModel, n: rerankLimit },
+            "A chunk of {chunk} tokens does not fit the reranker {model} (limit {n} tokens)."
+          )
+        : "";
+    }
+  };
+
+  const describe = () => {
+    describeModel(embedder, form.querySelector("[data-model-info='embedder']"));
+    describeModel(reranker, form.querySelector("[data-model-info='reranker']"));
+  };
+
+  [chunk, overlap].forEach((field) => {
+    field.addEventListener("input", () => {
+      if (edited) edited.value = "1";
+      validate();
+    });
+  });
+  [embedder, reranker].forEach((select) => {
+    if (!select) return;
+    select.addEventListener("change", () => {
+      describe();
+      validate();
+    });
+  });
+  // Browser validation bubbles would hide the inline notes: keep both
+  form.addEventListener("submit", (event) => {
+    validate();
+    if (!chunk.checkValidity() || !overlap.checkValidity()) {
+      event.preventDefault();
+      (chunk.checkValidity() ? overlap : chunk).focus();
+    }
+  });
+  describe();
+  validate();
+}
+
+/* ----------------------------------------------- indexing: chunking mode */
+// "Collection settings" leaves the chunk keys out of indexing_options (the
+// engine then uses what the collection declares); "custom" enables the
+// sliders and sends both keys. On a strict collection the custom choice shows
+// up front that the engine will answer with CHUNKING_MISMATCH.
+function initChunkingMode() {
+  document.querySelectorAll("[data-chunk-mode]").forEach((mode) => {
+    const form = mode.closest("form") || document;
+    const fields = form.querySelector("[data-chunk-fields]");
+    const sliders = fields
+      ? Array.from(fields.querySelectorAll("input[type='range']"))
+      : [];
+    const warning = mode.querySelector("[data-strict-warning]");
+    const radios = Array.from(mode.querySelectorAll("input[name='chunking_mode']"));
+    if (!radios.length) return;
+
+    const reference = {
+      max_tokens_in_chunk: mode.dataset.refChunk,
+      number_of_overlap_tokens: mode.dataset.refOverlap,
+    };
+
+    const apply = () => {
+      const custom = radios.some((radio) => radio.checked && radio.value === "custom");
+      if (fields) fields.classList.toggle("is-locked", !custom);
+      sliders.forEach((slider) => {
+        slider.disabled = !custom;
+        // Back to the collection settings: the sliders show them again
+        if (!custom && reference[slider.name] !== undefined && reference[slider.name] !== "") {
+          slider.value = reference[slider.name];
+          slider.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      });
+      if (warning) warning.hidden = !custom;
+      // The refused value is no longer shown once the user changes the mode
+      if (fields && !custom) {
+        fields.querySelectorAll(".is-invalid").forEach((row) => row.classList.remove("is-invalid"));
+        fields.querySelectorAll("[aria-invalid]").forEach((el) => el.removeAttribute("aria-invalid"));
+        const note = fields.querySelector("[data-too-long-note]");
+        if (note) note.hidden = true;
+      }
+    };
+    radios.forEach((radio) => radio.addEventListener("change", apply));
+    apply();
+  });
+}
+
 /* ------------------------------------------------------- example queries */
 function initExamples() {
   const question = document.getElementById("question");
@@ -1487,6 +1685,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initFileSummary();
   initDropzone();
   initChunkPreview();
+  initChunkingMode();
+  initCollectionChunking();
   initExamples();
   initConditionalFields();
   initFormBusyStates();

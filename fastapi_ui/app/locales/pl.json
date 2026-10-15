@@ -176,7 +176,26 @@
     "cancel": "Anuluj",
     "created": "Kolekcja została utworzona. Dodaj dokumenty, aby zacząć wyszukiwać.",
     "documents": "Dokumenty",
-    "deleted_note": "Usunięto wszystkie jej dokumenty, fragmenty tekstu i wektory."
+    "deleted_note": "Usunięto wszystkie jej dokumenty, fragmenty tekstu i wektory.",
+    "chunking_title": "Podział tekstów kolekcji na chunki",
+    "chunking_summary": "{chunk} tokenów · zakładka {overlap}",
+    "chunking_undeclared": "podział niezadeklarowany",
+    "strict_badge": "strict",
+    "strict_badge_title": "Kolekcja wymusza swój podział — indeksowanie z innymi wartościami zostanie odrzucone (CHUNKING_MISMATCH)",
+    "field_chunking": "Podział na chunki",
+    "chunking_engine_defaults": "domyślne ustawienia silnika",
+    "chunking": "Podział na chunki",
+    "chunking_lead": "Jak teksty tej kolekcji będą dzielone na fragmenty (chunki) przed zamianą na wektory. Pola są wypełnione domyślnymi wartościami silnika — zmień je, aby zadeklarować własny podział.",
+    "chunk_size": "Maks. liczba tokenów w chunku",
+    "chunk_overlap": "Tokeny zakładki (overlap)",
+    "chunk_placeholder": "wg silnika",
+    "chunk_default_hint": "Domyślnie silnik dzieli teksty na chunki po {n} tokenów. Sufit wyznacza maksymalne wejście wybranego embedera.",
+    "chunk_default_unknown": "Nie udało się pobrać domyślnych ustawień silnika — puste pola oznaczają jego domyślny podział.",
+    "chunk_overlap_hint": "Liczba tokenów powtarzanych między sąsiednimi chunkami; musi być mniejsza niż rozmiar chunka.",
+    "chunking_too_long": "Chunk jest dłuższy niż maksymalne wejście wybranego embedera — zmniejsz rozmiar chunka albo wybierz inny model.",
+    "chunking_overlap_error": "Zakładka musi mieścić się w przedziale od 0 do rozmiaru chunka (wyłącznie).",
+    "strict_chunking": "Rygorystyczny podział (strict)",
+    "strict_chunking_desc": "Indeksowanie z innymi wartościami niż zadeklarowane zostanie odrzucone przez silnik (CHUNKING_MISMATCH)."
   },
   "manage": {
     "title": "SSE - zarządzanie kolekcją",
@@ -316,7 +335,18 @@
     "methods_label": "Sposób dodania treści",
     "method_files": "Wgraj pliki",
     "method_text": "Wklej tekst",
-    "see_documents": "Zobacz dokumenty"
+    "see_documents": "Zobacz dokumenty",
+    "chunking_legend": "Podział na chunki",
+    "chunking_collection": "Ustawienia kolekcji",
+    "chunking_undeclared_defaults": "kolekcja nie deklaruje podziału — silnik użyje domyślnych: {chunk} tokenów · zakładka {overlap}",
+    "chunking_undeclared": "kolekcja nie deklaruje podziału — silnik użyje swoich domyślnych wartości",
+    "chunking_custom": "Własne wartości",
+    "chunking_custom_desc": "Do silnika trafią oba parametry: rozmiar chunka i zakładka.",
+    "chunking_strict_warning": "Ta kolekcja wymusza swój podział (strict) — indeksowanie z innymi wartościami zakończy się błędem CHUNKING_MISMATCH.",
+    "chunking_mismatch_restored": "Silnik odrzucił własne wartości (CHUNKING_MISMATCH). Przywrócono ustawienia kolekcji: {chunk} tokenów · zakładka {overlap}.",
+    "chunking_mismatch_restored_defaults": "Silnik odrzucił własne wartości (CHUNKING_MISMATCH). Przywrócono ustawienia kolekcji.",
+    "chunking_too_long_hint": "Zmniejsz rozmiar chunka — przekracza maksymalne wejście embedera tej kolekcji (CHUNKING_TOO_LONG).",
+    "chunking_refused": "Silnik odrzucił parametry podziału na chunki."
   },
   "search": {
     "title": "SSE - wyszukiwarka semantyczna",
@@ -595,6 +625,15 @@
       "many": "zaznaczono {n}",
       "other": "zaznaczono {n}"
     },
-    "visibility_failed": "Nie udało się zmienić dokumentu — spróbuj ponownie."
+    "visibility_failed": "Nie udało się zmienić dokumentu — spróbuj ponownie.",
+    "model_vector": "wektor {n}",
+    "model_max_length": "maks. wejście {n} tokenów",
+    "model_no_limit": "brak znanego limitu długości",
+    "chunk_limit_hint": "Sufit dla embedera {model}: {n} tokenów.",
+    "chunk_no_limit_hint": "Embedder {model} nie zgłasza limitu długości — brak sufitu.",
+    "chunk_too_long": "Chunk nie może przekraczać {n} tokenów (maks. wejście embedera {model}).",
+    "chunk_overlap_error": "Zakładka musi być liczbą od 0 do {n} (mniejszą niż rozmiar chunka).",
+    "chunk_reranker_warning": "Chunk o długości {chunk} nie zmieści się w rerankerze {model} (limit {n} tokenów dla pary zapytanie + tekst) — reranking zobaczy tylko początek każdego chunka.",
+    "chunk_size_error": "Rozmiar chunka musi być liczbą całkowitą większą od 0."
   }
 }

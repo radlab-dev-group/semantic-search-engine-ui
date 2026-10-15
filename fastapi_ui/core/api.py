@@ -7,8 +7,9 @@ The backend API contract:
 - new_collection:     POST {host}/api/new_collection     form: collection params
 - collections:        GET  {host}/api/collections
 - generative_models:  GET  {host}/api/generative_models
-- embedders:          GET  {host}/api/embedders
-- rerankers:          GET  {host}/api/rerankers
+- embedders:          GET  {host}/api/embedders     (models + models_info)
+- rerankers:          GET  {host}/api/rerankers     (models + models_info)
+- filter_options:     GET  {host}/api/filter_options (incl. chunking_defaults)
 - categories:         GET  {host}/api/categories?collection_name=...
 - documents:          GET  {host}/api/documents?collection_name=...
 - search_with_options:POST {host}/api/search_with_options
@@ -206,6 +207,9 @@ class SemanticSearchEngineAPI(BaseApiInterface):
                     "set_documents_use_in_search", "api/set_documents_use_in_search"
                 )
             )
+            self.filter_options = api_config.semantic_search_engine_endpoints.get(
+                "filter_options", "api/filter_options"
+            )
 
     def __init__(self, config_path: str = "configs/ui-configuration.json"):
         self._api_config = ApiConfiguration(config_path=config_path)
@@ -214,13 +218,30 @@ class SemanticSearchEngineAPI(BaseApiInterface):
 
         super().__init__(api_host=self._api_host, login_ep=self._engine_ep.login)
 
-    def new_collection(self, token: str, collection_params: dict):
+    def new_collection(
+        self, token: str, collection_params: dict, lang: str | None = None
+    ):
+        """Create a collection.
+
+        ``collection_params`` may carry the optional ``chunking`` (a dict with
+        ``max_tokens_in_chunk`` / ``number_of_overlap_tokens``) and
+        ``strict_chunking``; the engine accepts them as a JSON string and a
+        boolean string respectively in the form payload. ``lang`` selects the
+        language of the error messages of the engine.
+        """
+        data = dict(collection_params)
+        if isinstance(data.get("chunking"), dict):
+            data["chunking"] = json.dumps(data["chunking"])
+        if isinstance(data.get("strict_chunking"), bool):
+            data["strict_chunking"] = "true" if data["strict_chunking"] else "false"
+        if lang:
+            data["lang"] = lang
         response = self.general_call_post(
             token=token,
             api_call_url=self._api_host,
             api_function=self._engine_ep.new_collection,
             params=None,
-            data=collection_params,
+            data=data,
         )
         return response
 
@@ -230,19 +251,23 @@ class SemanticSearchEngineAPI(BaseApiInterface):
         files_to_upload: list,
         collection_name: str,
         indexing_options: dict,
+        lang: str | None = None,
     ) -> list | None:
         upl_files = self._prepare_files_to_upload(files_to_upload)
         if not len(upl_files):
             return None
+        data = {
+            "collection_name": collection_name,
+            "indexing_options": json.dumps(indexing_options),
+        }
+        if lang:
+            data["lang"] = lang
         response = self.general_call_post(
             token=token,
             api_call_url=self._api_host,
             api_function=self._engine_ep.upload_and_index_files,
             params=None,
-            data={
-                "collection_name": collection_name,
-                "indexing_options": json.dumps(indexing_options),
-            },
+            data=data,
             files=upl_files,
         )
         return response
@@ -267,7 +292,25 @@ class SemanticSearchEngineAPI(BaseApiInterface):
         )
         return response
 
-    def embedders(self, token: str):
+    @staticmethod
+    def _models(response, with_info: bool):
+        """``models`` of an embedders / rerankers answer, or the whole
+        ``{"models", "models_info"}`` body when ``with_info`` is set.
+
+        ``models_info`` (name, max_model_length, vector_size, device) is
+        emitted by newer engines only, so it defaults to an empty list.
+        """
+        if "body" in response and "models" in response["body"]:
+            if not with_info:
+                return response["body"]["models"]
+            info = response["body"].get("models_info")
+            return {
+                "models": response["body"]["models"],
+                "models_info": info if isinstance(info, list) else [],
+            }
+        return response
+
+    def embedders(self, token: str, with_info: bool = False):
         response = self.general_call_get(
             token=token,
             api_call_url=self._api_host,
@@ -275,11 +318,9 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             params=None,
             data=None,
         )
-        if "body" in response and "models" in response["body"]:
-            return response["body"]["models"]
-        return response
+        return self._models(response, with_info)
 
-    def rerankers(self, token: str):
+    def rerankers(self, token: str, with_info: bool = False):
         response = self.general_call_get(
             token=token,
             api_call_url=self._api_host,
@@ -287,8 +328,18 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             params=None,
             data=None,
         )
-        if "body" in response and "models" in response["body"]:
-            return response["body"]["models"]
+        return self._models(response, with_info)
+
+    def filter_options(self, token: str):
+        """Filtering options of the organisation; ``body.chunking_defaults``
+        holds the chunking the engine uses when a collection declares none."""
+        response = self.general_call_get(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.filter_options,
+            params=None,
+            data=None,
+        )
         return response
 
     def list_categories_from_collection(self, token: str, collection_name: str):
@@ -476,18 +527,22 @@ class SemanticSearchEngineAPI(BaseApiInterface):
         collection_name: str,
         texts: list[dict],
         indexing_options: dict,
+        lang: str | None = None,
     ):
         """Add and index text document(s) directly into collection."""
+        payload: dict = {
+            "collection_name": collection_name,
+            "texts[]": texts,
+            "indexing_options": indexing_options,
+        }
+        if lang:
+            payload["lang"] = lang
         response = self.general_call_post(
             token=token,
             api_call_url=self._api_host,
             api_function=self._engine_ep.add_and_index_texts,
             params=None,
-            json_data={
-                "collection_name": collection_name,
-                "texts[]": texts,
-                "indexing_options": indexing_options,
-            },
+            json_data=payload,
         )
         return response
 

@@ -174,7 +174,26 @@
     "cancel": "Cancel",
     "created": "Collection has been created. Add documents to start searching.",
     "documents": "Documents",
-    "deleted_note": "All its documents, text chunks and vectors were removed."
+    "deleted_note": "All its documents, text chunks and vectors were removed.",
+    "chunking_title": "How the texts of the collection are split into chunks",
+    "chunking_summary": "{chunk} tokens · overlap {overlap}",
+    "chunking_undeclared": "chunking not declared",
+    "strict_badge": "strict",
+    "strict_badge_title": "The collection enforces its own chunking — indexing with other values is refused (CHUNKING_MISMATCH)",
+    "field_chunking": "Chunking",
+    "chunking_engine_defaults": "engine defaults",
+    "chunking": "Chunking",
+    "chunking_lead": "How the texts of this collection are split into fragments (chunks) before they become vectors. The fields hold the defaults of the engine — change them to declare your own chunking.",
+    "chunk_size": "Max. tokens per chunk",
+    "chunk_overlap": "Overlap tokens",
+    "chunk_placeholder": "engine default",
+    "chunk_default_hint": "By default the engine splits texts into chunks of {n} tokens. The ceiling is the maximum input of the chosen embedder.",
+    "chunk_default_unknown": "The defaults of the engine could not be fetched — empty fields mean its default chunking.",
+    "chunk_overlap_hint": "Tokens repeated between neighbouring chunks; must be smaller than the chunk size.",
+    "chunking_too_long": "The chunk is longer than the maximum input of the chosen embedder — make it smaller or pick another model.",
+    "chunking_overlap_error": "The overlap must be within 0 and the chunk size (exclusive).",
+    "strict_chunking": "Strict chunking",
+    "strict_chunking_desc": "Indexing with values other than the declared ones is refused by the engine (CHUNKING_MISMATCH)."
   },
   "manage": {
     "title": "SSE - manage collection",
@@ -298,7 +317,18 @@
     "methods_label": "How to add content",
     "method_files": "Upload files",
     "method_text": "Paste text",
-    "see_documents": "See documents"
+    "see_documents": "See documents",
+    "chunking_legend": "Chunking",
+    "chunking_collection": "Collection settings",
+    "chunking_undeclared_defaults": "the collection declares no chunking — the engine uses its defaults: {chunk} tokens · overlap {overlap}",
+    "chunking_undeclared": "the collection declares no chunking — the engine uses its own defaults",
+    "chunking_custom": "Custom values",
+    "chunking_custom_desc": "Both parameters are sent to the engine: chunk size and overlap.",
+    "chunking_strict_warning": "This collection enforces its own chunking (strict) — indexing with other values fails with CHUNKING_MISMATCH.",
+    "chunking_mismatch_restored": "The engine refused the custom values (CHUNKING_MISMATCH). Collection settings restored: {chunk} tokens · overlap {overlap}.",
+    "chunking_mismatch_restored_defaults": "The engine refused the custom values (CHUNKING_MISMATCH). Collection settings restored.",
+    "chunking_too_long_hint": "Make the chunk smaller — it exceeds the maximum input of the embedder of this collection (CHUNKING_TOO_LONG).",
+    "chunking_refused": "The engine refused the chunking parameters."
   },
   "search": {
     "title": "SSE - semantic search engine",
@@ -551,6 +581,15 @@
       "one": "{n} selected",
       "other": "{n} selected"
     },
-    "visibility_failed": "Could not change the document — try again."
+    "visibility_failed": "Could not change the document — try again.",
+    "model_vector": "vector {n}",
+    "model_max_length": "max input {n} tokens",
+    "model_no_limit": "no known length limit",
+    "chunk_limit_hint": "Ceiling for the embedder {model}: {n} tokens.",
+    "chunk_no_limit_hint": "The embedder {model} reports no length limit — no ceiling.",
+    "chunk_too_long": "The chunk cannot exceed {n} tokens (max input of the embedder {model}).",
+    "chunk_overlap_error": "The overlap must be a number from 0 to {n} (smaller than the chunk size).",
+    "chunk_reranker_warning": "A chunk of {chunk} tokens does not fit the reranker {model} (limit {n} tokens for a query + text pair) — reranking sees only the beginning of every chunk.",
+    "chunk_size_error": "The chunk size must be a whole number above 0."
   }
 }

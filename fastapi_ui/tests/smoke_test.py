@@ -239,6 +239,303 @@ def check_i18n(client) -> None:
     client.cookies.delete("sse_lang")
 
 
+def check_chunking(client) -> None:
+    """Chunking of the engine: new collection form, collection cards,
+    indexing with the settings of the collection, refused chunking."""
+    # --- New collection form ------------------------------------------- #
+    page = client.get("/collections").text
+    check(
+        "new collection form carries models_info on the model options",
+        'data-max-length="512" data-vector-size="768" data-device="cuda">embedder-a'
+        in page
+        and 'data-max-length="" data-vector-size="1024" data-device="cpu">embedder-b'
+        in page
+        and 'data-max-length="512" data-device="cuda">reranker-a' in page,
+        "",
+    )
+    check(
+        "new collection form is prefilled with chunking_defaults of the engine",
+        'name="max_tokens_in_chunk" inputmode="numeric" min="1" step="1" value="500"'
+        in page
+        and 'name="number_of_overlap_tokens" inputmode="numeric" min="0" step="1" value="0"'
+        in page
+        and 'name="chunking_default_max" value="500"' in page
+        and 'name="chunking_default_overlap" value="0"' in page
+        and 'name="chunking_edited" value="0"' in page
+        and 'name="strict_chunking"' in page,
+        "",
+    )
+    check(
+        "collection cards show the declared chunking and the strict badge",
+        "512 tokens · overlap 32" in page
+        and "256 tokens · overlap 0" in page
+        and page.count('class="badge badge--strict"') == 1
+        and 'class="collection__chunking is-undeclared"' in page
+        and "chunking not declared" in page,
+        "",
+    )
+
+    # Untouched defaults: no "chunking" in the request, strict off
+    response = client.post(
+        "/collections/new",
+        data={
+            "collection_name": "plain",
+            "collection_display_name": "Plain",
+            "embedder_index_type": "HNSW",
+            "embedder_model": "embedder-a",
+            "re_ranker_model": "reranker-a",
+            "max_tokens_in_chunk": "500",
+            "number_of_overlap_tokens": "0",
+            "chunking_default_max": "500",
+            "chunking_default_overlap": "0",
+            "chunking_edited": "0",
+        },
+    )
+    sent = last_request("POST", "api/new_collection").get("body", {})
+    check(
+        "untouched chunking defaults are not sent to the engine",
+        response.status_code == 200
+        and "chunking" not in sent
+        and sent.get("strict_chunking") == "false"
+        and sent.get("lang") == "en",
+        str(sent),
+    )
+    summary = re.search(r'<dl class="kv">.*?</dl>', response.text, re.S)
+    summary = summary.group(0) if summary else ""
+    check(
+        "created collection summary shows the chunking the engine answered with",
+        "500 tokens · overlap 0" in summary
+        and 'class="badge badge--strict"' not in summary,
+        summary,
+    )
+
+    # Edited chunking + strict: both go to the engine
+    response = client.post(
+        "/collections/new",
+        data={
+            "collection_name": "custom",
+            "collection_display_name": "Custom",
+            "embedder_index_type": "HNSW",
+            "embedder_model": "embedder-a",
+            "re_ranker_model": "reranker-a",
+            "max_tokens_in_chunk": "400",
+            "number_of_overlap_tokens": "40",
+            "strict_chunking": "on",
+            "chunking_default_max": "500",
+            "chunking_default_overlap": "0",
+            "chunking_edited": "1",
+        },
+    )
+    sent = last_request("POST", "api/new_collection").get("body", {})
+    check(
+        "edited chunking is sent as a JSON object with strict_chunking",
+        json.loads(sent.get("chunking", "{}"))
+        == {"max_tokens_in_chunk": 400, "number_of_overlap_tokens": 40}
+        and sent.get("strict_chunking") == "true",
+        str(sent),
+    )
+    summary = re.search(r'<dl class="kv">.*?</dl>', response.text, re.S)
+    summary = summary.group(0) if summary else ""
+    check(
+        "created collection summary shows chunking and the strict badge",
+        "400 tokens · overlap 40" in summary
+        and 'class="badge badge--strict"' in summary,
+        summary,
+    )
+
+    # Overlap outside [0, chunk): refused by the UI, nothing sent
+    before = len(REQUEST_LOG)
+    response = client.post(
+        "/collections/new",
+        data={
+            "collection_name": "bad",
+            "collection_display_name": "Bad",
+            "embedder_index_type": "HNSW",
+            "embedder_model": "embedder-a",
+            "re_ranker_model": "reranker-a",
+            "max_tokens_in_chunk": "100",
+            "number_of_overlap_tokens": "100",
+            "chunking_edited": "1",
+        },
+    )
+    check(
+        "overlap not smaller than the chunk is refused before the engine",
+        response.status_code == 200
+        and "The overlap must be within 0 and the chunk size" in response.text
+        and 'value="100" placeholder="engine default" data-chunk-overlap class="is-invalid" aria-invalid="true"'
+        in response.text
+        and not any(
+            entry["path"].endswith("new_collection") for entry in REQUEST_LOG[before:]
+        ),
+        "",
+    )
+
+    # CHUNKING_TOO_LONG (000005_DATA) of the engine: chunk field marked
+    response = client.post(
+        "/collections/new",
+        data={
+            "collection_name": "long",
+            "collection_display_name": "Long",
+            "collection_description": "opis",
+            "embedder_index_type": "HNSW",
+            "embedder_model": "embedder-a",
+            "re_ranker_model": "reranker-a",
+            "max_tokens_in_chunk": "600",
+            "number_of_overlap_tokens": "0",
+            "chunking_edited": "1",
+        },
+    )
+    check(
+        "000005_DATA on a new collection highlights the chunk size",
+        response.status_code == 200
+        and "The chunk is longer than the maximum input length of the embedder."
+        in response.text
+        and 'value="600" placeholder="engine default" data-chunk-size class="is-invalid" aria-invalid="true"'
+        in response.text
+        and 'class="card card--subtle chunking-card has-error"' in response.text
+        and 'name="collection_name" value="long"' in response.text
+        and ">opis</textarea>" in response.text
+        and 'name="chunking_edited" value="1"' in response.text,
+        response.text[:300],
+    )
+
+    # --- Indexing: settings of the collection vs. custom values --------- #
+    page = client.get("/documents/upload?collection_name=user_col").text
+    check(
+        "indexing forms default to the chunking of the collection",
+        page.count('name="chunking_mode" value="collection" checked') == 2
+        and page.count("512 tokens · overlap 32") == 2
+        and page.count('data-ref-chunk="512"') == 2
+        and page.count('class="chunk-fields is-locked"') == 2
+        and 'name="max_tokens_in_chunk" min="10" max="1000" step="1"\n           value="512"\n           disabled'
+        in page,
+        "",
+    )
+    page = client.get("/documents/upload?collection_name=user_kol").text
+    check(
+        "an undeclared collection shows the defaults of the engine",
+        "the collection declares no chunking — the engine uses its defaults: 500 tokens · overlap 0"
+        in page
+        and 'data-ref-chunk="500"' in page,
+        "",
+    )
+    page = client.get("/documents/upload?collection_name=user_strict").text
+    check(
+        "a strict collection warns that custom values give CHUNKING_MISMATCH",
+        page.count('class="chunk-mode is-strict"') == 2
+        and page.count("data-strict-warning hidden") == 2
+        and "fails with CHUNKING_MISMATCH" in page
+        and 'class="badge badge--strict"' in page,
+        "",
+    )
+
+    response = client.post(
+        "/documents/upload",
+        data={
+            "collection_name": "user_col",
+            "chunking_mode": "collection",
+            "clear_text": "on",
+            "max_tokens_in_chunk": "512",
+            "number_of_overlap_tokens": "32",
+        },
+        files=[("files[]", ("a.pdf", b"PDF-A", "application/pdf"))],
+    )
+    options = json.loads(
+        last_request("POST", "api/upload_and_index_files")
+        .get("body", {})
+        .get("indexing_options", "{}")
+    )
+    check(
+        "collection mode sends indexing_options without the chunk keys",
+        response.status_code == 200
+        and "max_tokens_in_chunk" not in options
+        and "number_of_overlap_tokens" not in options
+        and options.get("clear_text") is True
+        and "prepare_proper_pages" in options
+        and "Collection settings: 512 tokens · overlap 32" in response.text,
+        str(options),
+    )
+    response = client.post(
+        "/documents/upload",
+        data={
+            "collection_name": "user_col",
+            "chunking_mode": "custom",
+            "max_tokens_in_chunk": "300",
+            "number_of_overlap_tokens": "30",
+        },
+        files=[("files[]", ("a.pdf", b"PDF-A", "application/pdf"))],
+    )
+    options = json.loads(
+        last_request("POST", "api/upload_and_index_files")
+        .get("body", {})
+        .get("indexing_options", "{}")
+    )
+    check(
+        "custom mode sends both chunk keys",
+        options.get("max_tokens_in_chunk") == 300
+        and options.get("number_of_overlap_tokens") == 30
+        and ">300</dd>" in response.text,
+        str(options),
+    )
+
+    # CHUNKING_MISMATCH (000006_DATA): back to the settings of the collection
+    response = client.post(
+        "/documents/upload",
+        data={
+            "collection_name": "user_strict",
+            "chunking_mode": "custom",
+            "max_tokens_in_chunk": "300",
+            "number_of_overlap_tokens": "30",
+        },
+        files=[("files[]", ("a.pdf", b"PDF-A", "application/pdf"))],
+    )
+    files_form = response.text.split('id="panel-add-text"')[0]
+    check(
+        "000006_DATA clears the override and proposes the collection values",
+        response.status_code == 200
+        and "Chunking settings differ from the ones of the collection." in response.text
+        and 'name="chunking_mode" value="collection" checked' in files_form
+        and "Collection settings restored: 256 tokens · overlap 0" in files_form
+        and 'data-ref-chunk="256"' in files_form
+        and 'class="tab-panel is-active" role="tabpanel" id="panel-add-files"'
+        in response.text,
+        response.text[:300],
+    )
+
+    # CHUNKING_TOO_LONG (000005_DATA) on pasted text: slider marked, text kept
+    response = client.post(
+        "/collections/manage/add-text",
+        data={
+            "collection_name": "user_col",
+            "filepath": "long.txt",
+            "category": "notes",
+            "page_content": "Tekst do zaindeksowania",
+            "chunking_mode": "custom",
+            "max_tokens_in_chunk": "600",
+            "number_of_overlap_tokens": "0",
+        },
+    )
+    sent = last_request("POST", "api/add_and_index_texts").get("body", {})
+    text_form = response.text.split('id="panel-add-text"')[1]
+    check(
+        "000005_DATA on indexing highlights the chunk slider and keeps the text",
+        response.status_code == 200
+        and sent.get("lang") == "en"
+        and "The chunk is longer than the maximum input length of the embedder."
+        in response.text
+        and 'class="field-slider is-invalid"' in text_form
+        and 'name="chunking_mode" value="custom" checked' in text_form
+        and 'value="600"' in text_form
+        and "data-too-long-note" in text_form
+        and ">Tekst do zaindeksowania</textarea>" in text_form
+        and 'value="long.txt"' in text_form
+        and 'class="tab-panel is-active" role="tabpanel" id="panel-add-text"'
+        in response.text
+        and 'class="field-slider is-invalid"' not in response.text.split('id="panel-add-text"')[0],
+        response.text[:300],
+    )
+
+
 def main() -> int:
     with TestClient(server.app) as client:
         # --- Login page / auth guard --------------------------------------- #
@@ -745,6 +1042,9 @@ def main() -> int:
             '<option value="user_col" selected>' in response.text,
             "",
         )
+
+        check_chunking(client)
+
         response = client.get("/search?collection_name=user_col")
         check(
             "search page preselects the collection from the query string",
