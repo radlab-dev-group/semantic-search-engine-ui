@@ -43,7 +43,8 @@ Konfiguracja hostów/endpointów backendu to ten sam plik co w wersji Streamlit:
 | --- | --- | --- |
 | `Home.py` | `GET /home` | Strona główna z opisem projektu |
 | `pages/0_Login.py` | `GET/POST /login`, `GET /logout` | Logowanie (token Django `Authorization: Token ...`) |
-| `pages/1_New_Collection.py` | `GET /collections`, `POST /collections/new` | **Lista kolekcji** (`GET api/collections`, odpowiednik `SSEClient.list_collections()`) + tworzenie kolekcji (embedder, reranker, typ indeksu) |
+| `pages/1_New_Collection.py` | `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Lista kolekcji** (`GET api/collections`, odpowiednik `SSEClient.list_collections()`) + tworzenie kolekcji + usuwanie kolekcji (`POST api/delete_collection`) |
+| — | `GET /collections/manage`, `POST /collections/manage/*` | **Zarządzanie kolekcją**: dodawanie dokumentów tekstowych (`api/add_and_index_texts`), usuwanie dokumentów (`api/delete_documents`), usuwanie chunków tekstu (`api/delete_texts`) oraz usuwanie kolekcji |
 | `pages/2_Upload_Documents.py` | `GET/POST /documents/upload` | Upload `pdf/docx/txt/html/md/zip` + opcje indeksowania |
 | `pages/3_Semantic_Search_Engine.py` | `GET/POST /search`, `POST /search/generate`, `POST /search/rate` | Wyszukiwanie + odpowiedź generatywna (doczytywana po wynikach) + ocenianie (gwiazdki) |
 | `pages/4_Conversational_Search.py` | — | **Wycofane**: zakładka Chat nie istnieje w tej aplikacji |
@@ -139,7 +140,8 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
 - **Wyszukiwanie**: wyróżniona „konsola zapytania”, przykładowe pytania jako
   klikalne chipy, panel parametrów w przyklejonym (sticky) sidebarze
   (`partials/search_params.html`: zwijane grupy Kolekcja / Modele / Filtry z
-  podsumowaniem w nagłówku, opcje jako kafelki z opisem, licznik wyników
+  podsumowaniem w nagłówku, opcje jako kafelki z opisem — w tym przełącznik
+  wyszukiwania hybrydowego `hybrid_search` i rerankingu, licznik wyników
   z −/+ i szybkim wyborem, suwaki z opisem i oznaczeniem wartości innych niż
   domyślne, filtry jako listy z wyszukiwaniem — natywne `<select multiple>`
   zostają w formularzu jako źródło prawdy), karta

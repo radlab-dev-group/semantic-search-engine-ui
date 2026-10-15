@@ -572,6 +572,11 @@ function initGroupSummaries(panel) {
       parts.push(collection && collection.value ? collection.value : t("sum_no_collection", {}, "no collection"));
       const count = Number(field("results_count")?.value) || 0;
       parts.push(t("sum_results", { n: count }, "{n} results"));
+      if (isOn("hybrid_search")) {
+        parts.push(t("sum_hybrid", {}, "hybrid"));
+      } else {
+        parts.push(t("sum_vector_only", {}, "vector only"));
+      }
       if (isOn("rerank_results")) parts.push(t("sum_rerank", {}, "reranking"));
       return parts.join(" · ");
     },

@@ -44,8 +44,13 @@
                 {% if coll.created_on %}{{ t('collections.created_on', date=coll.created_on) }}{% else %}<span class="muted">—</span>{% endif %}
               </span>
               <span class="collection__actions">
+                <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ coll.name | urlencode }}">{{ t('collections.manage') }}</a>
                 <a class="btn btn--ghost btn--sm" href="/documents/upload?collection_name={{ coll.name | urlencode }}">{{ t('collections.upload') }}</a>
                 <a class="btn btn-primary btn--sm" href="/search?collection_name={{ coll.name | urlencode }}">{{ t('collections.search') }}</a>
+                <form method="post" action="/collections/delete" class="inline-form" onsubmit="return confirm('{{ t('collections.delete_confirm', name=coll.display_name or coll.name) }}');">
+                  <input type="hidden" name="collection_name" value="{{ coll.name }}">
+                  <button type="submit" class="btn btn--danger-ghost btn--sm" title="{{ t('collections.delete_title') }}">{{ t('collections.delete') }}</button>
+                </form>
               </span>
             </div>
           </li>

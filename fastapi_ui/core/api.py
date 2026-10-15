@@ -183,6 +183,26 @@ class SemanticSearchEngineAPI(BaseApiInterface):
                     "get_search_history", "api/get_search_history"
                 )
             )
+            self.delete_collection = (
+                api_config.semantic_search_engine_endpoints.get(
+                    "delete_collection", "api/delete_collection"
+                )
+            )
+            self.delete_documents = (
+                api_config.semantic_search_engine_endpoints.get(
+                    "delete_documents", "api/delete_documents"
+                )
+            )
+            self.delete_texts = (
+                api_config.semantic_search_engine_endpoints.get(
+                    "delete_texts", "api/delete_texts"
+                )
+            )
+            self.add_and_index_texts = (
+                api_config.semantic_search_engine_endpoints.get(
+                    "add_and_index_texts", "api/add_and_index_texts"
+                )
+            )
 
     def __init__(self, config_path: str = "configs/ui-configuration.json"):
         self._api_config = ApiConfiguration(config_path=config_path)
@@ -369,6 +389,74 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             api_function=self._engine_ep.get_search_history,
             params={"query_response_id": int(query_response_id)},
             data=None,
+        )
+        return response
+
+    def delete_collection(self, token: str, collection_name: str):
+        """Delete collection and its documents, texts and vectors."""
+        response = self.general_call_post(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.delete_collection,
+            params=None,
+            json_data={"collection_name": collection_name},
+        )
+        return response
+
+    def delete_documents(
+        self,
+        token: str,
+        collection_name: str,
+        document_names: list[str] | None = None,
+        document_ids: list[int] | None = None,
+    ):
+        """Delete documents from collection by names or IDs."""
+        payload: dict = {"collection_name": collection_name}
+        if document_names:
+            payload["documents[]"] = list(document_names)
+        if document_ids:
+            payload["document_ids[]"] = [int(i) for i in document_ids]
+        response = self.general_call_post(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.delete_documents,
+            params=None,
+            json_data=payload,
+        )
+        return response
+
+    def delete_texts(self, token: str, collection_name: str, chunk_ids: list[int]):
+        """Delete text chunks from collection by their chunk IDs."""
+        response = self.general_call_post(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.delete_texts,
+            params=None,
+            json_data={
+                "collection_name": collection_name,
+                "chunk_ids[]": [int(cid) for cid in chunk_ids],
+            },
+        )
+        return response
+
+    def add_and_index_texts(
+        self,
+        token: str,
+        collection_name: str,
+        texts: list[dict],
+        indexing_options: dict,
+    ):
+        """Add and index text document(s) directly into collection."""
+        response = self.general_call_post(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.add_and_index_texts,
+            params=None,
+            json_data={
+                "collection_name": collection_name,
+                "texts[]": texts,
+                "indexing_options": indexing_options,
+            },
         )
         return response
 

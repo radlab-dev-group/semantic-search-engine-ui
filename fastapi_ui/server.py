@@ -22,6 +22,7 @@ import datetime
 import json
 import logging
 import os
+import re
 import uuid
 from urllib.parse import urlencode
 
@@ -288,6 +289,55 @@ def fetch_collection_filters(token: str, collection_name: str) -> dict:
     return {"categories": categories, "documents": documents}
 
 
+def fetch_manage_collection_context(token: str, collection_name: str = "") -> dict:
+    """All data required to render the collection management page."""
+    data = fetch_collection_rows(token)
+    if "error" in data:
+        return {"error": data["error"]}
+    collections = data["collections"]
+    if not collections:
+        return {
+            "collections": [],
+            "selected_collection": "",
+            "active_coll_info": None,
+            "documents": [],
+            "categories": [],
+        }
+
+    valid_names = [c["name"] for c in collections]
+    if not collection_name or collection_name not in valid_names:
+        selected_collection = collections[0]["name"]
+    else:
+        selected_collection = collection_name
+
+    active_coll_info = next(
+        (c for c in collections if c["name"] == selected_collection), None
+    )
+
+    documents: list = []
+    docs_result = sse_api_engine.list_documents_from_collection(
+        token=token, collection_name=selected_collection
+    )
+    if docs_result.get("status"):
+        documents = docs_result.get("body", {}).get("documents", []) or []
+
+    categories: list = []
+    categories_result = sse_api_engine.list_categories_from_collection(
+        token=token, collection_name=selected_collection
+    )
+    if categories_result.get("status"):
+        raw_cats = categories_result.get("body", {}).get("categories", []) or []
+        categories = sorted(c for c in raw_cats if c is not None and len(c))
+
+    return {
+        "collections": collections,
+        "selected_collection": selected_collection,
+        "active_coll_info": active_coll_info,
+        "documents": documents,
+        "categories": categories,
+    }
+
+
 def fetch_generative_models(token: str) -> list:
     generative_models_result = sse_api_engine.list_generative_models(token=token)
     if generative_models_result.get("status"):
@@ -314,6 +364,7 @@ def parse_search_form(form: FormData) -> dict:
     form. Mirrors streamlit ui_utils.prepare_search_params."""
     results_count = int(form.get("results_count") or constants.DEFAULT_MAX_RESULTS)
     rerank_results = form.get("rerank_results") is not None
+    hybrid_search = form.get("hybrid_search") is not None
     use_content_supervisor = form.get("use_content_supervisor") is not None
     # The RAG supervisor switch defaults to "on" (same as in the Streamlit UI),
     # so an absent field (checkbox not rendered) means True.
@@ -354,6 +405,7 @@ def parse_search_form(form: FormData) -> dict:
         "documents": form.getlist("documents"),
         "max_results": results_count,
         "rerank_results": rerank_results,
+        "hybrid_search": hybrid_search,
         "return_with_factored_fields": return_with_factored_fields,
     }
     run_models_options = {
@@ -652,6 +704,223 @@ def new_collection_submit(request: Request, form: FormData = Depends(parsed_form
         request,
         success=translator(request)("collections.created"),
         created=collection_params,
+    )
+
+
+@app.post("/collections/delete", include_in_schema=False)
+def delete_collection_submit(
+    request: Request, form: FormData = Depends(parsed_form)
+):
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    token = get_token(request)
+    collection_name = (form.get("collection_name") or "").strip()
+    if not collection_name:
+        return RedirectResponse(url="/collections", status_code=303)
+
+    result = sse_api_engine.delete_collection(
+        token=token, collection_name=collection_name
+    )
+    if not result.get("status"):
+        return render_api_error(request, result)
+
+    t = translator(request)
+    return render_collections_page(
+        request,
+        success=t("collections.deleted_success", name=collection_name),
+    )
+
+
+# --- Manage Collection ---------------------------------------------------- #
+@app.get("/collections/manage", include_in_schema=False)
+def manage_collection_page(request: Request):
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    token = get_token(request)
+    collection_name = request.query_params.get("collection_name", "")
+    context = fetch_manage_collection_context(token, collection_name)
+    if "error" in context:
+        return render_api_error(request, context["error"])
+
+    return render_page(
+        request,
+        "manage_collection.html",
+        **context,
+    )
+
+
+@app.post("/collections/manage/add-text", include_in_schema=False)
+def manage_add_text_submit(
+    request: Request, form: FormData = Depends(parsed_form)
+):
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    token = get_token(request)
+    t = translator(request)
+    collection_name = (form.get("collection_name") or "").strip()
+    filepath = (form.get("filepath") or "").strip() or "document.txt"
+    category = (form.get("category") or "").strip() or None
+    page_content = form.get("page_content") or ""
+
+    max_tokens = int(
+        form.get("max_tokens_in_chunk") or constants.DEFAULT_MAX_TOKENS_IN_CHUNK
+    )
+    overlap = int(
+        form.get("overlap_tokens") or constants.DEFAULT_OVERLAP_TOKENS
+    )
+    clear_text = form.get("clear_text_before_indexing") is not None
+    denoise = form.get("denoise_text_before_indexing") is not None
+    check_lang = form.get("check_language_before_indexing") is not None
+
+    indexing_options = {
+        "max_tokens_in_chunk": max_tokens,
+        "overlap_tokens": overlap,
+        "clear_text_before_indexing": clear_text,
+        "denoise_text_before_indexing": denoise,
+        "check_language_before_indexing": check_lang,
+    }
+
+    texts = [
+        {
+            "filepath": filepath,
+            "category": category,
+            "page_content": page_content,
+        }
+    ]
+
+    result = sse_api_engine.add_and_index_texts(
+        token=token,
+        collection_name=collection_name,
+        texts=texts,
+        indexing_options=indexing_options,
+    )
+    if not result.get("status"):
+        return render_api_error(request, result)
+
+    context = fetch_manage_collection_context(token, collection_name)
+    if "error" in context:
+        return render_api_error(request, context["error"])
+
+    body = result.get("body") or {}
+    indexed_chunks = body.get("indexed_chunks", 1)
+
+    return render_page(
+        request,
+        "manage_collection.html",
+        success=t("manage.add_text_success", chunks=indexed_chunks),
+        **context,
+    )
+
+
+@app.post("/collections/manage/delete-documents", include_in_schema=False)
+def manage_delete_documents_submit(
+    request: Request, form: FormData = Depends(parsed_form)
+):
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    token = get_token(request)
+    t = translator(request)
+    collection_name = (form.get("collection_name") or "").strip()
+
+    single_doc = (form.get("document_name") or "").strip()
+    selected_docs = [d.strip() for d in form.getlist("documents[]") if d.strip()]
+
+    doc_names = [single_doc] if single_doc else selected_docs
+    if not doc_names:
+        return RedirectResponse(
+            url=f"/collections/manage?collection_name={collection_name}",
+            status_code=303,
+        )
+
+    result = sse_api_engine.delete_documents(
+        token=token,
+        collection_name=collection_name,
+        document_names=doc_names,
+    )
+    if not result.get("status"):
+        return render_api_error(request, result)
+
+    context = fetch_manage_collection_context(token, collection_name)
+    if "error" in context:
+        return render_api_error(request, context["error"])
+
+    body = result.get("body") or {}
+    deleted = body.get("deleted") or {}
+    docs_count = deleted.get("documents", len(doc_names))
+    texts_count = deleted.get("texts", 0)
+    vectors_count = body.get("deleted_vectors", 0)
+
+    return render_page(
+        request,
+        "manage_collection.html",
+        success=t(
+            "manage.delete_docs_success",
+            docs=docs_count,
+            texts=texts_count,
+            vectors=vectors_count,
+        ),
+        **context,
+    )
+
+
+@app.post("/collections/manage/delete-texts", include_in_schema=False)
+def manage_delete_texts_submit(
+    request: Request, form: FormData = Depends(parsed_form)
+):
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    token = get_token(request)
+    t = translator(request)
+    collection_name = (form.get("collection_name") or "").strip()
+    chunk_ids_str = form.get("chunk_ids") or ""
+
+    chunk_ids = []
+    for part in re.split(r"[,\s]+", chunk_ids_str.strip()):
+        if part.isdigit():
+            chunk_ids.append(int(part))
+
+    if not chunk_ids:
+        return RedirectResponse(
+            url=f"/collections/manage?collection_name={collection_name}",
+            status_code=303,
+        )
+
+    result = sse_api_engine.delete_texts(
+        token=token,
+        collection_name=collection_name,
+        chunk_ids=chunk_ids,
+    )
+    if not result.get("status"):
+        return render_api_error(request, result)
+
+    context = fetch_manage_collection_context(token, collection_name)
+    if "error" in context:
+        return render_api_error(request, context["error"])
+
+    body = result.get("body") or {}
+    deleted = body.get("deleted") or {}
+    texts_count = deleted.get("texts", len(chunk_ids))
+    vectors_count = body.get("deleted_vectors", 0)
+
+    return render_page(
+        request,
+        "manage_collection.html",
+        success=t(
+            "manage.delete_texts_success",
+            texts=texts_count,
+            vectors=vectors_count,
+        ),
+        **context,
     )
 
 

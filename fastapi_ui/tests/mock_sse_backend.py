@@ -156,6 +156,13 @@ class MockHandler(BaseHTTPRequestHandler):
                     raw.decode("utf-8"), keep_blank_values=True
                 ).items()
             }
+        if "application/json" in content_type:
+            try:
+                parsed_json = json.loads(raw.decode("utf-8"))
+                if isinstance(parsed_json, dict):
+                    return parsed_json
+            except Exception:
+                pass
         return {"_raw": raw, "_content_type": content_type}
 
     def _route(self):
@@ -267,6 +274,37 @@ class MockHandler(BaseHTTPRequestHandler):
             )
         if ep == "rate_generative_answer":
             return self._send(_ok({"rated": True}))
+        if ep == "delete_collection":
+            return self._send(
+                _ok(
+                    {
+                        "deleted": {"documents": 2, "pages": 10, "texts": 42},
+                        "dropped_collection": True,
+                    }
+                )
+            )
+        if ep == "delete_documents":
+            return self._send(
+                _ok(
+                    {
+                        "deleted": {"documents": 1, "pages": 5, "texts": 20},
+                        "deleted_vectors": 20,
+                        "not_found": [],
+                    }
+                )
+            )
+        if ep == "delete_texts":
+            return self._send(
+                _ok(
+                    {
+                        "deleted": {"texts": 2},
+                        "deleted_vectors": 2,
+                        "not_found": [],
+                    }
+                )
+            )
+        if ep == "add_and_index_texts":
+            return self._send(_ok({"indexed_documents": 1, "indexed_chunks": 3}))
         return self._send(_ok({}))
 
 

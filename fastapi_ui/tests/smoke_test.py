@@ -45,6 +45,10 @@ config = {
                 "generative_answer": "api/generative_answer",
                 "rate_generative_answer": "api/rate_generative_answer",
                 "upload_and_index_files": "api/upload_and_index_files",
+                "delete_collection": "api/delete_collection",
+                "delete_documents": "api/delete_documents",
+                "delete_texts": "api/delete_texts",
+                "add_and_index_texts": "api/add_and_index_texts",
             },
         },
     }
@@ -76,7 +80,7 @@ def last_request(method: str, endpoint: str) -> dict:
 
 UNTRANSLATED_KEY = re.compile(
     r"\b(?:base|nav|stepper|messages|home|login|error|collections|upload|search"
-    r"|params|history|hits|board|table|js)\.[a-z_]+\b"
+    r"|params|history|hits|board|table|manage|js)\.[a-z_]+\b"
 )
 
 
@@ -140,7 +144,7 @@ def check_i18n(client) -> None:
         )
 
     client.cookies.set("sse_lang", "pl")
-    pages = {url: client.get(url).text for url in ["/home", "/collections", "/documents/upload", "/search"]}
+    pages = {url: client.get(url).text for url in ["/home", "/collections", "/collections/manage", "/documents/upload", "/search"]}
     check(
         "polish interface",
         '<html lang="pl"' in pages["/search"]
@@ -148,6 +152,7 @@ def check_i18n(client) -> None:
         and "Parametry wyszukiwania" in pages["/search"]
         and "Szukaj po <span" in pages["/home"]
         and "Lista kolekcji" in pages["/collections"]
+        and "Zarządzanie kolekcją" in pages["/collections/manage"]
         and "Opcje indeksowania dokumentów" in pages["/documents/upload"]
         and '"lang": "pl"' in pages["/search"],
         "",
@@ -372,6 +377,99 @@ def main() -> int:
             "",
         )
 
+        # --- Collection Delete & Manage ----------------------------------- #
+        response = client.post(
+            "/collections/delete",
+            data={"collection_name": "user_col"},
+        )
+        sent = last_request("POST", "api/delete_collection")
+        check(
+            "delete collection succeeded",
+            response.status_code == 200 and "has been deleted" in response.text,
+            str(response.status_code),
+        )
+        check(
+            "delete collection sent collection_name",
+            sent.get("body", {}).get("collection_name") == "user_col",
+            str(sent),
+        )
+
+        response = client.get("/collections/manage?collection_name=user_col")
+        check(
+            "manage page renders with selected collection and documents",
+            response.status_code == 200
+            and "user_col" in response.text
+            and "b.pdf" in response.text
+            and "a.pdf" in response.text,
+            str(response.status_code),
+        )
+
+        response = client.post(
+            "/collections/manage/add-text",
+            data={
+                "collection_name": "user_col",
+                "filepath": "notes.txt",
+                "category": "notes",
+                "page_content": "This is a direct text content to be indexed.",
+                "max_tokens_in_chunk": "400",
+                "overlap_tokens": "60",
+                "clear_text_before_indexing": "on",
+            },
+        )
+        sent = last_request("POST", "api/add_and_index_texts")
+        check(
+            "add text document succeeded",
+            response.status_code == 200 and "indexed" in response.text,
+            str(response.status_code),
+        )
+        check(
+            "add text sent collection and texts payload",
+            sent.get("body", {}).get("collection_name") == "user_col"
+            and len(sent.get("body", {}).get("texts[]", [])) == 1
+            and sent.get("body", {}).get("texts[]")[0]["filepath"] == "notes.txt",
+            str(sent),
+        )
+
+        response = client.post(
+            "/collections/manage/delete-documents",
+            data={
+                "collection_name": "user_col",
+                "document_name": "a.pdf",
+            },
+        )
+        sent = last_request("POST", "api/delete_documents")
+        check(
+            "delete document succeeded",
+            response.status_code == 200 and "Deleted" in response.text,
+            str(response.status_code),
+        )
+        check(
+            "delete document sent document name",
+            sent.get("body", {}).get("collection_name") == "user_col"
+            and sent.get("body", {}).get("documents[]") == ["a.pdf"],
+            str(sent),
+        )
+
+        response = client.post(
+            "/collections/manage/delete-texts",
+            data={
+                "collection_name": "user_col",
+                "chunk_ids": "10, 11, 12",
+            },
+        )
+        sent = last_request("POST", "api/delete_texts")
+        check(
+            "delete texts succeeded",
+            response.status_code == 200 and "Deleted" in response.text,
+            str(response.status_code),
+        )
+        check(
+            "delete texts sent chunk IDs",
+            sent.get("body", {}).get("collection_name") == "user_col"
+            and sent.get("body", {}).get("chunk_ids[]") == [10, 11, 12],
+            str(sent),
+        )
+
         # --- Upload documents ---------------------------------------------- #
         response = client.get("/documents/upload")
         check(
@@ -486,6 +584,7 @@ def main() -> int:
                 "prompt": "odpowiedz zwięźle",
                 "results_count": "30",
                 "rerank_results": "on",
+                "hybrid_search": "on",
                 "categories": ["a", "c"],
                 "documents": ["b.pdf"],
                 "use_qa_generative": "on",
@@ -558,6 +657,7 @@ def main() -> int:
                 "results_count": 'name="results_count" value="30"' in html,
                 "perc_rank": 'name="perc_rank_to_gen_qa" value="55"' in html,
                 "rerank": 'name="rerank_results" checked' in html,
+                "hybrid": 'name="hybrid_search" checked' in html,
                 "generative": 'name="use_qa_generative" checked' in html,
                 "extractive_off": 'name="use_qa_extractive" checked' not in html,
                 "model": 'value="llama-8b" selected' in html,
@@ -617,6 +717,7 @@ def main() -> int:
             "restore defaults brings back the default options",
             f'name="results_count" value="{server.constants.DEFAULT_MAX_RESULTS}"'
             in defaults_html
+            and 'name="hybrid_search" checked' in defaults_html
             and 'name="use_qa_generative" checked' not in defaults_html
             and 'name="rerank_results" checked' not in defaults_html
             and "/search/params/reset" not in defaults_html,
@@ -689,7 +790,8 @@ def main() -> int:
         check(
             "search options sent",
             options.get("max_results") == 30
-            and options.get("rerank_results") is True,
+            and options.get("rerank_results") is True
+            and options.get("hybrid_search") is True,
             str(options),
         )
         check(
@@ -754,6 +856,23 @@ def main() -> int:
             f"{response.status_code}",
         )
 
+        # Check search with hybrid_search disabled
+        client.post(
+            "/search",
+            data={
+                "collection_name": "user_col",
+                "question": "wektorowe pytanie",
+                "results_count": "8",
+            },
+        )
+        sent_vo = last_request("POST", "api/search_with_options")
+        options_vo = json.loads(sent_vo.get("body", {}).get("options", "{}"))
+        check(
+            "hybrid search disabled sends hybrid_search=False",
+            options_vo.get("hybrid_search") is False,
+            str(options_vo),
+        )
+
         response = client.get("/search")
         check(
             "search page exposes category/document filters",
@@ -771,6 +890,7 @@ def main() -> int:
                 for field in [
                     "collection_name",
                     "results_count",
+                    "hybrid_search",
                     "rerank_results",
                     "return_with_factored_fields",
                     "use_qa_extractive",
@@ -993,6 +1113,7 @@ def main() -> int:
                     "/home",
                     "/search",
                     "/collections/new",
+                    "/collections/manage",
                     "/documents/upload",
                 ]
             ),

@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}{{ t('manage.title') }}{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <div>
+      <p class="card__eyebrow">{{ t('manage.eyebrow') }}</p>
+      <h1>{{ t('manage.heading') }}</h1>
+      <p class="subtitle">{{ t('manage.subtitle') }}</p>
+    </div>
+    {% set current_step = 1 %}
+    {% include "partials/stepper.html" %}
+  </header>
+
+  {% include "partials/messages.html" %}
+
+  {% if not collections %}
+    <div class="card">
+      <div class="empty-state">
+        <span class="empty-state__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5.5" rx="7.5" ry="3"/>
+            <path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/>
+            <path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3 1.3 0 2.5-.13 3.5-.35"/>
+          </svg>
+        </span>
+        <p>{{ t('manage.no_collections') }}</p>
+        <div class="btn-row btn-row--center">
+          <a class="btn btn-primary" href="/collections#new-collection">{{ t('manage.create_collection') }}</a>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <!-- Collection toolbar / selector -->
+    <div class="card manage-toolbar-card">
+      <div class="manage-toolbar">
+        <div class="manage-toolbar__select">
+          <label for="manage_col_select" class="sr-only">{{ t('manage.select_collection') }}</label>
+          <div class="manage-select-wrap">
+            <span class="manage-select-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="6" rx="7" ry="2.75"/>
+                <path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/>
+                <path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/>
+              </svg>
+            </span>
+            <select id="manage_col_select" class="manage-select" onchange="window.location.href='/collections/manage?collection_name=' + encodeURIComponent(this.value);">
+              {% for coll in collections %}
+                <option value="{{ coll.name }}" {% if coll.name == selected_collection %}selected{% endif %}>
+                  {{ coll.display_name or coll.name }} ({{ coll.name }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="manage-toolbar__actions">
+          <a class="btn btn--ghost btn--sm" href="/documents/upload?collection_name={{ selected_collection | urlencode }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M12 17v-6M9.5 13.5 12 11l2.5 2.5"/></svg>
+            {{ t('collections.upload') }}
+          </a>
+          <a class="btn btn-primary btn--sm" href="/search?collection_name={{ selected_collection | urlencode }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5M8 10.5h5M10.5 8v5"/></svg>
+            {{ t('manage.open_search') }}
+          </a>
+        </div>
+      </div>
+
+      {% if active_coll_info %}
+        <div class="manage-coll-meta">
+          <div class="manage-coll-meta__item">
+            <span class="muted">{{ t('collections.field_name') }}:</span>
+            <span class="mono">{{ active_coll_info.name }}</span>
+          </div>
+          {% if active_coll_info.description %}
+            <div class="manage-coll-meta__item">
+              <span class="muted">{{ t('collections.field_description') }}:</span>
+              <span>{{ active_coll_info.description }}</span>
+            </div>
+          {% endif %}
+          <div class="manage-coll-meta__item">
+            <span class="muted">{{ t('manage.doc_list_heading') }}:</span>
+            <span class="badge badge--brand"><span class="badge__value">{{ documents | length }}</span></span>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Management Sections Grid -->
+    <div class="manage-grid">
+      <!-- (a) ADD DOCUMENT TO COLLECTION -->
+      <section class="card manage-card" id="add-docs">
+        <div class="card__header">
+          <div>
+            <p class="card__eyebrow">{{ t('manage.tab_add_doc') }}</p>
+            <h2>{{ t('manage.tab_add_doc') }}</h2>
+          </div>
+          <span class="badge badge--brand">+ Document</span>
+        </div>
+
+        <div class="manage-add-options">
+          <!-- Fast upload link card -->
+          <div class="card card--subtle manage-upload-banner">
+            <div class="manage-upload-banner__text">
+              <h3>{{ t('manage.add_method_upload') }}</h3>
+              <p class="muted">{{ t('manage.add_method_upload_desc') }}</p>
+            </div>
+            <a class="btn btn-primary btn--sm" href="/documents/upload?collection_name={{ selected_collection | urlencode }}">
+              {{ t('manage.add_method_upload') }}
+            </a>
+          </div>
+
+          <!-- Direct text document indexing form -->
+          <div class="card card--subtle">
+            <h3>{{ t('manage.add_method_text') }}</h3>
+            <p class="muted">{{ t('manage.add_method_text_desc') }}</p>
+
+            <form method="post" action="/collections/manage/add-text" class="manage-form">
+              <input type="hidden" name="collection_name" value="{{ selected_collection }}">
+
+              <div class="form-row form-row--split">
+                <div>
+                  <label for="doc_filepath">{{ t('manage.doc_filepath') }}</label>
+                  <input type="text" id="doc_filepath" name="filepath" placeholder="{{ t('manage.doc_filepath_placeholder') }}" required value="doc_1.txt">
+                </div>
+                <div>
+                  <label for="doc_category">{{ t('manage.doc_category') }}</label>
+                  <input type="text" id="doc_category" name="category" placeholder="{{ t('manage.doc_category_placeholder') }}" list="categories_list">
+                  {% if categories %}
+                    <datalist id="categories_list">
+                      {% for cat in categories if cat %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                      {% endfor %}
+                    </datalist>
+                  {% endif %}
+                </div>
+              </div>
+
+              <label for="doc_content">{{ t('manage.doc_content') }}</label>
+              <textarea id="doc_content" name="page_content" rows="6" placeholder="{{ t('manage.doc_content_placeholder') }}" required></textarea>
+
+              <details class="manage-options-details">
+                <summary class="muted">{{ t('upload.indexing_options') }}</summary>
+                <div class="manage-options-grid">
+                  <div>
+                    <label for="add_max_tokens">{{ t('upload.max_tokens') }}</label>
+                    <input type="number" id="add_max_tokens" name="max_tokens_in_chunk" value="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}" min="50" max="1000" step="10">
+                  </div>
+                  <div>
+                    <label for="add_overlap">{{ t('upload.overlap') }}</label>
+                    <input type="number" id="add_overlap" name="overlap_tokens" value="{{ constants.DEFAULT_OVERLAP_TOKENS }}" min="0" max="200" step="5">
+                  </div>
+                  <div class="checkbox-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" name="clear_text_before_indexing" checked>
+                      {{ t('upload.clear_text') }}
+                    </label>
+                    <label class="checkbox-label">
+                      <input type="checkbox" name="denoise_text_before_indexing" checked>
+                      {{ t('upload.denoise') }}
+                    </label>
+                    <label class="checkbox-label">
+                      <input type="checkbox" name="check_language_before_indexing" checked>
+                      {{ t('upload.check_lang') }}
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary" data-loading-label="{{ t('manage.add_text_submitting') }}">
+                  {{ t('manage.add_text_submit') }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- (b) DELETE DOCUMENTS -->
+      <section class="card manage-card" id="delete-docs">
+        <div class="card__header">
+          <div>
+            <p class="card__eyebrow">{{ t('manage.tab_delete_doc') }}</p>
+            <h2>{{ t('manage.doc_list_heading') }}</h2>
+          </div>
+          <span class="badge badge--brand">
+            <span class="badge__value" id="doc-count-badge">{{ documents | length }}</span>
+            {{ t.plural('manage.doc_list_count', documents | length) }}
+          </span>
+        </div>
+
+        {% if documents %}
+          <form method="post" action="/collections/manage/delete-documents" id="delete-docs-form">
+            <input type="hidden" name="collection_name" value="{{ selected_collection }}">
+
+            <div class="doc-list-toolbar">
+              <div class="doc-search-box">
+                <input type="search" id="doc-filter" placeholder="{{ t('manage.doc_filter_placeholder') }}" oninput="filterDocuments(this.value)">
+              </div>
+              <div class="doc-selection-actions">
+                <button type="button" class="btn btn--ghost btn--xs" onclick="toggleSelectAllDocs(true)">{{ t('manage.select_all') }}</button>
+                <button type="button" class="btn btn--ghost btn--xs" onclick="toggleSelectAllDocs(false)">{{ t('manage.deselect_all') }}</button>
+                <button type="submit" class="btn btn--danger btn--xs" id="delete-selected-btn" onclick="return confirmDeleteSelected();">
+                  {{ t('manage.delete_selected') }}
+                </button>
+              </div>
+            </div>
+
+            <div class="doc-table-wrap">
+              <table class="doc-table" id="documents-table">
+                <thead>
+                  <tr>
+                    <th class="doc-th--check">
+                      <input type="checkbox" id="master-doc-check" onchange="toggleSelectAllDocs(this.checked)" title="{{ t('manage.select_all') }}">
+                    </th>
+                    <th>{{ t('hits.passage') }} / {{ t('board.document') }}</th>
+                    <th class="doc-th--action"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for doc in documents %}
+                    <tr class="doc-row" data-name="{{ doc.name | lower }}">
+                      <td class="doc-td--check">
+                        <input type="checkbox" name="documents[]" value="{{ doc.name }}" class="doc-checkbox" onchange="updateSelectedCount()">
+                      </td>
+                      <td class="doc-td--name">
+                        <span class="doc-name-text">{{ doc.name }}</span>
+                        {% if doc.relative_path and doc.relative_path != '/' %}
+                          <span class="doc-path-badge">{{ doc.relative_path }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="doc-td--action">
+                        <button type="submit" name="document_name" value="{{ doc.name }}" class="btn btn--danger-ghost btn--xs" onclick="return confirm('{{ t('manage.delete_doc_confirm', name=doc.name) }}');">
+                          {{ t('manage.delete_doc_btn') }}
+                        </button>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </form>
+        {% else %}
+          <div class="empty-state">
+            <span class="empty-state__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/>
+              </svg>
+            </span>
+            <p>{{ t('manage.no_documents') }}</p>
+          </div>
+        {% endif %}
+      </section>
+
+      <!-- (c) DELETE TEXT CHUNKS BY ID -->
+      <section class="card manage-card" id="delete-texts">
+        <div class="card__header">
+          <div>
+            <p class="card__eyebrow">{{ t('manage.tab_delete_text') }}</p>
+            <h2>{{ t('manage.delete_texts_heading') }}</h2>
+            <p class="subtitle">{{ t('manage.delete_texts_desc') }}</p>
+          </div>
+        </div>
+
+        <form method="post" action="/collections/manage/delete-texts" class="manage-form">
+          <input type="hidden" name="collection_name" value="{{ selected_collection }}">
+
+          <label for="chunk_ids">{{ t('manage.chunk_ids_label') }}</label>
+          <input type="text" id="chunk_ids" name="chunk_ids" placeholder="{{ t('manage.chunk_ids_placeholder') }}" required pattern="[0-9,\s]+" title="Enter numbers separated by commas or spaces">
+
+          <div class="btn-row">
+            <button type="submit" class="btn btn--danger-ghost btn--sm" data-loading-label="{{ t('manage.delete_texts_submitting') }}" onclick="return confirm('{{ t('manage.delete_texts_confirm') }}');">
+              {{ t('manage.delete_texts_submit') }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- (d) DANGER ZONE - DELETE COLLECTION -->
+      <section class="card card--danger-zone" id="danger-zone">
+        <div class="card__header">
+          <div>
+            <p class="card__eyebrow danger-eyebrow">{{ t('manage.tab_danger') }}</p>
+            <h2>{{ t('manage.danger_heading') }}</h2>
+            <p class="subtitle">{{ t('manage.danger_desc') }}</p>
+          </div>
+        </div>
+
+        <form method="post" action="/collections/delete" class="manage-form" onsubmit="return confirm('{{ t('manage.danger_confirm', name=selected_collection) }}');">
+          <input type="hidden" name="collection_name" value="{{ selected_collection }}">
+          <div class="btn-row">
+            <button type="submit" class="btn btn--danger btn--sm">
+              {{ t('manage.danger_btn') }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function filterDocuments(query) {
+    const q = (query || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('.doc-row');
+    rows.forEach(row => {
+      const name = row.getAttribute('data-name') || '';
+      row.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+  }
+
+  function toggleSelectAllDocs(checked) {
+    const checkboxes = document.querySelectorAll('.doc-checkbox');
+    checkboxes.forEach(cb => {
+      const row = cb.closest('.doc-row');
+      if (row && row.style.display !== 'none') {
+        cb.checked = checked;
+      }
+    });
+    const master = document.getElementById('master-doc-check');
+    if (master) master.checked = checked;
+    updateSelectedCount();
+  }
+
+  function updateSelectedCount() {
+    const checked = document.querySelectorAll('.doc-checkbox:checked').length;
+    const btn = document.getElementById('delete-selected-btn');
+    if (btn) {
+      btn.disabled = (checked === 0);
+    }
+  }
+
+  function confirmDeleteSelected() {
+    const checked = document.querySelectorAll('.doc-checkbox:checked').length;
+    if (checked === 0) {
+      alert('Please select at least one document to delete.');
+      return false;
+    }
+    return confirm('Are you sure you want to delete ' + checked + ' selected document(s)?');
+  }
+
+  document.addEventListener('DOMContentLoaded', updateSelectedCount);
+</script>
+{% endblock %}
