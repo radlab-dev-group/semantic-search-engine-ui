@@ -748,15 +748,49 @@ def main() -> int:
         response = client.get("/search?collection_name=user_col")
         check(
             "search page preselects the collection from the query string",
-            '<option value="user_col" selected>' in response.text,
+            '<option value="user_col" selected ' in response.text,
             "",
         )
+        # The options carry the description and the date for the banner
         check(
             "search offers the collections by their full (display) name",
-            '<option value="user_col" selected>Moje dokumenty</option>' in response.text
-            and '<option value="user_kol" >user_kol</option>' in response.text
+            re.search(
+                r'<option value="user_col" selected data-description="Kolekcja '
+                r'użytkownika" data-created="2026-09-30">Moje dokumenty</option>',
+                response.text,
+            )
+            is not None
+            and re.search(
+                r'<option value="user_kol"\s+data-description=""\s+data-created="[^"]*">'
+                r"user_kol</option>",
+                response.text,
+            )
+            is not None
             and 'class="history__collection"' in response.text
             and ">Moje dokumenty</span>" in response.text,
+            "",
+        )
+        banner = re.search(
+            r'<div class="coll-banner" data-collection-banner>.*?</div>\s*</div>',
+            response.text,
+            re.S,
+        )
+        banner_html = banner.group(0) if banner else ""
+        check(
+            "query console shows the chosen collection (name, description, date)",
+            banner
+            and 'title="Moje dokumenty">Moje dokumenty</strong>' in banner_html
+            and ">user_col</span>" in banner_html
+            and ">Kolekcja użytkownika</p>" in banner_html
+            and "Created 2026-09-30" in banner_html
+            and "/collections/manage?collection_name=user_col" in banner_html
+            and "data-banner-change" in banner_html,
+            banner_html[:600],
+        )
+        check(
+            "query console banner is empty without a chosen collection",
+            '<div class="coll-banner is-empty" data-collection-banner>'
+            in client.get("/search?clear=1").text,
             "",
         )
         payload = client.get(

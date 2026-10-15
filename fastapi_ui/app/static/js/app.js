@@ -781,6 +781,76 @@ function initParamsPanel() {
   });
 }
 
+/* -------------------------------------------- query console: collection */
+// The banner above the question shows which collection it goes to: the name,
+// the description and the date come from the data-* attributes of the chosen
+// <option>, the number of documents from the "documents" filter.
+function updateCollectionBanner(select, documentsCount = null) {
+  const banner = document.querySelector("[data-collection-banner]");
+  if (!banner) return;
+  const option = select && select.value ? select.selectedOptions[0] : null;
+  banner.classList.toggle("is-empty", !option);
+
+  const manage = banner.querySelector("[data-banner-manage]");
+  if (manage) {
+    manage.href = option
+      ? `/collections/manage?collection_name=${encodeURIComponent(option.value)}`
+      : "/collections/manage";
+  }
+  if (!option) return;
+
+  const label = (option.textContent || option.value).trim();
+  const name = banner.querySelector("[data-banner-name]");
+  if (name) {
+    name.textContent = label;
+    name.title = label;
+  }
+  const id = banner.querySelector("[data-banner-id]");
+  if (id) {
+    id.textContent = option.value;
+    id.title = option.value;
+    id.hidden = option.value === label;
+  }
+
+  const description = (option.dataset.description || "").trim();
+  const desc = banner.querySelector("[data-banner-desc]");
+  if (desc) {
+    desc.textContent = description || t("banner_no_description", {}, "No description");
+    desc.classList.toggle("is-muted", !description);
+    if (description) desc.title = description;
+    else desc.removeAttribute("title");
+  }
+
+  const created = (option.dataset.created || "").trim();
+  const dateWrap = banner.querySelector("[data-banner-date-wrap]");
+  const date = banner.querySelector("[data-banner-date]");
+  if (dateWrap) dateWrap.hidden = !created;
+  if (date) date.textContent = created ? t("banner_created", { date: created }, "Created {date}") : "";
+
+  if (documentsCount !== null) {
+    const docs = banner.querySelector("[data-banner-docs]");
+    if (docs) docs.textContent = t("sum_documents", { n: documentsCount }, "{n} documents");
+  }
+}
+
+function initCollectionBanner() {
+  const banner = document.querySelector("[data-collection-banner]");
+  if (!banner) return;
+  const select = document.querySelector("[data-params] select[name='collection_name']");
+  // The remembered collection may differ from the one the server rendered
+  updateCollectionBanner(select);
+
+  const change = banner.querySelector("[data-banner-change]");
+  if (change && select) {
+    change.addEventListener("click", () => {
+      const group = select.closest("details");
+      if (group) group.open = true;
+      select.scrollIntoView({ behavior: "smooth", block: "center" });
+      select.focus({ preventScroll: true });
+    });
+  }
+}
+
 /* --------------------------------------------------------- upload summary */
 function initFileSummary() {
   const fileInput = document.querySelector("[data-file-summary]");
@@ -1413,6 +1483,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initParamsMemory();
   initSliders();
   initParamsPanel();
+  initCollectionBanner();
   initFileSummary();
   initDropzone();
   initChunkPreview();
@@ -1458,6 +1529,7 @@ document.addEventListener("change", async (event) => {
 
   const scope = select.closest("form") || document;
   refreshHistory(select.value, (select.selectedOptions[0]?.textContent || "").trim());
+  updateCollectionBanner(select);
   const targets = {
     categories: scope.querySelector("select[name='categories']"),
     documents: scope.querySelector("select[name='documents']"),
@@ -1475,6 +1547,7 @@ document.addEventListener("change", async (event) => {
       const counter = scope.querySelector(`[data-count-for='${key}']`);
       if (counter) counter.textContent = values.length;
     });
+    updateCollectionBanner(select, (payload.body.documents || []).length);
   } catch (error) {
     console.error("Cannot refresh collection filters", error);
   }

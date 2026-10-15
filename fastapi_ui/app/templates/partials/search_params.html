@@ -93,8 +93,10 @@
       <label for="collection_name">{{ t('params.collection_name') }}</label>
       <select id="collection_name" name="collection_name" required>
         <option value="" disabled {% if not selected_collection %}selected{% endif %}>{{ t('params.choose_collection') }}</option>
+        {#- data-description / data-created feed the collection banner of the
+            query console (app.js, initCollectionBanner) -#}
         {% for coll in collections %}
-          <option value="{{ coll.name }}" {% if coll.name == selected_collection %}selected{% endif %}>{{ coll.display_name }}</option>
+          <option value="{{ coll.name }}" {% if coll.name == selected_collection %}selected{% endif %} data-description="{{ coll.description }}" data-created="{{ coll.created_on }}">{{ coll.display_name }}</option>
         {% endfor %}
       </select>
 

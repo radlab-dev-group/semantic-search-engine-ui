@@ -3104,6 +3104,173 @@ input[type="range"]::-moz-range-thumb {
   height: 18px;
 }
 
+/* Which collection the question goes to (name, description, size) */
+.coll-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgb(124 108 255 / 35%);
+  border-left: 4px solid var(--brand-500);
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, rgb(124 108 255 / 12%), rgb(20 211 190 / 6%) 70%, transparent);
+}
+
+.coll-banner__icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgb(124 108 255 / 14%);
+  color: var(--brand-500);
+}
+
+.coll-banner__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.coll-banner__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.coll-banner__eyebrow {
+  margin: 0 0 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-500);
+}
+
+.coll-banner__name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+  margin: 0;
+}
+
+.coll-banner__name strong {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.coll-banner__id {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.coll-banner__desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.coll-banner__desc.is-muted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.coll-banner__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.coll-banner__fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.coll-banner__fact svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  opacity: 0.8;
+}
+
+.coll-banner__empty {
+  display: none;
+  margin: 0.15rem 0 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.coll-banner__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  align-self: center;
+}
+
+/* No collection chosen yet: a muted prompt instead of the details */
+.coll-banner.is-empty {
+  border-color: var(--border);
+  border-left-color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+
+.coll-banner.is-empty .coll-banner__icon {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.coll-banner.is-empty .coll-banner__eyebrow {
+  color: var(--text-muted);
+}
+
+.coll-banner.is-empty .coll-banner__filled,
+.coll-banner.is-empty [data-banner-manage] {
+  display: none;
+}
+
+.coll-banner.is-empty .coll-banner__empty {
+  display: block;
+}
+
+/* With results on the page the console is compact: one-line description */
+.search-layout--results .coll-banner {
+  margin-bottom: var(--space-4);
+}
+
+.search-layout--results .coll-banner__desc {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+@media (max-width: 640px) {
+  .coll-banner {
+    flex-wrap: wrap;
+  }
+
+  .coll-banner__actions {
+    width: 100%;
+    justify-content: flex-start;
+    padding-left: calc(40px + var(--space-3));
+  }
+}
+
 .query-console__question {
   min-height: 130px;
   padding: 0.9rem 1rem;

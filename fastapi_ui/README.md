@@ -152,7 +152,12 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   formularzu lub przycisku) z listą usuwanych pozycji; usunięcie kolekcji
   wymaga wpisania jej nazwy. Wynik pokazuje alert `alert-deleted` z ikoną
   kosza, przekreślonymi nazwami / ID i liczbą usuniętych chunków i wektorów.
-- **Wyszukiwanie**: wyróżniona „konsola zapytania”, przykładowe pytania jako
+- **Wyszukiwanie**: wyróżniona „konsola zapytania” z banerem przeszukiwanej
+  kolekcji nad polem pytania (nazwa, nazwa techniczna, opis, liczba
+  dokumentów i data utworzenia oraz przyciski „Dokumenty” / „Zmień”; `app.js`
+  → `initCollectionBanner` odświeża go po zmianie kolekcji w sidebarze z
+  atrybutów `data-description` / `data-created` opcji `<select>`, a bez
+  wybranej kolekcji pokazuje podpowiedź), przykładowe pytania jako
   klikalne chipy, panel parametrów w przyklejonym (sticky) sidebarze
   (`partials/search_params.html`: zwijane grupy Kolekcja / Modele / Filtry z
   podsumowaniem w nagłówku, opcje jako kafelki z opisem — w tym przełącznik
