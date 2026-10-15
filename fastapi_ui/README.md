@@ -39,9 +39,9 @@ Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-conf
 | --- | --- |
 | `GET /home` | Strona główna z opisem projektu i schematem pipeline'u RAG |
 | `GET/POST /login`, `GET /logout` | Logowanie użytkownika (token Django `Authorization: Token ...`) i wylogowanie |
-| `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Baza wiedzy → Kolekcje**: lista kolekcji (`GET api/collections`), tworzenie nowej kolekcji oraz usuwanie kolekcji (`POST api/delete_collection`) |
+| `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Baza wiedzy → Kolekcje**: lista kolekcji (`GET api/collections`, z chunkingiem z `metadata_json`), tworzenie nowej kolekcji (`api/embedders` / `api/rerankers` z `models_info`, `api/filter_options` → `chunking_defaults`, opcjonalne `chunking` + `strict_chunking` w `POST api/new_collection`) oraz usuwanie kolekcji (`POST api/delete_collection`) |
 | `GET /collections/manage`, `POST /collections/manage/delete-*` | **Baza wiedzy → Dokumenty**: lista dokumentów kolekcji, usuwanie dokumentów (`api/delete_documents`), usuwanie chunków tekstu (`api/delete_texts`), włączanie/wyłączanie dokumentów w wyszukiwaniu (`POST /collections/manage/visibility` → `api/set_documents_use_in_search`) oraz usuwanie kolekcji |
-| `GET/POST /documents/upload`, `POST /collections/manage/add-text` | **Baza wiedzy → Dodaj treść**: upload plików (`pdf/docx/txt/html/md/zip`) z opcjami indeksowania albo wklejenie surowego tekstu (`api/add_and_index_texts`) |
+| `GET/POST /documents/upload`, `POST /collections/manage/add-text` | **Baza wiedzy → Dodaj treść**: upload plików (`pdf/docx/txt/html/md/zip`) z opcjami indeksowania albo wklejenie surowego tekstu (`api/add_and_index_texts`); klucze chunkingu w `indexing_options` są opcjonalne (domyślnie ustawienia kolekcji), błędy `000005_DATA` / `000006_DATA` wracają na formularz |
 | `GET/POST /search`, `POST /search/generate`, `POST /search/rate` | **Wyszukiwanie**: wyszukiwanie semantyczne/hybrydowe, odpowiedź generatywna (doczytywana asynchronicznie po wynikach) oraz ocenianie (gwiazdki i komentarz) |
 | `core/api.py` | Klient REST API backendu SSE |
 | `core/state_store.py` | Pamięciowy magazyn stanu sesji użytkownika |
@@ -69,7 +69,14 @@ Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-conf
   wyszukiwania. Opcje z panelu bocznego (liczba wyników, modele, opcje
   generowania, filtry, prompt) są zapamiętywane w stanie sesji przy każdym
   `POST /search` i wypełniają formularz po wyszukiwaniu, po ocenie odpowiedzi
-  i przy kolejnym wejściu na `/search`.
+  i przy kolejnym wejściu na `/search`. Niezależnie od tego przeglądarka
+  zapamiętuje panel w `localStorage` (`sse-search-params`, `app.js` →
+  `initParamsMemory`): wartości pól oraz zwinięcie/rozwinięcie grup Kolekcja /
+  Modele / Filtry i „Opcje generowania” wracają przy następnej wizycie także bez
+  uruchomienia wyszukiwania (filtry tylko dla kolekcji, w której je wybrano;
+  `?collection_name=` w adresie ma pierwszeństwo przed zapamiętaną kolekcją).
+  Reset przekierowuje na `/search?…&params_reset=1`, co każe przeglądarce
+  zapomnieć również swoją kopię.
 - `POST /search/generate` (`generation_id`) — odpowiedź generatywna dla
   wyszukiwania, którego wyniki są już na stronie. `POST /search` nie czeka na
   model: od razu renderuje wyniki i kartę „Odpowiedź modelu” w stanie
@@ -125,8 +132,25 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   z zakładkami Kolekcje / Dokumenty / Dodaj treść i przełącznikiem kolekcji;
   wybrana kolekcja jest zapamiętywana w stanie sesji (`kb_collection`), więc
   przechodzenie między zakładkami jej nie gubi.
-  - **Kolekcje** jako karty (nazwa, opis, data, akcje Dokumenty / + / Szukaj,
-    usuwanie ikoną kosza).
+  - **Kolekcje** jako karty (nazwa, opis, data, zadeklarowany podział na
+    chunki z `metadata_json` — „512 tokenów · zakładka 32” plus odznaka
+    `strict`, albo „podział niezadeklarowany” gdy `metadata_json` jest `null`;
+    akcje Dokumenty / Dodaj treść / Szukaj, usuwanie ikoną kosza).
+  - **Nowa kolekcja**: oprócz modeli i typu indeksu karta „Podział na chunki”
+    (`max_tokens_in_chunk`, `number_of_overlap_tokens`, przełącznik
+    `strict_chunking`). Oba parametry to suwaki (jak przy indeksowaniu)
+    ustawione na `chunking_defaults` z `GET api/filter_options`; `chunking`
+    trafia do `POST api/new_collection` tylko wtedy, gdy użytkownik je
+    przesunął (`app.js` ustawia ukryte `chunking_edited`, serwer porównuje też
+    z wartościami wyrenderowanymi w formularzu). Opcje embedderów i rerankerów
+    niosą `models_info` (`data-max-length`, `data-vector-size`,
+    `data-device`): zakres suwaka chunka kończy się na `max_model_length`
+    wybranego embedera (brak = zwykły zakres `MAX_TOKENS_IN_CHUNK_LIMIT`,
+    rozciągany, gdy pokazywana wartość jest większa), suwak zakładki jest
+    ograniczany do `[0, chunk)` (i `OVERLAP_TOKENS_LIMIT`), a chunk ≥
+    `max_model_length` rerankera daje tylko ostrzeżenie. Bez `filter_options`
+    suwaki stają na `DEFAULT_MAX_TOKENS_IN_CHUNK` / `DEFAULT_OVERLAP_TOKENS`,
+    ale dopóki ich nie ruszysz, do silnika nadal nic nie jest wysyłane.
   - **Dokumenty**: lista z filtrem i zaznaczaniem wielu pozycji, obok panel
     usuwania chunków po ID i strefa usunięcia kolekcji. Przy każdym dokumencie,
     obok kosza, jest przełącznik „W wyszukiwaniu” (`use_in_search`): wyłączony
@@ -139,20 +163,43 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
     będzie widać.
   - **Dodaj treść**: przełącznik „Wgraj pliki” (drag & drop + podgląd
     chunkowania pokazujący stosunek `overlap` do rozmiaru chunka) /
-    „Wklej tekst”.
+    „Wklej tekst”. Oba formularze (`partials/indexing_options.html`) mają
+    wybór `chunking_mode`: **Ustawienia kolekcji** (domyślnie — do
+    `indexing_options` nie trafiają klucze chunkingu, silnik dzieli tak, jak
+    deklaruje kolekcja albo wg swoich domyślnych) lub **Własne wartości**
+    (wysyłane są oba klucze; po wybraniu tej opcji suwaki startują od
+    `DEFAULT_MAX_TOKENS_IN_CHUNK` = 300 tokenów i `DEFAULT_OVERLAP_TOKENS`
+    = 60 tokenów zakładki, a powrót do „Ustawienia kolekcji” przywraca
+    wartości kolekcji). Przy kolekcji `strict` wybór własnych wartości od
+    razu ostrzega, że silnik odpowie `CHUNKING_MISMATCH`.
+  - **Błędy chunkingu silnika** (`errors[].error_code`, HTTP 200):
+    `000005_DATA` (CHUNKING_TOO_LONG) wraca na formularz z podświetlonym
+    polem/suwakiem rozmiaru chunka i komunikatem silnika (w języku UI, parametr
+    `lang`), `000006_DATA` (CHUNKING_MISMATCH) czyści nadpisanie i proponuje
+    wartości kolekcji; wklejony tekst nie ginie (`text_draft`).
 - **Usuwanie**: zamiast `confirm()` przeglądarki stylowany dialog
   (`<dialog id="confirm-dialog">` w `base.html`, atrybuty `data-confirm*` na
   formularzu lub przycisku) z listą usuwanych pozycji; usunięcie kolekcji
   wymaga wpisania jej nazwy. Wynik pokazuje alert `alert-deleted` z ikoną
   kosza, przekreślonymi nazwami / ID i liczbą usuniętych chunków i wektorów.
-- **Wyszukiwanie**: wyróżniona „konsola zapytania”, przykładowe pytania jako
+- **Wyszukiwanie**: wyróżniona „konsola zapytania” z banerem przeszukiwanej
+  kolekcji nad polem pytania (nazwa, nazwa techniczna, opis, liczba
+  dokumentów i data utworzenia oraz przyciski „Dokumenty” / „Zmień”; `app.js`
+  → `initCollectionBanner` odświeża go po zmianie kolekcji w sidebarze z
+  atrybutów `data-description` / `data-created` opcji `<select>`, a bez
+  wybranej kolekcji pokazuje podpowiedź), przykładowe pytania jako
   klikalne chipy, panel parametrów w przyklejonym (sticky) sidebarze
   (`partials/search_params.html`: zwijane grupy Kolekcja / Modele / Filtry z
   podsumowaniem w nagłówku, opcje jako kafelki z opisem — w tym przełącznik
   wyszukiwania hybrydowego `hybrid_search` i rerankingu, licznik wyników
   z −/+ i szybkim wyborem, suwaki z opisem i oznaczeniem wartości innych niż
   domyślne, filtry jako listy z wyszukiwaniem — natywne `<select multiple>`
-  zostają w formularzu jako źródło prawdy), karta
+  zostają w formularzu jako źródło prawdy; w grupie Filtry jest też suwak
+  „Minimalne podobieństwo (cosinus)” → opcja `min_similarity` zapytania
+  `search_with_options` w zakresie 0–1, domyślnie `DEFAULT_MIN_SIMILARITY`
+  = 0.5 jak w silniku, 0 wyłącza próg — fragmenty poniżej progu są odrzucane,
+  więc wysoki próg może dać pustą listę wyników; serwer przycina wartość do
+  [0, 1], a próg inny niż domyślny widać w podsumowaniu grupy), karta
   odpowiedzi modelu z gradientowym akcentem nad wynikami, ocena odpowiedzi
   gwiazdkami. Przy generatywnym QA wyniki pokazują się od razu, a karta
   odpowiedzi ma animowany szkielet i licznik czasu, dopóki model nie skończy.

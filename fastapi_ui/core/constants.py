@@ -8,6 +8,11 @@ DEFAULT_CONFIG_PATH = "ui-configuration.json"
 DEFAULT_MAX_RESULTS = 8
 MAX_RESULTS_LIMIT = 100
 DEFAULT_PERC_RANK_TO_GEN_QA = 100
+# Cosine similarity cutoff of the vector search (search option
+# "min_similarity", a number in [0, 1]); the chunks scoring below are dropped.
+# Mirrors DEFAULT_MIN_SIMILARITY of the engine, which is used when the option
+# is missing or invalid. 0 disables the cutoff.
+DEFAULT_MIN_SIMILARITY = 0.5
 
 # Generative model defaults
 DEFAULT_TOP_K = 50
@@ -24,8 +29,12 @@ ANSWER_LANGUAGES = ["pl", "en-us", "en-gb", "de", "cs"]
 # Embedder index types available for new collections
 INDEX_TYPES = ["IVF_FLAT", "HNSW"]
 
-# Upload indexing defaults
-DEFAULT_MAX_TOKENS_IN_CHUNK = 400
+# Chunking sliders of the indexing forms. The values the engine actually uses
+# come from the collection (metadata_json) or from GET filter_options
+# (chunking_defaults); DEFAULT_* is where the sliders start when "custom
+# values" is picked (and when neither source is known), and *_LIMIT is the
+# slider range (stretched when the collection asks for more).
+DEFAULT_MAX_TOKENS_IN_CHUNK = 300
 MAX_TOKENS_IN_CHUNK_LIMIT = 1000
 DEFAULT_OVERLAP_TOKENS = 60
 OVERLAP_TOKENS_LIMIT = 200

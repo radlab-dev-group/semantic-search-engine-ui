@@ -667,8 +667,10 @@ svg {
   margin-bottom: var(--space-1);
 }
 
+/* The subtitle may use the full width of the heading column: with nothing
+   next to it a narrow measure only wraps one sentence into two lines */
 .page-header .subtitle {
-  max-width: 60ch;
+  max-width: none;
   margin: 0;
 }
 
@@ -864,23 +866,58 @@ svg {
   text-decoration: underline;
 }
 
-/* Search parameters: collapsible groups with a live one-line summary */
+/* Search parameters: collapsible groups with a live one-line summary.
+   Each group is its own bordered tile so Collection / Models / Filters read
+   as separate blocks instead of one long column of controls. */
 .params {
-  padding-bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  padding-bottom: var(--space-4);
 }
 
-.pgroup + .pgroup {
-  border-top: 1px dashed var(--border-strong);
+.params > .params-head {
+  padding: 0 var(--space-1);
+}
+
+.pgroup {
+  margin: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-solid);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.pgroup[open] {
+  border-color: rgb(124 108 255 / 32%);
+  box-shadow: var(--shadow-sm), 0 0 0 3px rgb(124 108 255 / 5%);
+}
+
+.pgroup.is-active {
+  border-color: rgb(124 108 255 / 45%);
 }
 
 .pgroup__head {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
+  padding: var(--space-3) var(--space-3);
   cursor: pointer;
   list-style: none;
-  border-radius: var(--radius-xs);
+  background: linear-gradient(180deg, var(--bg-subtle), transparent), var(--bg-solid);
+  transition: background 0.15s var(--ease);
+}
+
+.pgroup__head:hover {
+  background: linear-gradient(135deg, rgb(20 211 190 / 5%), rgb(124 108 255 / 8%)), var(--bg-solid);
+}
+
+.pgroup[open] > .pgroup__head {
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, rgb(20 211 190 / 5%), rgb(124 108 255 / 8%)), var(--bg-solid);
 }
 
 .pgroup__head::-webkit-details-marker {
@@ -909,7 +946,7 @@ svg {
 
 .pgroup__head:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: inset var(--focus-ring);
 }
 
 .pgroup__icon {
@@ -963,10 +1000,18 @@ svg {
 }
 
 .pgroup__body {
-  padding: var(--space-1) 0 var(--space-4);
+  padding: var(--space-3) var(--space-3) var(--space-4);
 }
 
+.pgroup__body > label:first-child {
+  margin-top: 0;
+}
+
+/* sub-section caption inside a group, separated from what is above */
 .pgroup__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: var(--space-5) 0 var(--space-2);
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -976,15 +1021,29 @@ svg {
   color: var(--text-faint);
 }
 
+.pgroup__label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-strong);
+}
+
 /* option tiles: icon + title + description + toggle */
 .opt-list {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin: var(--space-4) 0 0;
 }
 
 .opt-list:first-child {
   margin-top: 0;
+}
+
+/* a toggle list placed after plain fields gets its own divider */
+.pgroup__body > :not(.opt-list, .pgroup__label) + .opt-list {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--border-strong);
 }
 
 label.opt {
@@ -993,10 +1052,10 @@ label.opt {
   align-items: start;
   gap: 0.7rem;
   margin: 0;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--border);
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: var(--bg-solid);
+  background: var(--bg-subtle);
   font-weight: 500;
   cursor: pointer;
   transition: border-color 0.15s var(--ease), background 0.15s var(--ease), box-shadow 0.15s var(--ease);
@@ -1008,6 +1067,7 @@ label.opt:not(:has(.opt__icon)) {
 
 label.opt:hover {
   border-color: var(--brand-400);
+  background: var(--bg-solid);
 }
 
 label.opt:has(input:checked) {
@@ -1090,28 +1150,32 @@ label.opt--primary:has(input:checked) .opt__icon {
 /* options that only apply when the generative QA is on */
 .opt-nest {
   position: relative;
-  margin: var(--space-2) 0 0 0.55rem;
-  padding: var(--space-1) 0 var(--space-1) 0.8rem;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + 3px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
 }
 
 .opt-nest label.opt {
   padding: 0.55rem 0.65rem;
   gap: 0.6rem;
+  background: var(--bg-solid);
 }
 
 .opt-nest::before {
   content: "";
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: var(--space-2);
+  bottom: var(--space-2);
   left: 0;
-  width: 2px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, var(--violet-500), rgb(124 108 255 / 8%));
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--violet-500), rgb(124 108 255 / 15%));
 }
 
 .opt-nest > label:first-child {
-  margin-top: var(--space-3);
+  margin-top: 0;
 }
 
 .opt-sub {
@@ -1818,9 +1882,11 @@ input[type="checkbox"]:focus-visible {
 }
 
 .field-slider > span {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.87rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
 }
 
 .field-slider output {
@@ -1984,9 +2050,14 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
   color: var(--text-muted);
+}
+
+.chunk-preview__label {
+  font-weight: 600;
+  color: var(--text);
 }
 
 .chunk-preview__track {
@@ -2801,7 +2872,7 @@ input[type="range"]::-moz-range-thumb {
    -------------------------------------------------------------------------- */
 .collection-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: var(--space-4);
   margin: 0;
   padding: 0;
@@ -2809,14 +2880,32 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .collection {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--bg-solid);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
   transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+/* brand accent along the top edge, like the knowledge-base switcher icon */
+.collection::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--gradient-brand);
+  opacity: 0.55;
+  transition: opacity 0.2s var(--ease);
+}
+
+.collection:hover::before {
+  opacity: 1;
 }
 
 .collection:hover {
@@ -2827,7 +2916,7 @@ input[type="range"]::-moz-range-thumb {
 
 .collection__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
 }
 
@@ -2854,51 +2943,86 @@ input[type="range"]::-moz-range-thumb {
   min-width: 0;
 }
 
+/* the full display name fits in two lines instead of being cut after one */
 .collection__title h3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   margin: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 1.02rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .collection__title .mono {
+  margin-top: 0.2rem;
   color: var(--text-faint);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .collection__desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   flex: 1;
   margin: 0;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: 0.89rem;
+  line-height: 1.5;
 }
 
 .collection__foot {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  padding-top: var(--space-3);
-  border-top: 1px dashed var(--border);
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--bg-subtle);
 }
 
 .collection__date {
-  flex-basis: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-family: var(--font-mono);
   font-size: 0.74rem;
   color: var(--text-faint);
 }
 
+.collection__date svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 .collection__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
-  margin-left: auto;
+}
+
+.collection__actions .btn {
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding-inline: 0.5rem;
+  white-space: nowrap;
+}
+
+.collection__actions .btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.collection__actions .btn--ghost {
+  background: var(--bg-solid);
 }
 
 .collection__delete {
@@ -2987,6 +3111,173 @@ input[type="range"]::-moz-range-thumb {
 .query-console__icon svg {
   width: 18px;
   height: 18px;
+}
+
+/* Which collection the question goes to (name, description, size) */
+.coll-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgb(124 108 255 / 35%);
+  border-left: 4px solid var(--brand-500);
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, rgb(124 108 255 / 12%), rgb(20 211 190 / 6%) 70%, transparent);
+}
+
+.coll-banner__icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgb(124 108 255 / 14%);
+  color: var(--brand-500);
+}
+
+.coll-banner__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.coll-banner__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.coll-banner__eyebrow {
+  margin: 0 0 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-500);
+}
+
+.coll-banner__name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+  margin: 0;
+}
+
+.coll-banner__name strong {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.coll-banner__id {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.coll-banner__desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.coll-banner__desc.is-muted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.coll-banner__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.coll-banner__fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.coll-banner__fact svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  opacity: 0.8;
+}
+
+.coll-banner__empty {
+  display: none;
+  margin: 0.15rem 0 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.coll-banner__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  align-self: center;
+}
+
+/* No collection chosen yet: a muted prompt instead of the details */
+.coll-banner.is-empty {
+  border-color: var(--border);
+  border-left-color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+
+.coll-banner.is-empty .coll-banner__icon {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.coll-banner.is-empty .coll-banner__eyebrow {
+  color: var(--text-muted);
+}
+
+.coll-banner.is-empty .coll-banner__filled,
+.coll-banner.is-empty [data-banner-manage] {
+  display: none;
+}
+
+.coll-banner.is-empty .coll-banner__empty {
+  display: block;
+}
+
+/* With results on the page the console is compact: one-line description */
+.search-layout--results .coll-banner {
+  margin-bottom: var(--space-4);
+}
+
+.search-layout--results .coll-banner__desc {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+@media (max-width: 640px) {
+  .coll-banner {
+    flex-wrap: wrap;
+  }
+
+  .coll-banner__actions {
+    width: 100%;
+    justify-content: flex-start;
+    padding-left: calc(40px + var(--space-3));
+  }
 }
 
 .query-console__question {
@@ -4994,11 +5285,23 @@ input[type="range"]::-moz-range-thumb {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+}
+
+.doc-selection-actions .btn {
+  border-radius: var(--radius-pill);
+}
+
+.doc-selection-actions .btn--ghost:not(:disabled) {
+  background: var(--bg-solid);
 }
 
 .doc-table-wrap {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
   background: var(--bg-solid);
   max-height: 420px;
   overflow-y: auto;
@@ -5018,27 +5321,93 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .doc-table th {
-  background: var(--bg-subtle);
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: var(--text-muted);
   position: sticky;
   top: 0;
   z-index: 1;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+  background: var(--bg-subtle);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--border-strong);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.doc-table td {
+  transition: background 0.12s var(--ease);
 }
 
 .doc-table tr:last-child td {
   border-bottom: 0;
 }
 
-.doc-table tr:hover td {
+.doc-table tbody tr:hover td {
   background: var(--bg-subtle);
+}
+
+.doc-name-text {
+  font-weight: 500;
 }
 
 .doc-th--check,
 .doc-td--check {
-  width: 32px;
+  width: 40px;
   text-align: center;
+}
+
+/* Row selection uses square check boxes: the pill switch is reserved for
+   the "in search" state so the two controls cannot be confused. */
+.doc-table input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  vertical-align: middle;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-solid);
+}
+
+.doc-table input[type="checkbox"]::after {
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 5px;
+  border-radius: 0;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  background: none;
+  box-shadow: none;
+  transform: translate(-50%, -65%) rotate(-45deg) scale(0);
+  transition: transform 0.15s var(--ease);
+}
+
+.doc-table input[type="checkbox"]:hover {
+  border-color: var(--brand-500);
+}
+
+.doc-table input[type="checkbox"]:checked,
+.doc-table input[type="checkbox"]:indeterminate {
+  background: var(--gradient-brand);
+  border-color: transparent;
+}
+
+.doc-table input[type="checkbox"]:checked::after {
+  background: none;
+  box-shadow: none;
+  transform: translate(-50%, -65%) rotate(-45deg) scale(1);
+}
+
+.doc-table input[type="checkbox"]:indeterminate::after {
+  width: 10px;
+  height: 2px;
+  border: 0;
+  border-radius: 1px;
+  background: #fff;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .doc-th--action,
@@ -5456,12 +5825,25 @@ input[type="range"]::-moz-range-thumb {
   max-height: 560px;
 }
 
-.doc-row.is-selected td {
-  background: rgb(225 29 72 / 7%);
+/* selected rows are highlighted in the brand colour (red is kept for errors) */
+.doc-table tbody tr.doc-row.is-selected td {
+  background: rgb(124 108 255 / 9%);
+}
+
+.doc-row.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--violet-500);
 }
 
 .doc-selection-count {
-  font-size: 0.82rem;
+  padding: 0 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--brand-500);
+  white-space: nowrap;
+}
+
+.doc-selection-count:empty {
+  display: none;
 }
 
 .doc-empty-filter {
@@ -5765,6 +6147,273 @@ input[type="range"]::-moz-range-thumb {
   .confirm-dialog[open] {
     animation: none;
   }
+}
+
+/* --------------------------------------------------------------------------
+   18.6 Chunking: collection cards, new collection form, indexing options
+   -------------------------------------------------------------------------- */
+/* Collection card: date and the declared chunking stacked in the footer */
+.collection__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem var(--space-4);
+}
+
+.collection__chunking {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.collection__chunking svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--brand-500);
+}
+
+.collection__chunking.is-undeclared {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.collection__chunking.is-undeclared svg {
+  color: var(--text-faint);
+}
+
+/* "strict": the collection refuses other chunking than its own */
+.badge--strict {
+  padding: 0.05rem 0.5rem;
+  border-color: rgb(240 169 42 / 55%);
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.kv dd .badge--strict {
+  margin-left: 0.5rem;
+}
+
+/* New collection: the chunking card spans both form columns */
+.chunking-card {
+  grid-column: 1 / -1;
+}
+
+.chunking-card__lead {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+}
+
+.chunking-card.has-error {
+  border-color: rgb(240 68 106 / 45%);
+}
+
+.chunking-card .form-row--split {
+  gap: 0 var(--space-5);
+}
+
+.model-info {
+  min-height: 1.2em;
+  font-family: var(--font-mono);
+  font-size: 0.76rem !important;
+}
+
+.model-info:empty {
+  display: none;
+}
+
+/* Inline notes under a field: validation error / soft warning */
+.field-msg {
+  margin: var(--space-2) 0 0;
+  padding: 0.4rem 0.65rem;
+  border-left: 3px solid;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.field-msg[hidden] {
+  display: none;
+}
+
+.field-msg--error {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+  color: var(--error-fg);
+}
+
+.field-msg--warn {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+}
+
+input.is-invalid,
+input.is-invalid:focus {
+  border-color: var(--error-border);
+  box-shadow: 0 0 0 3px rgb(240 68 106 / 18%);
+}
+
+/* A switch with a title and a description (strict chunking) */
+.check-row--boxed {
+  align-items: flex-start;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.check-row--boxed input[type="checkbox"] {
+  margin-top: 3px;
+}
+
+.check-row--boxed label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.check-row__title {
+  font-weight: 600;
+}
+
+.check-row__desc {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Indexing: collection settings vs. custom values */
+.chunk-mode {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.chunk-mode__legend {
+  padding: 0 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.chunk-mode.is-strict {
+  border-color: rgb(240 169 42 / 45%);
+}
+
+.chunk-mode__opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0 0 var(--space-2);
+  padding: 0.5rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+
+.chunk-mode__opt:hover {
+  background: var(--bg-subtle);
+}
+
+.chunk-mode__opt:has(input:checked) {
+  border-color: rgb(124 108 255 / 45%);
+  background: rgb(124 108 255 / 8%);
+}
+
+.chunk-mode__opt input[type="radio"] {
+  appearance: none;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--bg-solid);
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.chunk-mode__opt input[type="radio"]:checked {
+  border-color: var(--brand-500);
+  box-shadow: inset 0 0 0 4px var(--bg-solid);
+  background: var(--brand-500);
+}
+
+.chunk-mode__opt input[type="radio"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.chunk-mode__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.chunk-mode__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.chunk-mode__desc {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.chunk-mode__note {
+  margin: var(--space-2) 0 var(--space-2);
+}
+
+/* Sliders of the collection settings: visible, but not editable */
+.chunk-fields {
+  transition: opacity 0.2s var(--ease);
+}
+
+.chunk-fields.is-locked {
+  opacity: 0.55;
+}
+
+.chunk-fields.is-locked input[type="range"] {
+  cursor: not-allowed;
+}
+
+.field-slider.is-invalid > span,
+.field-slider.is-invalid output {
+  color: var(--error-fg);
+}
+
+.field-slider.is-invalid output {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+}
+
+.field-slider.is-invalid input[type="range"] {
+  box-shadow: inset 0 0 0 1px var(--error-border), 0 0 0 3px rgb(240 68 106 / 18%);
 }
 
 /* --------------------------------------------------------------------------

@@ -564,6 +564,14 @@ function initGroupSummaries(panel) {
     const select = field(name);
     return select ? Array.from(select.selectedOptions).length : 0;
   };
+  // The similarity cutoff counts as a filter only when it differs from the
+  // default of the engine
+  const similarity = () => {
+    const range = field("min_similarity");
+    if (!range || range.dataset.default === undefined) return null;
+    const value = Number(range.value);
+    return Number.isFinite(value) && value !== Number(range.dataset.default) ? value : null;
+  };
 
   const summaries = {
     collection: () => {
@@ -599,6 +607,14 @@ function initGroupSummaries(panel) {
       const documents = chosen("documents");
       if (categories) parts.push(t("sum_categories", { n: categories }, "{n} categories"));
       if (documents) parts.push(t("sum_documents", { n: documents }, "{n} documents"));
+      const cutoff = similarity();
+      if (cutoff !== null) {
+        parts.push(
+          cutoff > 0
+            ? t("sum_min_similarity", { n: cutoff.toFixed(2) }, "similarity ≥ {n}")
+            : t("sum_no_min_similarity", {}, "no similarity cutoff")
+        );
+      }
       return parts.length ? parts.join(" · ") : t("sum_no_filters", {}, "no filters");
     },
   };
@@ -611,7 +627,12 @@ function initGroupSummaries(panel) {
       if (target && summary) target.textContent = summary();
     });
     const group = panel.querySelector("[data-group='filters']");
-    if (group) group.classList.toggle("is-active", chosen("categories") + chosen("documents") > 0);
+    if (group) {
+      group.classList.toggle(
+        "is-active",
+        chosen("categories") + chosen("documents") > 0 || similarity() !== null
+      );
+    }
 
     // Number of generation options that differ from their defaults
     if (tuning) {
@@ -630,12 +651,225 @@ function initGroupSummaries(panel) {
   update();
 }
 
+// The sidebar remembers itself in the browser: the values of its fields and
+// which groups are folded survive leaving the page and coming back, also
+// without running a search (the server only keeps the options of the last
+// one). Runs before the other initialisers so that they see the restored
+// state.
+const PARAMS_KEY = "sse-search-params";
+// Fields whose options belong to a collection: kept only for that collection
+const COLLECTION_FIELDS = ["categories", "documents"];
+
+function readParamsMemory() {
+  try {
+    const data = JSON.parse(localStorage.getItem(PARAMS_KEY));
+    return data && typeof data === "object" ? data : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeParamsMemory(data) {
+  try {
+    if (data) localStorage.setItem(PARAMS_KEY, JSON.stringify(data));
+    else localStorage.removeItem(PARAMS_KEY);
+  } catch (error) {
+    /* storage unavailable */
+  }
+}
+
+function paramsFields(panel) {
+  return Array.from(panel.querySelectorAll("input[name], select[name]"))
+    .filter((field) => field.type !== "hidden");
+}
+
+function paramsGroups(panel) {
+  return Array.from(panel.querySelectorAll("details[data-group], details[data-remember]"));
+}
+
+function groupKey(group) {
+  return group.dataset.remember || group.dataset.group;
+}
+
+function snapshotParams(panel) {
+  const fields = {};
+  paramsFields(panel).forEach((field) => {
+    if (field.type === "checkbox") {
+      fields[field.name] = field.checked;
+    } else if (field.multiple) {
+      fields[field.name] = Array.from(field.selectedOptions, (option) => option.value);
+    } else {
+      fields[field.name] = field.value;
+    }
+  });
+  const open = {};
+  paramsGroups(panel).forEach((group) => {
+    open[groupKey(group)] = group.open;
+  });
+  return { fields, open };
+}
+
+function restoreParams(panel, memory, collectionFromUrl) {
+  if (!memory) return;
+  const fields = memory.fields || {};
+  const open = memory.open || {};
+
+  paramsGroups(panel).forEach((group) => {
+    const saved = open[groupKey(group)];
+    if (typeof saved === "boolean") group.open = saved;
+  });
+
+  const hasOption = (select, value) =>
+    Array.from(select.options).some((option) => option.value === String(value));
+
+  // A collection named in the address (e.g. "Search" on a collection card)
+  // wins over the remembered one
+  const collection = panel.querySelector("select[name='collection_name']");
+  let switched = false;
+  if (
+    collection
+    && !collectionFromUrl
+    && typeof fields.collection_name === "string"
+    && fields.collection_name
+    && fields.collection_name !== collection.value
+    && hasOption(collection, fields.collection_name)
+  ) {
+    collection.value = fields.collection_name;
+    switched = true;
+  }
+
+  const applyField = (field) => {
+    const saved = fields[field.name];
+    if (saved === undefined) return;
+    if (field.type === "checkbox") {
+      field.checked = Boolean(saved);
+    } else if (field.multiple) {
+      const wanted = new Set(Array.isArray(saved) ? saved : []);
+      Array.from(field.options).forEach((option) => {
+        option.selected = wanted.has(option.value);
+      });
+    } else if (field.tagName === "SELECT") {
+      if (hasOption(field, saved)) field.value = String(saved);
+    } else if (typeof saved === "string" || typeof saved === "number") {
+      field.value = String(saved);
+    }
+  };
+
+  const filtersBelongHere = Boolean(collection) && fields.collection_name === collection.value;
+  paramsFields(panel).forEach((field) => {
+    if (field.name === "collection_name") return;
+    if (!COLLECTION_FIELDS.includes(field.name)) {
+      applyField(field);
+    } else if (switched) {
+      // The options of the other collection arrive with fillSelect
+      field.addEventListener("picker:refresh", () => applyField(field), { once: true });
+    } else if (filtersBelongHere) {
+      applyField(field);
+    }
+  });
+
+  // Loads the filters and the history of the remembered collection
+  if (switched) collection.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function initParamsMemory() {
+  const panel = document.querySelector("[data-params]");
+  if (!panel) return;
+  const url = new URL(window.location.href);
+  const save = () => writeParamsMemory(snapshotParams(panel));
+
+  if (url.searchParams.has("params_reset")) {
+    // "Restore defaults": the server forgot its copy, forget ours too; the
+    // marker is dropped so that a refresh does not reset the sidebar again
+    writeParamsMemory(null);
+    url.searchParams.delete("params_reset");
+    window.history.replaceState(window.history.state, "", url);
+  } else {
+    restoreParams(panel, readParamsMemory(), url.searchParams.has("collection_name"));
+  }
+
+  panel.addEventListener("input", save);
+  panel.addEventListener("change", save);
+  paramsGroups(panel).forEach((group) => group.addEventListener("toggle", save));
+  save();
+}
+
 function initParamsPanel() {
   document.querySelectorAll("[data-params]").forEach((panel) => {
     initSteppers(panel);
     panel.querySelectorAll("select[data-picker]").forEach(initPicker);
     initGroupSummaries(panel);
   });
+}
+
+/* -------------------------------------------- query console: collection */
+// The banner above the question shows which collection it goes to: the name,
+// the description and the date come from the data-* attributes of the chosen
+// <option>, the number of documents from the "documents" filter.
+function updateCollectionBanner(select, documentsCount = null) {
+  const banner = document.querySelector("[data-collection-banner]");
+  if (!banner) return;
+  const option = select && select.value ? select.selectedOptions[0] : null;
+  banner.classList.toggle("is-empty", !option);
+
+  const manage = banner.querySelector("[data-banner-manage]");
+  if (manage) {
+    manage.href = option
+      ? `/collections/manage?collection_name=${encodeURIComponent(option.value)}`
+      : "/collections/manage";
+  }
+  if (!option) return;
+
+  const label = (option.textContent || option.value).trim();
+  const name = banner.querySelector("[data-banner-name]");
+  if (name) {
+    name.textContent = label;
+    name.title = label;
+  }
+  const id = banner.querySelector("[data-banner-id]");
+  if (id) {
+    id.textContent = option.value;
+    id.title = option.value;
+    id.hidden = option.value === label;
+  }
+
+  const description = (option.dataset.description || "").trim();
+  const desc = banner.querySelector("[data-banner-desc]");
+  if (desc) {
+    desc.textContent = description || t("banner_no_description", {}, "No description");
+    desc.classList.toggle("is-muted", !description);
+    if (description) desc.title = description;
+    else desc.removeAttribute("title");
+  }
+
+  const created = (option.dataset.created || "").trim();
+  const dateWrap = banner.querySelector("[data-banner-date-wrap]");
+  const date = banner.querySelector("[data-banner-date]");
+  if (dateWrap) dateWrap.hidden = !created;
+  if (date) date.textContent = created ? t("banner_created", { date: created }, "Created {date}") : "";
+
+  if (documentsCount !== null) {
+    const docs = banner.querySelector("[data-banner-docs]");
+    if (docs) docs.textContent = t("sum_documents", { n: documentsCount }, "{n} documents");
+  }
+}
+
+function initCollectionBanner() {
+  const banner = document.querySelector("[data-collection-banner]");
+  if (!banner) return;
+  const select = document.querySelector("[data-params] select[name='collection_name']");
+  // The remembered collection may differ from the one the server rendered
+  updateCollectionBanner(select);
+
+  const change = banner.querySelector("[data-banner-change]");
+  if (change && select) {
+    change.addEventListener("click", () => {
+      const group = select.closest("details");
+      if (group) group.open = true;
+      select.scrollIntoView({ behavior: "smooth", block: "center" });
+      select.focus({ preventScroll: true });
+    });
+  }
 }
 
 /* --------------------------------------------------------- upload summary */
@@ -706,6 +940,245 @@ function initChunkPreview() {
     chunk.addEventListener("input", render);
     overlap.addEventListener("input", render);
     render();
+  });
+}
+
+/* ------------------------------------------- new collection: chunking */
+// The chunk size of a new collection is capped by max_model_length of the
+// chosen embedder (data-max-length of the <option>, empty = no known limit);
+// the overlap has to stay within [0, chunk). A chunk which does not fit the
+// reranker is only reported (the query shares that budget), never blocked.
+// Any edit of the two fields flags "chunking_edited", so that the server
+// sends "chunking" to the engine only when the defaults were touched.
+function modelOption(select) {
+  return select && select.value ? select.selectedOptions[0] : null;
+}
+
+function modelLimit(select) {
+  const option = modelOption(select);
+  const limit = option ? Number(option.dataset.maxLength) : NaN;
+  return option && option.dataset.maxLength !== "" && Number.isFinite(limit) && limit > 0
+    ? limit
+    : null;
+}
+
+function describeModel(select, target) {
+  if (!target) return;
+  const option = modelOption(select);
+  if (!option) {
+    target.textContent = "";
+    return;
+  }
+  const parts = [];
+  if (option.dataset.vectorSize) {
+    parts.push(t("model_vector", { n: option.dataset.vectorSize }, "vector {n}"));
+  }
+  const limit = modelLimit(select);
+  parts.push(
+    limit
+      ? t("model_max_length", { n: limit }, "max input {n} tokens")
+      : t("model_no_limit", {}, "no known length limit")
+  );
+  if (option.dataset.device) parts.push(option.dataset.device);
+  target.textContent = parts.join(" · ");
+}
+
+function initCollectionChunking() {
+  const form = document.querySelector("[data-collection-form]");
+  if (!form) return;
+  const embedder = form.querySelector("[data-model-select='embedder']");
+  const reranker = form.querySelector("[data-model-select='reranker']");
+  const chunk = form.querySelector("[data-chunk-size]");
+  const overlap = form.querySelector("[data-chunk-overlap]");
+  const edited = form.querySelector("[data-chunking-edited]");
+  const chunkMsg = form.querySelector("[data-chunk-msg]");
+  const overlapMsg = form.querySelector("[data-overlap-msg]");
+  const rerankerMsg = form.querySelector("[data-reranker-msg]");
+  const limitHint = form.querySelector("[data-chunk-limit]");
+  const defaultHint = limitHint ? limitHint.textContent : "";
+  if (!chunk || !overlap) return;
+
+  // The slider span used when the model sets no ceiling (data-range-max of
+  // the field, stretched by the server when the shown value asks for more)
+  const span = (field) => {
+    const range = Number(field.dataset.rangeMax);
+    return Number.isFinite(range) && range > 0 ? range : null;
+  };
+  // A range input clamps its value to a new max by itself; its <output> and
+  // track are refreshed here (no "input" event, so nothing counts as an edit)
+  const setMax = (field, max) => {
+    const before = field.value;
+    if (max === null) field.removeAttribute("max");
+    else field.max = String(max);
+    if (field.type !== "range" || field.value === before) return;
+    const row = field.closest(".field-slider");
+    const output = row ? row.querySelector("output") : null;
+    if (output) output.textContent = field.value;
+    paintRange(field);
+  };
+
+  const setInvalid = (field, message, note) => {
+    field.classList.toggle("is-invalid", Boolean(message));
+    const row = field.closest(".field-slider");
+    if (row) row.classList.toggle("is-invalid", Boolean(message));
+    if (message) field.setAttribute("aria-invalid", "true");
+    else field.removeAttribute("aria-invalid");
+    field.setCustomValidity(message || "");
+    if (note) {
+      note.textContent = message || "";
+      note.hidden = !message;
+    }
+  };
+
+  const validate = () => {
+    const limit = modelLimit(embedder);
+    const model = embedder ? (modelOption(embedder)?.textContent || "").trim() : "";
+    // null = no ceiling: a slider then spans its usual range (a number input
+    // drops the attribute, no magic number either way)
+    setMax(chunk, limit || span(chunk));
+    if (limitHint) {
+      limitHint.textContent = limit
+        ? t("chunk_limit_hint", { model, n: limit }, "Ceiling for the embedder {model}: {n} tokens.")
+        : model
+          ? t("chunk_no_limit_hint", { model }, "The embedder {model} reports no length limit — no ceiling.")
+          : defaultHint;
+    }
+
+    const size = chunk.value === "" ? null : Number(chunk.value);
+
+    let chunkError = "";
+    if (size !== null && limit && size > limit) {
+      chunkError = t("chunk_too_long", { n: limit, model }, "The chunk cannot exceed {n} tokens (max input of the embedder {model}).");
+    } else if (size !== null && (!Number.isFinite(size) || size < 1)) {
+      chunkError = t("chunk_size_error", {}, "The chunk size must be a whole number above 0.");
+    }
+    setInvalid(chunk, chunkError, chunkMsg);
+
+    let overlapError = "";
+    const overlapSpan = span(overlap);
+    if (size !== null && size >= 1) {
+      // The overlap stays below the chunk; a slider also keeps its usual span
+      setMax(overlap, overlapSpan ? Math.min(size - 1, overlapSpan) : size - 1);
+    } else {
+      setMax(overlap, overlapSpan);
+    }
+    // Read after the max was set: a slider may have been clamped by it
+    const over = overlap.value === "" ? null : Number(overlap.value);
+    if (size !== null && size >= 1) {
+      if (over !== null && !(over >= 0 && over < size)) {
+        overlapError = t("chunk_overlap_error", { n: size - 1 }, "The overlap must be a number from 0 to {n}.");
+      }
+    } else if (over !== null && over < 0) {
+      overlapError = t("chunk_overlap_error", { n: 0 }, "The overlap must be a number from 0 to {n}.");
+    }
+    setInvalid(overlap, overlapError, overlapMsg);
+
+    // Soft warning only: a chunk at or above the reranker input is truncated
+    // there, the engine still accepts it
+    if (rerankerMsg) {
+      const rerankLimit = modelLimit(reranker);
+      const rerankModel = reranker ? (modelOption(reranker)?.textContent || "").trim() : "";
+      const warn = size !== null && rerankLimit && size >= rerankLimit;
+      rerankerMsg.hidden = !warn;
+      rerankerMsg.textContent = warn
+        ? t(
+            "chunk_reranker_warning",
+            { chunk: size, model: rerankModel, n: rerankLimit },
+            "A chunk of {chunk} tokens does not fit the reranker {model} (limit {n} tokens)."
+          )
+        : "";
+    }
+  };
+
+  const describe = () => {
+    describeModel(embedder, form.querySelector("[data-model-info='embedder']"));
+    describeModel(reranker, form.querySelector("[data-model-info='reranker']"));
+  };
+
+  [chunk, overlap].forEach((field) => {
+    field.addEventListener("input", () => {
+      if (edited) edited.value = "1";
+      validate();
+    });
+  });
+  [embedder, reranker].forEach((select) => {
+    if (!select) return;
+    select.addEventListener("change", () => {
+      describe();
+      validate();
+    });
+  });
+  // Browser validation bubbles would hide the inline notes: keep both
+  form.addEventListener("submit", (event) => {
+    validate();
+    if (!chunk.checkValidity() || !overlap.checkValidity()) {
+      event.preventDefault();
+      (chunk.checkValidity() ? overlap : chunk).focus();
+    }
+  });
+  describe();
+  validate();
+}
+
+/* ----------------------------------------------- indexing: chunking mode */
+// "Collection settings" leaves the chunk keys out of indexing_options (the
+// engine then uses what the collection declares); "custom" enables the
+// sliders and sends both keys. On a strict collection the custom choice shows
+// up front that the engine will answer with CHUNKING_MISMATCH.
+function initChunkingMode() {
+  document.querySelectorAll("[data-chunk-mode]").forEach((mode) => {
+    const form = mode.closest("form") || document;
+    const fields = form.querySelector("[data-chunk-fields]");
+    const sliders = fields
+      ? Array.from(fields.querySelectorAll("input[type='range']"))
+      : [];
+    const warning = mode.querySelector("[data-strict-warning]");
+    const radios = Array.from(mode.querySelectorAll("input[name='chunking_mode']"));
+    if (!radios.length) return;
+
+    const reference = {
+      max_tokens_in_chunk: mode.dataset.refChunk,
+      number_of_overlap_tokens: mode.dataset.refOverlap,
+    };
+    // Where the sliders start when "custom" is picked (a sensible own
+    // setting, not a copy of the collection one)
+    const customStart = {
+      max_tokens_in_chunk: mode.dataset.customChunk,
+      number_of_overlap_tokens: mode.dataset.customOverlap,
+    };
+    const setSlider = (slider, value) => {
+      if (value === undefined || value === "") return;
+      const max = Number(slider.max);
+      slider.value = Number.isFinite(max) && max > 0 ? Math.min(Number(value), max) : value;
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+
+    // `picked` is true for a change made by the user (not the initial state,
+    // which may show the values refused by the engine)
+    const apply = (picked = false) => {
+      const custom = radios.some((radio) => radio.checked && radio.value === "custom");
+      if (fields) fields.classList.toggle("is-locked", !custom);
+      sliders.forEach((slider) => {
+        slider.disabled = !custom;
+        if (custom && picked) {
+          // Own values: start from the proposed custom setting
+          setSlider(slider, customStart[slider.name]);
+        } else if (!custom) {
+          // Back to the collection settings: the sliders show them again
+          setSlider(slider, reference[slider.name]);
+        }
+      });
+      if (warning) warning.hidden = !custom;
+      // The refused value is no longer shown once the user changes the mode
+      if (fields && !custom) {
+        fields.querySelectorAll(".is-invalid").forEach((row) => row.classList.remove("is-invalid"));
+        fields.querySelectorAll("[aria-invalid]").forEach((el) => el.removeAttribute("aria-invalid"));
+        const note = fields.querySelector("[data-too-long-note]");
+        if (note) note.hidden = true;
+      }
+    };
+    radios.forEach((radio) => radio.addEventListener("change", () => apply(true)));
+    apply();
   });
 }
 
@@ -844,8 +1317,76 @@ function initConfirmDialogs() {
   const phraseLabel = dialog.querySelector("[data-confirm-phrase-label]");
   const phraseInput = phraseBox.querySelector("input");
   const okButton = dialog.querySelector("[data-confirm-ok]");
-  const defaults = { title: title.textContent, ok: okButton.textContent };
+  const warning = dialog.querySelector(".confirm-dialog__warning");
+  const icon = dialog.querySelector(".confirm-dialog__icon");
+  const defaults = {
+    title: title.textContent,
+    ok: okButton.textContent,
+    iconHtml: icon ? icon.innerHTML : "",
+  };
+  const resetIconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
   const canShowModal = typeof dialog.showModal === "function";
+
+  const resetDialogVisuals = () => {
+    if (warning) warning.classList.remove("hidden");
+    if (icon) icon.innerHTML = defaults.iconHtml;
+  };
+
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("a[data-confirm], button[data-confirm]:not([type=submit])");
+    if (!trigger) return;
+    const text = trigger.dataset.confirm;
+    if (!text) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const phrase = trigger.dataset.confirmPhrase || "";
+    const showWarning = trigger.dataset.confirmWarning !== "false";
+    const iconType = trigger.dataset.confirmIcon;
+
+    if (!canShowModal) {
+      if (window.confirm(text)) {
+        if (trigger.tagName === "A" && trigger.href) {
+          window.location.href = trigger.href;
+        }
+      }
+      return;
+    }
+
+    title.textContent = trigger.dataset.confirmTitle || defaults.title;
+    okButton.textContent = trigger.dataset.confirmOk || defaults.ok;
+    message.textContent = text;
+    if (warning) warning.classList.toggle("hidden", !showWarning);
+    if (icon) {
+      icon.innerHTML = iconType === "reset" ? resetIconSvg : defaults.iconHtml;
+    }
+
+    list.replaceChildren();
+    list.classList.add("hidden");
+
+    phraseBox.classList.toggle("hidden", !phrase);
+    phraseInput.value = "";
+    okButton.disabled = Boolean(phrase);
+    if (phrase) {
+      phraseLabel.textContent = t("confirm_type", { phrase }, "Type {phrase} to confirm");
+      phraseInput.oninput = () => {
+        okButton.disabled = phraseInput.value.trim() !== phrase;
+      };
+    }
+
+    dialog.onclose = () => {
+      dialog.onclose = null;
+      resetDialogVisuals();
+      if (dialog.returnValue !== "ok") return;
+      if (trigger.tagName === "A" && trigger.href) {
+        window.location.href = trigger.href;
+      }
+    };
+    dialog.returnValue = "";
+    dialog.showModal();
+    (phrase ? phraseInput : dialog.querySelector("[data-confirm-cancel]")).focus();
+  });
 
   document.addEventListener("submit", (event) => {
     const form = event.target;
@@ -868,6 +1409,8 @@ function initConfirmDialogs() {
       question = t("confirm_docs_selected", { n: items.length }, text);
     }
     const phrase = confirmAttr("confirmPhrase", submitter, form) || "";
+    const showWarning = confirmAttr("confirmWarning", submitter, form) !== "false";
+    const iconType = confirmAttr("confirmIcon", submitter, form);
 
     if (!canShowModal) {
       if (window.confirm(question)) {
@@ -880,6 +1423,10 @@ function initConfirmDialogs() {
     title.textContent = confirmAttr("confirmTitle", submitter, form) || defaults.title;
     okButton.textContent = confirmAttr("confirmOk", submitter, form) || defaults.ok;
     message.textContent = question;
+    if (warning) warning.classList.toggle("hidden", !showWarning);
+    if (icon) {
+      icon.innerHTML = iconType === "reset" ? resetIconSvg : defaults.iconHtml;
+    }
 
     list.replaceChildren(...items.slice(0, 8).map((item) => {
       const li = document.createElement("li");
@@ -906,6 +1453,7 @@ function initConfirmDialogs() {
 
     dialog.onclose = () => {
       dialog.onclose = null;
+      resetDialogVisuals();
       if (dialog.returnValue !== "ok") return;
       form.dataset.confirmed = "true";
       form.requestSubmit(submitter);
@@ -1192,11 +1740,15 @@ document.addEventListener("DOMContentLoaded", () => {
   initThemeToggle();
   initNavToggle();
   initTabs();
+  initParamsMemory();
   initSliders();
   initParamsPanel();
+  initCollectionBanner();
   initFileSummary();
   initDropzone();
   initChunkPreview();
+  initChunkingMode();
+  initCollectionChunking();
   initExamples();
   initConditionalFields();
   initFormBusyStates();
@@ -1239,6 +1791,7 @@ document.addEventListener("change", async (event) => {
 
   const scope = select.closest("form") || document;
   refreshHistory(select.value, (select.selectedOptions[0]?.textContent || "").trim());
+  updateCollectionBanner(select);
   const targets = {
     categories: scope.querySelector("select[name='categories']"),
     documents: scope.querySelector("select[name='documents']"),
@@ -1256,6 +1809,7 @@ document.addEventListener("change", async (event) => {
       const counter = scope.querySelector(`[data-count-for='${key}']`);
       if (counter) counter.textContent = values.length;
     });
+    updateCollectionBanner(select, (payload.body.documents || []).length);
   } catch (error) {
     console.error("Cannot refresh collection filters", error);
   }

@@ -10,7 +10,9 @@
   <div class="card">
     <div class="card__header">
       <div>
-        <p class="section-title">{{ t('collections.list_title') }}</p>
+        <p class="card__eyebrow">{{ t('collections.list_title') }}</p>
+        <h2>{{ t('collections.list_heading') }}</h2>
+        <p class="subtitle">{{ t('collections.list_subtitle') }}</p>
       </div>
       <div class="badge-row">
         <span class="badge badge--brand"><span class="badge__value">{{ collections | length }}</span> {{ t.plural('collections.count', collections | length) }}</span>
@@ -27,8 +29,8 @@
             <div class="collection__head">
               <span class="collection__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg></span>
               <div class="collection__title">
-                <h3>{{ coll.display_name }}</h3>
-                <span class="mono">{{ coll.name }}</span>
+                <h3 title="{{ coll.display_name }}">{{ coll.display_name }}</h3>
+                <span class="mono" title="{{ coll.name }}">{{ coll.name }}</span>
               </div>
               <form method="post" action="/collections/delete" class="inline-form collection__delete"
                     data-confirm="{{ t('collections.delete_confirm', name=coll.display_name or coll.name) }}"
@@ -39,17 +41,44 @@
                 <button type="submit" class="btn btn--danger-ghost btn--sm btn--icon" title="{{ t('collections.delete_title') }}" aria-label="{{ t('collections.delete_title') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l.9 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12"/><path d="M10 11v5.5M14 11v5.5"/></svg></button>
               </form>
             </div>
-            <p class="collection__desc">
+            <p class="collection__desc"{% if coll.description %} title="{{ coll.description }}"{% endif %}>
               {% if coll.description %}{{ coll.description }}{% else %}<span class="muted">{{ t('collections.no_description') }}</span>{% endif %}
             </p>
             <div class="collection__foot">
-              <span class="collection__date">
-                {% if coll.created_on %}{{ t('collections.created_on', date=coll.created_on) }}{% else %}<span class="muted">—</span>{% endif %}
+              <span class="collection__meta">
+                <span class="collection__date">
+                  {% if coll.created_on %}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                    {{ t('collections.created_on', date=coll.created_on) }}
+                  {% else %}<span class="muted">—</span>{% endif %}
+                </span>
+                {#- Chunking of the collection (metadata_json of the engine):
+                    null means that nothing was declared yet -#}
+                <span class="collection__chunking{% if not coll.chunking %} is-undeclared{% endif %}" title="{{ t('collections.chunking_title') }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="6" height="12" rx="1.2"/><rect x="9" y="6" width="6" height="12" rx="1.2"/><rect x="14.5" y="6" width="6" height="12" rx="1.2"/></svg>
+                  {% if coll.chunking %}
+                    <span class="collection__chunk-value">{{ t('collections.chunking_summary', chunk=coll.chunking.max_tokens_in_chunk, overlap=coll.chunking.number_of_overlap_tokens) }}</span>
+                  {% else %}
+                    <span>{{ t('collections.chunking_undeclared') }}</span>
+                  {% endif %}
+                  {% if coll.strict_chunking %}
+                    <span class="badge badge--strict" title="{{ t('collections.strict_badge_title') }}">{{ t('collections.strict_badge') }}</span>
+                  {% endif %}
+                </span>
               </span>
               <span class="collection__actions">
-                <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ coll.name | urlencode }}">{{ t('collections.documents') }}</a>
-                <a class="btn btn--ghost btn--sm btn--icon" href="/documents/upload?collection_name={{ coll.name | urlencode }}" title="{{ t('collections.upload') }}" aria-label="{{ t('collections.upload') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
-                <a class="btn btn-primary btn--sm" href="/search?collection_name={{ coll.name | urlencode }}">{{ t('collections.search') }}</a>
+                <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ coll.name | urlencode }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+                  {{ t('collections.documents') }}
+                </a>
+                <a class="btn btn--ghost btn--sm" href="/documents/upload?collection_name={{ coll.name | urlencode }}" title="{{ t('collections.upload_title') }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  {{ t('collections.upload') }}
+                </a>
+                <a class="btn btn-primary btn--sm" href="/search?collection_name={{ coll.name | urlencode }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+                  {{ t('collections.search') }}
+                </a>
               </span>
             </div>
           </li>
@@ -86,6 +115,15 @@
         <dd>{{ created.model_embedder }}</dd>
         <dt>{{ t('collections.field_reranker') }}</dt>
         <dd>{{ created.model_reranker }}</dd>
+        <dt>{{ t('collections.field_chunking') }}</dt>
+        <dd>
+          {% if created.chunking %}
+            {{ t('collections.chunking_summary', chunk=created.chunking.max_tokens_in_chunk, overlap=created.chunking.number_of_overlap_tokens) }}
+          {% else %}
+            <span class="muted">{{ t('collections.chunking_engine_defaults') }}</span>
+          {% endif %}
+          {% if created.strict_chunking %}<span class="badge badge--strict">{{ t('collections.strict_badge') }}</span>{% endif %}
+        </dd>
         {% if created.collection_description %}
           <dt>{{ t('collections.field_description') }}</dt>
           <dd>{{ created.collection_description }}</dd>
@@ -98,20 +136,32 @@
       </div>
     {% endif %}
 
-    <form method="post" action="/collections/new">
+    {#- After a refused chunking the form comes back filled with what was typed -#}
+    {% set fv = form_values or {} %}
+    {% set cerr = chunking_error or {} %}
+    {% set embedder_info = embedder_info or {} %}
+    {% set reranker_info = reranker_info or {} %}
+    {#- The sliders always show a value: the typed one, the defaults of the
+        engine, or (when those are unknown) the UI constants; the slider range
+        is stretched when the shown value asks for more -#}
+    {% set chunk_value = fv.max_tokens_in_chunk if fv.max_tokens_in_chunk is defined and fv.max_tokens_in_chunk != '' else (chunking_defaults.max_tokens_in_chunk if chunking_defaults else constants.DEFAULT_MAX_TOKENS_IN_CHUNK) %}
+    {% set overlap_value = fv.number_of_overlap_tokens if fv.number_of_overlap_tokens is defined and fv.number_of_overlap_tokens != '' else (chunking_defaults.number_of_overlap_tokens if chunking_defaults else constants.DEFAULT_OVERLAP_TOKENS) %}
+    {% set chunk_range = [constants.MAX_TOKENS_IN_CHUNK_LIMIT, chunk_value | int(0)] | max %}
+    {% set overlap_range = [constants.OVERLAP_TOKENS_LIMIT, overlap_value | int(0)] | max %}
+    <form method="post" action="/collections/new" data-collection-form>
 
       <div class="form-grid">
         <div class="card card--subtle">
           <p class="section-title">{{ t('collections.identity') }}</p>
           <label for="collection_name">{{ t('collections.code_name') }}</label>
-          <input type="text" id="collection_name" name="collection_name" value="" placeholder="{{ t('collections.code_name_placeholder') }}" required>
+          <input type="text" id="collection_name" name="collection_name" value="{{ fv.collection_name or '' }}" placeholder="{{ t('collections.code_name_placeholder') }}" required>
           <p class="muted">{{ t('collections.code_name_hint_html') }}</p>
 
           <label for="collection_display_name">{{ t('collections.display_name') }}</label>
-          <input type="text" id="collection_display_name" name="collection_display_name" value="" placeholder="{{ t('collections.display_name_placeholder') }}" required>
+          <input type="text" id="collection_display_name" name="collection_display_name" value="{{ fv.collection_display_name or '' }}" placeholder="{{ t('collections.display_name_placeholder') }}" required>
 
           <label for="collection_description">{{ t('collections.description') }}</label>
-          <textarea id="collection_description" name="collection_description" placeholder="{{ t('collections.description_placeholder') }}"></textarea>
+          <textarea id="collection_description" name="collection_description" placeholder="{{ t('collections.description_placeholder') }}">{{ fv.collection_description or '' }}</textarea>
         </div>
 
         <div class="card card--subtle">
@@ -119,24 +169,76 @@
           <label for="embedder_index_type">{{ t('collections.index_type') }}</label>
           <select id="embedder_index_type" name="embedder_index_type">
             {% for idx in constants.INDEX_TYPES %}
-              <option value="{{ idx }}" {% if idx == 'IVF_FLAT' %}selected{% endif %}>{{ idx }}</option>
+              <option value="{{ idx }}" {% if idx == (fv.embedder_index_type or 'IVF_FLAT') %}selected{% endif %}>{{ idx }}</option>
             {% endfor %}
           </select>
 
+          {#- data-max-length (max_model_length of models_info) caps the chunk
+              size; an empty value means that the engine knows no limit -#}
           <label for="embedder_model">{{ t('collections.embedder_model') }}</label>
-          <select id="embedder_model" name="embedder_model" required>
+          <select id="embedder_model" name="embedder_model" required data-model-select="embedder">
             {% for model in embedders %}
-              <option value="{{ model }}">{{ model }}</option>
+              {% set info = embedder_info.get(model) or {} %}
+              <option value="{{ model }}"{% if model == fv.embedder_model %} selected{% endif %} data-max-length="{{ info.max_model_length if info.max_model_length is not none else '' }}" data-vector-size="{{ info.vector_size if info.vector_size is not none else '' }}" data-device="{{ info.device or '' }}">{{ model }}</option>
             {% endfor %}
           </select>
+          <p class="muted model-info" data-model-info="embedder"></p>
 
           <label for="re_ranker_model">{{ t('collections.reranker_model') }}</label>
-          <select id="re_ranker_model" name="re_ranker_model" required>
+          <select id="re_ranker_model" name="re_ranker_model" required data-model-select="reranker">
             {% for model in rerankers %}
-              <option value="{{ model }}">{{ model }}</option>
+              {% set info = reranker_info.get(model) or {} %}
+              <option value="{{ model }}"{% if model == fv.re_ranker_model %} selected{% endif %} data-max-length="{{ info.max_model_length if info.max_model_length is not none else '' }}" data-device="{{ info.device or '' }}">{{ model }}</option>
             {% endfor %}
           </select>
+          <p class="muted model-info" data-model-info="reranker"></p>
           <p class="muted">{{ t('collections.models_hint') }}</p>
+        </div>
+
+        {#- Chunking of the collection. The fields are prefilled with
+            chunking_defaults of GET filter_options; "chunking" is sent to the
+            engine only when they were edited (chunking_edited is set by
+            app.js, the rendered defaults are the fallback of the server). -#}
+        <div class="card card--subtle chunking-card{% if cerr.code %} has-error{% endif %}" data-chunking-fields>
+          <p class="section-title">{{ t('collections.chunking') }}</p>
+          <p class="muted chunking-card__lead">{{ t('collections.chunking_lead') }}</p>
+          <input type="hidden" name="chunking_edited" value="{{ '1' if fv.max_tokens_in_chunk is defined and fv.max_tokens_in_chunk != '' else '0' }}" data-chunking-edited>
+          {#- What the sliders were rendered with: the server sends "chunking"
+              only when the submitted values differ from these (or were touched) -#}
+          <input type="hidden" name="chunking_default_max" value="{{ chunking_defaults.max_tokens_in_chunk if chunking_defaults else chunk_value }}">
+          <input type="hidden" name="chunking_default_overlap" value="{{ chunking_defaults.number_of_overlap_tokens if chunking_defaults else overlap_value }}">
+
+          {#- data-range-*: the slider span when the embedder knows no limit
+              (the chunk one) / the usual overlap span, see app.js -#}
+          <div class="form-row form-row--split">
+            <div>
+              <div class="field-slider field-slider--stack field-slider--wide{% if cerr.code == 'too_long' %} is-invalid{% endif %}">
+                <label class="field-slider__name" for="new_max_tokens_in_chunk">{{ t('collections.chunk_size') }}</label>
+                <output>{{ chunk_value }}</output>
+                <input type="range" id="new_max_tokens_in_chunk" name="max_tokens_in_chunk" min="10" max="{{ chunk_range }}" step="1" value="{{ chunk_value }}" data-chunk-size data-range-max="{{ chunk_range }}"{% if cerr.code == 'too_long' %} class="is-invalid" aria-invalid="true"{% endif %}>
+              </div>
+              <p class="field-msg field-msg--error" data-chunk-msg{% if cerr.code != 'too_long' %} hidden{% endif %}>{{ t('collections.chunking_too_long') if cerr.code == 'too_long' else '' }}</p>
+              <p class="field-msg field-msg--warn" data-reranker-msg hidden></p>
+              <p class="muted" data-chunk-limit>{% if chunking_defaults %}{{ t('collections.chunk_default_hint', n=chunking_defaults.max_tokens_in_chunk) }}{% else %}{{ t('collections.chunk_default_unknown') }}{% endif %}</p>
+            </div>
+            <div>
+              <div class="field-slider field-slider--stack field-slider--wide{% if cerr.code == 'overlap' %} is-invalid{% endif %}">
+                <label class="field-slider__name" for="new_number_of_overlap_tokens">{{ t('collections.chunk_overlap') }}</label>
+                <output>{{ overlap_value }}</output>
+                <input type="range" id="new_number_of_overlap_tokens" name="number_of_overlap_tokens" min="0" max="{{ overlap_range }}" step="1" value="{{ overlap_value }}" data-chunk-overlap data-range-max="{{ overlap_range }}"{% if cerr.code == 'overlap' %} class="is-invalid" aria-invalid="true"{% endif %}>
+              </div>
+              <p class="field-msg field-msg--error" data-overlap-msg{% if cerr.code != 'overlap' %} hidden{% endif %}>{{ t('collections.chunking_overlap_error') if cerr.code == 'overlap' else '' }}</p>
+              <p class="muted">{{ t('collections.chunk_overlap_hint') }}</p>
+            </div>
+          </div>
+
+          <div class="check-row check-row--boxed">
+            <input type="checkbox" id="strict_chunking" name="strict_chunking"{% if fv.strict_chunking %} checked{% endif %}>
+            <label for="strict_chunking">
+              <span class="check-row__title">{{ t('collections.strict_chunking') }}</span>
+              <span class="check-row__desc">{{ t('collections.strict_chunking_desc') }}</span>
+            </label>
+          </div>
         </div>
       </div>
 

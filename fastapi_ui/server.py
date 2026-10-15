@@ -178,21 +178,122 @@ async def parsed_form(request: Request) -> FormData:
         return await request.form()
 
 
-def parse_indexing_options(form: FormData) -> dict:
-    """indexing_options of the engine, the same for uploaded files and texts."""
+# --------------------------------------------------------------------------- #
+# Chunking: how the texts of a collection are split (engine contract)
+# --------------------------------------------------------------------------- #
+MAX_TOKENS_KEY = "max_tokens_in_chunk"
+OVERLAP_KEY = "number_of_overlap_tokens"
+# errors[].error_code of the engine (HTTP 200, status False)
+CHUNKING_TOO_LONG = "000005_DATA"  # chunk > max_model_length of the embedder
+CHUNKING_MISMATCH = "000006_DATA"  # strict collection, other values requested
+CHUNKING_ERROR_CODES = {CHUNKING_TOO_LONG: "too_long", CHUNKING_MISMATCH: "mismatch"}
+
+
+def as_int(value) -> int | None:
+    """Integer of a form field / JSON value, ``None`` when empty or invalid."""
+    if value is None or isinstance(value, bool):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return int(float(text))
+    except ValueError:
+        return None
+
+
+def parse_chunking(value) -> dict | None:
+    """``{max_tokens_in_chunk, number_of_overlap_tokens}`` with integers, or
+    ``None`` when the chunk size is missing (the overlap defaults to 0)."""
+    if not isinstance(value, dict):
+        return None
+    max_tokens = as_int(value.get(MAX_TOKENS_KEY))
+    if max_tokens is None:
+        return None
+    return {MAX_TOKENS_KEY: max_tokens, OVERLAP_KEY: as_int(value.get(OVERLAP_KEY)) or 0}
+
+
+def collection_chunking(metadata) -> dict:
+    """Chunking declared on a collection (``metadata_json`` of GET collections).
+
+    ``metadata_json`` is ``null`` for collections which never declared a
+    chunking (the engine then uses its defaults and binds them on the first
+    indexing), otherwise ``{"chunking": {...}, "strict_chunking": bool}``.
+    Returns ``chunking`` (dict or None) and ``strict_chunking`` (bool or None
+    when undeclared).
+    """
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except ValueError:
+            metadata = None
+    if not isinstance(metadata, dict):
+        return {"chunking": None, "strict_chunking": None}
+    strict = metadata.get("strict_chunking")
+    if isinstance(strict, str):
+        strict = strict.strip().lower() in ("true", "1", "yes")
     return {
+        "chunking": parse_chunking(metadata.get("chunking")),
+        "strict_chunking": bool(strict) if strict is not None else None,
+    }
+
+
+def fetch_chunking_defaults(token: str) -> dict | None:
+    """``chunking_defaults`` of GET filter_options: what the engine uses for
+    a collection without a declared chunking. ``None`` when unavailable."""
+    try:
+        result = sse_api_engine.filter_options(token=token)
+    except Exception as error:  # the page is still usable without them
+        logger.warning("Cannot fetch chunking defaults: %s", error)
+        return None
+    if not isinstance(result, dict) or not result.get("status"):
+        return None
+    body = result.get("body") or {}
+    return parse_chunking(body.get("chunking_defaults")) if isinstance(body, dict) else None
+
+
+def chunking_error(result) -> dict | None:
+    """First chunking error of an engine answer.
+
+    Returns ``{"code": "too_long" | "mismatch", "message": str}`` - the message
+    comes from the engine (already in the language asked for with ``lang``) -
+    or ``None`` when the answer carries no such error.
+    """
+    if not isinstance(result, dict):
+        return None
+    for error in result.get("errors") or []:
+        if not isinstance(error, dict):
+            continue
+        code = CHUNKING_ERROR_CODES.get(str(error.get("error_code") or "").strip())
+        if code:
+            return {"code": code, "message": str(error.get("message") or "").strip()}
+    return None
+
+
+def parse_indexing_options(form: FormData) -> dict:
+    """indexing_options of the engine, the same for uploaded files and texts.
+
+    The chunk keys are optional: without them the engine splits the texts as
+    the collection declares (or with its defaults). ``chunking_mode`` of the
+    form says whether the user keeps the settings of the collection
+    (``collection``) or overrides them (``custom``), in which case both keys
+    are sent. Forms without the mode send the keys they carry.
+    """
+    options = {
         "clear_text": form.get("clear_text") is not None,
         "use_text_denoiser": form.get("use_text_denoiser") is not None,
         "check_text_lang": form.get("check_text_lang") is not None,
         "prepare_proper_pages": form.get("prepare_proper_pages") is not None,
         "merge_document_pages": form.get("merge_document_pages") is not None,
-        "max_tokens_in_chunk": int(
-            form.get("max_tokens_in_chunk") or constants.DEFAULT_MAX_TOKENS_IN_CHUNK
-        ),
-        "number_of_overlap_tokens": int(
-            form.get("number_of_overlap_tokens") or constants.DEFAULT_OVERLAP_TOKENS
-        ),
     }
+    if form.get("chunking_mode") == "collection":
+        return options
+    max_tokens = as_int(form.get(MAX_TOKENS_KEY))
+    overlap = as_int(form.get(OVERLAP_KEY))
+    if max_tokens is not None and overlap is not None:
+        options[MAX_TOKENS_KEY] = max_tokens
+        options[OVERLAP_KEY] = overlap
+    return options
 
 
 # --------------------------------------------------------------------------- #
@@ -228,12 +329,17 @@ def fetch_collections(token: str) -> dict:
 
 
 def format_created_on(value) -> str:
-    """Engine timestamps are ISO strings; the date is all the list shows."""
+    """Engine timestamps are ISO strings; the date is all the list shows.
+
+    The engine emits ``...Z`` (UTC) suffixes, which ``fromisoformat`` accepts
+    only from Python 3.11 on, so the designator is normalised first.
+    """
     text = str(value or "").strip()
     if not text:
         return ""
+    iso = text[:-1] + "+00:00" if text.endswith(("Z", "z")) else text
     try:
-        return datetime.datetime.fromisoformat(text).strftime("%Y-%m-%d")
+        return datetime.datetime.fromisoformat(iso).strftime("%Y-%m-%d")
     except ValueError:
         return text
 
@@ -256,6 +362,8 @@ def collection_row(entry) -> dict | None:
         "display_name": str(entry.get("display_name") or "").strip() or name,
         "description": str(entry.get("description") or "").strip(),
         "created_on": format_created_on(entry.get("created_on")),
+        # chunking: None = no declaration yet (metadata_json is null)
+        **collection_chunking(entry.get("metadata_json")),
     }
 
 
@@ -396,10 +504,26 @@ def fetch_page_context(token: str, collection_name: str = "") -> dict:
     return context
 
 
+def parse_min_similarity(raw) -> float:
+    """Cosine similarity cutoff of the form, a number clamped to [0, 1].
+
+    The engine falls back to its own default for anything outside that range,
+    so a mistyped value is tamed here instead of being silently ignored there.
+    """
+    try:
+        value = float(str(raw).strip()) if raw not in (None, "") else None
+    except (TypeError, ValueError):
+        value = None
+    if value is None or value != value:  # None or NaN
+        return float(constants.DEFAULT_MIN_SIMILARITY)
+    return round(min(1.0, max(0.0, value)), 2)
+
+
 def parse_search_form(form: FormData) -> dict:
     """Build (search_options, answer_options, run_models_options) from the HTML
     form."""
     results_count = int(form.get("results_count") or constants.DEFAULT_MAX_RESULTS)
+    min_similarity = parse_min_similarity(form.get("min_similarity"))
     rerank_results = form.get("rerank_results") is not None
     hybrid_search = form.get("hybrid_search") is not None
     use_content_supervisor = form.get("use_content_supervisor") is not None
@@ -441,6 +565,7 @@ def parse_search_form(form: FormData) -> dict:
         "categories": form.getlist("categories"),
         "documents": form.getlist("documents"),
         "max_results": results_count,
+        "min_similarity": min_similarity,
         "rerank_results": rerank_results,
         "hybrid_search": hybrid_search,
         "return_with_factored_fields": return_with_factored_fields,
@@ -690,23 +815,49 @@ def render_kb_page(
     request: Request, name: str, collection_name: str = "", **extra
 ) -> HTMLResponse:
     """Documents / add content tab of the selected collection."""
+    token = get_token(request)
     context = fetch_manage_collection_context(
-        get_token(request), kb_collection_name(request, collection_name)
+        token, kb_collection_name(request, collection_name)
     )
     if "error" in context:
         return render_api_error(request, context["error"])
+    if name == "upload_documents.html":
+        # The indexing forms show what the collection splits its texts with;
+        # a collection without a declaration uses the defaults of the engine
+        context["chunking_defaults"] = fetch_chunking_defaults(token)
     return render_page(request, name, **{**context, **extra})
 
 
 # --- Collections ------------------------------------------------------------ #
+def models_info_by_name(models_info: list) -> dict:
+    """``models_info`` of GET embedders / rerankers keyed by the model name.
+
+    Each entry keeps ``max_model_length`` (``None`` = no limit known),
+    ``vector_size`` (embedders only) and ``device``.
+    """
+    info = {}
+    for entry in models_info or []:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        info[name] = {
+            "max_model_length": as_int(entry.get("max_model_length")),
+            "vector_size": as_int(entry.get("vector_size")),
+            "device": str(entry.get("device") or "").strip(),
+        }
+    return info
+
+
 def render_collections_page(request: Request, **context) -> HTMLResponse:
     """List of the collections plus the form that creates a new one."""
     token = get_token(request)
-    embedders = sse_api_engine.embedders(token=token)
-    if not isinstance(embedders, list):
+    embedders = sse_api_engine.embedders(token=token, with_info=True)
+    if not isinstance(embedders, dict) or "models" not in embedders:
         return render_api_error(request, embedders)
-    rerankers = sse_api_engine.rerankers(token=token)
-    if not isinstance(rerankers, list):
+    rerankers = sse_api_engine.rerankers(token=token, with_info=True)
+    if not isinstance(rerankers, dict) or "models" not in rerankers:
         return render_api_error(request, rerankers)
 
     data = fetch_collection_rows(token)
@@ -718,8 +869,11 @@ def render_collections_page(request: Request, **context) -> HTMLResponse:
     return render_page(
         request,
         "collections.html",
-        embedders=embedders,
-        rerankers=rerankers,
+        embedders=embedders["models"],
+        embedder_info=models_info_by_name(embedders["models_info"]),
+        rerankers=rerankers["models"],
+        reranker_info=models_info_by_name(rerankers["models_info"]),
+        chunking_defaults=fetch_chunking_defaults(token),
         collections=data["collections"],
         selected_collection=remembered if remembered in names else "",
         **context,
@@ -748,6 +902,7 @@ def new_collection_submit(request: Request, form: FormData = Depends(parsed_form
 
     token = get_token(request)
     username = get_username(request)
+    t = translator(request)
 
     collection_params = {
         "collection_name": proper_collection_name(
@@ -759,18 +914,75 @@ def new_collection_submit(request: Request, form: FormData = Depends(parsed_form
         or f"Opis kolekcji {form.get('collection_display_name', '')}",
         "model_reranker": form.get("re_ranker_model", ""),
         "model_embedder": form.get("embedder_model", ""),
+        "strict_chunking": form.get("strict_chunking") is not None,
     }
 
+    # The form is re-rendered with what was typed when the chunking is refused
+    form_values = {
+        key: form.get(key, "")
+        for key in (
+            "collection_name",
+            "collection_display_name",
+            "collection_description",
+            "embedder_index_type",
+            "embedder_model",
+            "re_ranker_model",
+            MAX_TOKENS_KEY,
+            OVERLAP_KEY,
+        )
+    }
+    form_values["strict_chunking"] = collection_params["strict_chunking"]
+
+    # "chunking" goes to the engine only when the user edited the prefilled
+    # defaults (app.js flags it; the values rendered with the form are the
+    # fallback), otherwise the collection follows the defaults of the engine
+    submitted = parse_chunking(
+        {MAX_TOKENS_KEY: form.get(MAX_TOKENS_KEY), OVERLAP_KEY: form.get(OVERLAP_KEY)}
+    )
+    rendered = parse_chunking(
+        {
+            MAX_TOKENS_KEY: form.get("chunking_default_max"),
+            OVERLAP_KEY: form.get("chunking_default_overlap"),
+        }
+    )
+    edited = submitted is not None and (
+        form.get("chunking_edited") == "1" or submitted != rendered
+    )
+    if edited:
+        if not 0 <= submitted[OVERLAP_KEY] < submitted[MAX_TOKENS_KEY]:
+            return render_collections_page(
+                request,
+                error=t("collections.chunking_overlap_error"),
+                chunking_error={"code": "overlap"},
+                form_values=form_values,
+            )
+        collection_params["chunking"] = submitted
+
     result = sse_api_engine.new_collection(
-        token=token, collection_params=collection_params
+        token=token, collection_params=collection_params, lang=t.lang
     )
     if not result.get("status"):
+        problem = chunking_error(result)
+        if problem is not None:
+            return render_collections_page(
+                request,
+                error=problem["message"] or t("collections.chunking_too_long"),
+                chunking_error=problem,
+                form_values=form_values,
+            )
         return render_api_error(request, result)
 
+    # The engine answers with the chunking the collection was created with
+    body = result.get("body") if isinstance(result.get("body"), dict) else {}
+    created = dict(collection_params)
+    created["chunking"] = parse_chunking(body.get("chunking")) or collection_params.get(
+        "chunking"
+    )
+    if "strict_chunking" in body:
+        created["strict_chunking"] = bool(body.get("strict_chunking"))
+
     return render_collections_page(
-        request,
-        success=translator(request)("collections.created"),
-        created=collection_params,
+        request, success=t("collections.created"), created=created
     )
 
 
@@ -853,8 +1065,28 @@ def manage_add_text_submit(
         collection_name=collection_name,
         texts=texts,
         indexing_options=indexing_options,
+        lang=t.lang,
     )
     if not result.get("status"):
+        problem = chunking_error(result)
+        if problem is not None:
+            # Back to the text form with the typed text and the refused
+            # chunking marked (see indexing_options_feedback)
+            return render_kb_page(
+                request,
+                "upload_documents.html",
+                collection_name,
+                add_method="text",
+                error=problem["message"] or t("upload.chunking_refused"),
+                chunking_error=indexing_options_feedback(
+                    problem, "text", indexing_options
+                ),
+                text_draft={
+                    "filepath": filepath,
+                    "category": category,
+                    "page_content": page_content,
+                },
+            )
         return render_api_error(request, result)
 
     body = result.get("body") or {}
@@ -1066,6 +1298,18 @@ def manage_delete_texts_submit(
 
 
 # --- Upload documents ------------------------------------------------------- #
+def indexing_options_feedback(problem: dict, form_name: str, options: dict) -> dict:
+    """Context of ``partials/indexing_options.html`` after a refused indexing.
+
+    ``form_name`` (``files`` / ``text``) says which of the two forms was sent;
+    ``requested`` keeps the chunking the user asked for, so that a too long
+    chunk can be shown (``too_long``). After a ``mismatch`` the form goes back
+    to the settings of the collection, the only ones a strict collection
+    accepts.
+    """
+    return {**problem, "form": form_name, "requested": parse_chunking(options)}
+
+
 @app.get("/documents/upload", include_in_schema=False)
 def upload_documents_page(request: Request):
     redirect = require_login(request)
@@ -1105,8 +1349,18 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
         files_to_upload=uploaded_files,
         collection_name=collection_name,
         indexing_options=indexing_options,
+        lang=t.lang,
     )
     if upload_response is None or upload_response.get("status") is False:
+        problem = chunking_error(upload_response)
+        if problem is not None:
+            return page(
+                add_method="files",
+                error=problem["message"] or t("upload.chunking_refused"),
+                chunking_error=indexing_options_feedback(
+                    problem, "files", indexing_options
+                ),
+            )
         return page(error=t("upload.error_upload"))
 
     return page(
@@ -1114,8 +1368,8 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
         uploaded={
             "collection_name": collection_name,
             "files": len(uploaded_files),
-            "max_tokens_in_chunk": indexing_options["max_tokens_in_chunk"],
-            "number_of_overlap_tokens": indexing_options["number_of_overlap_tokens"],
+            # None = the texts were split as the collection declares
+            "chunking": parse_chunking(indexing_options),
         },
     )
 
@@ -1152,16 +1406,19 @@ def search_page(request: Request):
 
 @app.get("/search/params/reset", include_in_schema=False)
 def search_params_reset(request: Request):
-    """Forget the remembered sidebar options (back to the defaults)."""
+    """Forget the remembered sidebar options (back to the defaults).
+
+    ``params_reset=1`` tells the browser to drop its own copy of the sidebar
+    (app.js remembers the fields and the folded groups in local storage).
+    """
     redirect = require_login(request)
     if redirect is not None:
         return redirect
     set_state(request, **{LAST_SEARCH_PARAMS: None})
     collection_name = request.query_params.get("collection_name", "")
-    url = "/search"
-    if collection_name:
-        url += "?" + urlencode({"collection_name": collection_name})
-    return RedirectResponse(url=url, status_code=303)
+    query = {"collection_name": collection_name} if collection_name else {}
+    query["params_reset"] = "1"
+    return RedirectResponse(url="/search?" + urlencode(query), status_code=303)
 
 
 class SearchParams:

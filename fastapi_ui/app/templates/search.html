@@ -42,6 +42,41 @@
               <span class="query-console__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>
               <p class="section-title">{{ t('search.your_question') }}</p>
             </div>
+
+            {#- Which collection the question goes to: name, description and
+                size of the collection chosen in the sidebar. app.js
+                (initCollectionBanner) refreshes it when another collection is
+                picked, from the data-* attributes of the <option>s. -#}
+            {% set active = (collections | selectattr('name', 'equalto', selected_collection) | list | first) if selected_collection else none %}
+            <div class="coll-banner{% if not active %} is-empty{% endif %}" data-collection-banner>
+              <span class="coll-banner__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg></span>
+              <div class="coll-banner__body">
+                <p class="coll-banner__eyebrow">{{ t('search.banner_eyebrow') }}</p>
+                <div class="coll-banner__filled">
+                  <p class="coll-banner__name">
+                    <strong data-banner-name{% if active %} title="{{ active.display_name }}"{% endif %}>{{ active.display_name if active else '' }}</strong>
+                    <span class="mono coll-banner__id" data-banner-id{% if active and active.name != active.display_name %} title="{{ active.name }}"{% else %} hidden{% endif %}>{{ active.name if active else '' }}</span>
+                  </p>
+                  <p class="coll-banner__desc{% if not (active and active.description) %} is-muted{% endif %}" data-banner-desc{% if active and active.description %} title="{{ active.description }}"{% endif %}>{{ active.description if active and active.description else t('collections.no_description') }}</p>
+                  <p class="coll-banner__meta">
+                    <span class="coll-banner__fact" data-banner-docs-wrap>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+                      <span data-banner-docs>{{ t.plural('history.documents', documents | length) }}</span>
+                    </span>
+                    <span class="coll-banner__fact" data-banner-date-wrap{% if not (active and active.created_on) %} hidden{% endif %}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                      <span data-banner-date>{{ t('collections.created_on', date=active.created_on) if active and active.created_on else '' }}</span>
+                    </span>
+                  </p>
+                </div>
+                <p class="coll-banner__empty">{{ t('search.banner_none') }}</p>
+              </div>
+              <div class="coll-banner__actions">
+                <a class="btn btn--ghost btn--sm" href="/collections/manage{% if active %}?collection_name={{ active.name | urlencode }}{% endif %}" data-banner-manage title="{{ t('search.banner_documents_title') }}">{{ t('search.banner_documents') }}</a>
+                <button type="button" class="btn btn--ghost btn--sm" data-banner-change title="{{ t('search.banner_change_title') }}">{{ t('search.banner_change') }}</button>
+              </div>
+            </div>
+
             <label for="question">{{ t('search.question_label') }}</label>
             <textarea id="question" name="question" class="query-console__question" placeholder="{{ t('search.question_placeholder') }}" required>{{ question or '' }}</textarea>
 

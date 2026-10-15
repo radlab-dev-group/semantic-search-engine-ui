@@ -44,9 +44,9 @@ Backend endpoint URLs and hosts are configured in `configs/ui-configuration.json
 ## Key Features
 
 - **Knowledge Base Management**:
-  - Create, view, and delete collections.
+  - Create, view, and delete collections. A new collection may declare its chunking (`max_tokens_in_chunk`, `number_of_overlap_tokens`, prefilled with the engine `chunking_defaults`) and `strict_chunking`; the chunk size is capped by `max_model_length` of the chosen embedder (`models_info`). Collection cards show the declared chunking and a `strict` badge.
   - Manage documents, toggle document visibility in search, and inspect/delete text chunks.
-  - Upload multiple file formats (`.pdf`, `.docx`, `.txt`, `.html`, `.md`, `.zip`) or paste raw text with configurable chunking (`max_tokens_in_chunk`, `overlap_tokens`).
+  - Upload multiple file formats (`.pdf`, `.docx`, `.txt`, `.html`, `.md`, `.zip`) or paste raw text, split with the settings of the collection or with custom chunking; the engine errors `CHUNKING_TOO_LONG` (`000005_DATA`) and `CHUNKING_MISMATCH` (`000006_DATA`) are shown inline on the form.
 - **Semantic & Hybrid Search**:
   - Vector similarity search with cosine similarity scoring.
   - Hybrid search (RRF) combining vector search and full-text keyword retrieval.

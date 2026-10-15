@@ -3,28 +3,109 @@
   (names of the engine indexing_options) and the same defaults.
   Context variables:
     io_prefix (str): prefix of the element ids, unique per form
+    io_form (str): "files" / "text", the form this copy belongs to
+    active_coll_info: the collection (its chunking / strict_chunking)
+    chunking_defaults: chunking of the engine for undeclared collections
+    chunking_error: refused chunking of the last submit {form, code, requested}
+
+  Chunking: by default the texts are split as the collection declares (the
+  engine then needs no chunk keys); "custom" sends both keys instead. A strict
+  collection refuses other values (CHUNKING_MISMATCH), which the form says
+  before anything is sent.
 #}
+{% set coll = active_coll_info or {} %}
+{% set coll_chunking = coll.chunking if coll else none %}
+{% set strict = coll.strict_chunking if coll else false %}
+{% set reference = coll_chunking or chunking_defaults %}
+{% set err = chunking_error if chunking_error and chunking_error.form == io_form else none %}
+{% set custom_values = err.requested if err and err.code == 'too_long' and err.requested else none %}
+{% set custom = custom_values is not none %}
+{% set shown = custom_values or reference %}
+{% set chunk_max = [constants.MAX_TOKENS_IN_CHUNK_LIMIT, (shown.max_tokens_in_chunk if shown else 0)] | max %}
+{% set overlap_max = [constants.OVERLAP_TOKENS_LIMIT, (shown.number_of_overlap_tokens if shown else 0)] | max %}
 <p class="section-title">{{ t('upload.indexing_options') }}</p>
 
-<div class="chunk-preview" data-chunk-preview aria-hidden="true">
-  <span class="chunk-preview__label">{{ t('upload.chunk_preview') }}</span>
-  <div class="chunk-preview__track">
-    <span class="chunk-preview__chunk"></span>
-    <span class="chunk-preview__chunk"></span>
-    <span class="chunk-preview__chunk"></span>
-  </div>
-  <span class="chunk-preview__legend"><i class="chunk-preview__key"></i>{{ t('upload.legend_chunk') }} <i class="chunk-preview__key chunk-preview__key--overlap"></i>{{ t('upload.legend_overlap') }}</span>
-</div>
+{#- data-ref-*: the settings of the collection (or the defaults of the
+    engine), shown again by the sliders when "collection" is picked back;
+    data-custom-*: where the sliders start when "custom" is picked -#}
+<fieldset class="chunk-mode{% if strict %} is-strict{% endif %}" data-chunk-mode
+          data-ref-chunk="{{ reference.max_tokens_in_chunk if reference else '' }}"
+          data-ref-overlap="{{ reference.number_of_overlap_tokens if reference else '' }}"
+          data-custom-chunk="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}"
+          data-custom-overlap="{{ constants.DEFAULT_OVERLAP_TOKENS }}">
+  <legend class="chunk-mode__legend">{{ t('upload.chunking_legend') }}</legend>
 
-<div class="field-slider">
-  <span>{{ t('upload.max_tokens') }}</span>
-  <input type="range" name="max_tokens_in_chunk" min="10" max="{{ constants.MAX_TOKENS_IN_CHUNK_LIMIT }}" step="10" value="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}">
-  <output>{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}</output>
-</div>
-<div class="field-slider">
-  <span>{{ t('upload.overlap') }}</span>
-  <input type="range" name="number_of_overlap_tokens" min="0" max="{{ constants.OVERLAP_TOKENS_LIMIT }}" step="5" value="{{ constants.DEFAULT_OVERLAP_TOKENS }}">
-  <output>{{ constants.DEFAULT_OVERLAP_TOKENS }}</output>
+  <label class="chunk-mode__opt" for="{{ io_prefix }}chunking_mode_collection">
+    <input type="radio" id="{{ io_prefix }}chunking_mode_collection" name="chunking_mode" value="collection"{% if not custom %} checked{% endif %}>
+    <span class="chunk-mode__text">
+      <span class="chunk-mode__title">
+        {{ t('upload.chunking_collection') }}
+        {% if strict %}<span class="badge badge--strict" title="{{ t('collections.strict_badge_title') }}">{{ t('collections.strict_badge') }}</span>{% endif %}
+      </span>
+      <span class="chunk-mode__desc">
+        {% if coll_chunking %}
+          {{ t('collections.chunking_summary', chunk=coll_chunking.max_tokens_in_chunk, overlap=coll_chunking.number_of_overlap_tokens) }}
+        {% elif chunking_defaults %}
+          {{ t('upload.chunking_undeclared_defaults', chunk=chunking_defaults.max_tokens_in_chunk, overlap=chunking_defaults.number_of_overlap_tokens) }}
+        {% else %}
+          {{ t('upload.chunking_undeclared') }}
+        {% endif %}
+      </span>
+    </span>
+  </label>
+
+  <label class="chunk-mode__opt" for="{{ io_prefix }}chunking_mode_custom">
+    <input type="radio" id="{{ io_prefix }}chunking_mode_custom" name="chunking_mode" value="custom"{% if custom %} checked{% endif %}>
+    <span class="chunk-mode__text">
+      <span class="chunk-mode__title">{{ t('upload.chunking_custom') }}</span>
+      <span class="chunk-mode__desc">{{ t('upload.chunking_custom_desc') }}</span>
+    </span>
+  </label>
+
+  {% if strict %}
+    {#- Shown by app.js as soon as "custom" is picked: the engine will refuse -#}
+    <p class="field-msg field-msg--warn chunk-mode__note" data-strict-warning{% if not custom %} hidden{% endif %}>{{ t('upload.chunking_strict_warning') }}</p>
+  {% endif %}
+  {% if err and err.code == 'mismatch' %}
+    <p class="field-msg field-msg--error chunk-mode__note" data-mismatch-note>
+      {% if coll_chunking %}
+        {{ t('upload.chunking_mismatch_restored', chunk=coll_chunking.max_tokens_in_chunk, overlap=coll_chunking.number_of_overlap_tokens) }}
+      {% else %}
+        {{ t('upload.chunking_mismatch_restored_defaults') }}
+      {% endif %}
+    </p>
+  {% endif %}
+</fieldset>
+
+<div class="chunk-fields{% if not custom %} is-locked{% endif %}" data-chunk-fields>
+  <div class="chunk-preview" data-chunk-preview aria-hidden="true">
+    <span class="chunk-preview__label">{{ t('upload.chunk_preview') }}</span>
+    <div class="chunk-preview__track">
+      <span class="chunk-preview__chunk"></span>
+      <span class="chunk-preview__chunk"></span>
+      <span class="chunk-preview__chunk"></span>
+    </div>
+    <span class="chunk-preview__legend"><i class="chunk-preview__key"></i>{{ t('upload.legend_chunk') }} <i class="chunk-preview__key chunk-preview__key--overlap"></i>{{ t('upload.legend_overlap') }}</span>
+  </div>
+
+  {#- The slider of a chunk refused as too long for the embedder is marked -#}
+  <div class="field-slider{% if err and err.code == 'too_long' %} is-invalid{% endif %}">
+    <span>{{ t('upload.max_tokens') }}</span>
+    <input type="range" name="max_tokens_in_chunk" min="10" max="{{ chunk_max }}" step="1"
+           value="{{ shown.max_tokens_in_chunk if shown else constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}"
+           {% if not custom %}disabled{% endif %}{% if err and err.code == 'too_long' %} aria-invalid="true"{% endif %}>
+    <output>{{ shown.max_tokens_in_chunk if shown else constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}</output>
+  </div>
+  {% if err and err.code == 'too_long' %}
+    <p class="field-msg field-msg--error" data-too-long-note>{{ t('upload.chunking_too_long_hint') }}</p>
+  {% endif %}
+  <div class="field-slider">
+    <span>{{ t('upload.overlap') }}</span>
+    <input type="range" name="number_of_overlap_tokens" min="0" max="{{ overlap_max }}" step="1"
+           value="{{ shown.number_of_overlap_tokens if shown else constants.DEFAULT_OVERLAP_TOKENS }}"
+           {% if not custom %}disabled{% endif %}>
+    <output>{{ shown.number_of_overlap_tokens if shown else constants.DEFAULT_OVERLAP_TOKENS }}</output>
+  </div>
 </div>
 
 {% for name, label_key, checked in [

@@ -11,6 +11,11 @@
   Groups are <details>: a closed group still submits its fields. The live
   one-line summaries of the groups ([data-group-summary]) and the filter
   pickers ([data-picker]) are filled by app.js (initParamsPanel).
+
+  The browser also remembers the panel (app.js, initParamsMemory): the values
+  of the fields and the open/closed state of the groups ([data-group],
+  [data-remember]) are restored on the next visit, even without a search.
+  "Restore defaults" clears both the server copy and the browser copy.
 #}
 {%- set sp = search_params if search_params is defined and search_params else none -%}
 {%- macro checked(name, default=false) -%}
@@ -61,13 +66,19 @@
   </div>
 {%- endmacro -%}
 {%- set generative_on = force_generative or is_checked('use_qa_generative') -%}
-{%- set filters_on = (sp.value('categories', '') if sp else '') or (sp.value('documents', '') if sp else '') -%}
+{%- set similarity_changed = sp and sp.value('min_similarity', '') != '' and (sp.value('min_similarity', '') | float) != (constants.DEFAULT_MIN_SIMILARITY | float) -%}
+{%- set filters_on = (sp.value('categories', '') if sp else '') or (sp.value('documents', '') if sp else '') or similarity_changed -%}
 <div class="card card--panel params" data-params>
   <div class="params-head">
     <p class="card__eyebrow">{{ t('params.eyebrow') }}</p>
-    {% if sp %}
-      <a class="params-reset" href="/search/params/reset{% if selected_collection %}?collection_name={{ selected_collection | urlencode }}{% endif %}" title="{{ t('params.reset_title') }}">↺ {{ t('params.reset') }}</a>
-    {% endif %}
+    {#- Always shown: options changed without a search live in the browser only -#}
+    <a class="params-reset" href="/search/params/reset{% if selected_collection %}?collection_name={{ selected_collection | urlencode }}{% endif %}"
+       title="{{ t('params.reset_title') }}"
+       data-confirm="{{ t('params.reset_confirm') }}"
+       data-confirm-title="{{ t('params.reset_confirm_title') }}"
+       data-confirm-ok="{{ t('params.reset_confirm_ok') }}"
+       data-confirm-warning="false"
+       data-confirm-icon="reset">↺ {{ t('params.reset') }}</a>
   </div>
 
   {#- 1. Collection and number of results ------------------------------ -#}
@@ -83,8 +94,10 @@
       <label for="collection_name">{{ t('params.collection_name') }}</label>
       <select id="collection_name" name="collection_name" required>
         <option value="" disabled {% if not selected_collection %}selected{% endif %}>{{ t('params.choose_collection') }}</option>
+        {#- data-description / data-created feed the collection banner of the
+            query console (app.js, initCollectionBanner) -#}
         {% for coll in collections %}
-          <option value="{{ coll.name }}" {% if coll.name == selected_collection %}selected{% endif %}>{{ coll.display_name }}</option>
+          <option value="{{ coll.name }}" {% if coll.name == selected_collection %}selected{% endif %} data-description="{{ coll.description }}" data-created="{{ coll.created_on }}">{{ coll.display_name }}</option>
         {% endfor %}
       </select>
 
@@ -161,7 +174,7 @@
           </select>
         </div>
 
-        <details class="expander expander--tune">
+        <details class="expander expander--tune" data-remember="tuning">
           <summary>
             <span class="expander__icon">{{ icon('tune') }}</span>
             {{ t('params.generation_options') }}
@@ -201,6 +214,15 @@
       </span>
     </summary>
     <div class="pgroup__body">
+      {#- Cosine cutoff of the vector search (engine option min_similarity):
+          chunks below it are dropped, so a query may return no results -#}
+      <div class="field-slider field-slider--stack field-slider--wide">
+        <label class="field-slider__name" for="min_similarity">{{ t('params.min_similarity') }}</label>
+        <output data-default="{{ constants.DEFAULT_MIN_SIMILARITY }}">{{ val('min_similarity', constants.DEFAULT_MIN_SIMILARITY) }}</output>
+        <input type="range" id="min_similarity" name="min_similarity" value="{{ val('min_similarity', constants.DEFAULT_MIN_SIMILARITY) }}" min="0" max="1" step="0.01" data-default="{{ constants.DEFAULT_MIN_SIMILARITY }}">
+        <span class="field-slider__desc">{{ t('params.min_similarity_desc') }}</span>
+      </div>
+
       <label for="categories">{{ t('params.categories') }} <span class="muted">(<span data-count-for="categories">{{ categories | length }}</span>)</span></label>
       <select id="categories" name="categories" multiple size="5" data-picker>
         {% for cat in categories %}
