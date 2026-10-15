@@ -1,0 +1,67 @@
+{#
+  Search statistics (`rows`, list[dict], one row per document) as a ranking of
+  documents: weighted score relative to the best document, its share of the
+  whole rank mass and the remaining numeric fields as compact facts. The raw
+  table stays available behind the "Table" view switch.
+#}
+{% set name_keys = ['document', 'document_name', 'name'] %}
+{% set scores = rows | map(attribute='score_weighted') | select('number') | list %}
+{% set top_score = scores | max if scores else 0 %}
+{% set total_score = scores | sum if scores else 0 %}
+
+<div class="results-view" data-view-switch>
+  <div class="results-toolbar">
+    <p class="results-toolbar__summary muted">
+      {{ t.plural('board.summary', rows | length) }}
+    </p>
+    <div class="segmented" role="group" aria-label="{{ t('board.view_label') }}">
+      <button type="button" class="segmented__btn is-active" data-view="cards" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 19V11M10 19V6M15 19v-5M20 19V9"/></svg>
+        {{ t('board.view_ranking') }}
+      </button>
+      <button type="button" class="segmented__btn" data-view="table" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4.5" width="16" height="15" rx="1.5"/><path d="M4 9.5h16M4 14.5h16M10 9.5v10"/></svg>
+        {{ t('board.view_table') }}
+      </button>
+    </div>
+  </div>
+
+  <div data-view-panel="cards">
+    <ol class="doc-board">
+      {% for row in rows %}
+        {% set name = namespace(value = none) %}
+        {% for key in name_keys %}{% if name.value is none and row.get(key) %}{% set name.value = row.get(key) | string %}{% endif %}{% endfor %}
+        {% set score = row.get('score_weighted') %}
+        {% set facts = row | dictsort | rejectattr('0', 'in', name_keys + ['score_weighted']) | list %}
+        <li class="doc-board__row {% if loop.first %}is-best{% endif %}">
+          <span class="doc-board__rank">{{ loop.index }}</span>
+          <div class="doc-board__main">
+            <div class="doc-board__head">
+              <b class="doc-board__name" title="{{ name.value or '' }}">{{ name.value or t('board.document') }}</b>
+              {% if score is number %}
+                <span class="doc-board__score">
+                  {{ '%.4f' | format(score) }}
+                  {% if total_score %}<small>{{ t('board.share', percent=((score / total_score) * 100) | round(1)) }}</small>{% endif %}
+                </span>
+              {% endif %}
+            </div>
+            {% if score is number %}
+              <span class="score__bar doc-board__bar" aria-hidden="true" data-score="{{ score }}" data-score-max="{{ top_score }}"></span>
+            {% endif %}
+            {% if facts %}
+              <ul class="doc-board__facts">
+                {% for key, value in facts %}
+                  <li><span>{{ key | replace('_', ' ') }}</span> <b>{% if value is none %}—{% elif value is float %}{{ '%.4g' | format(value) }}{% else %}{{ value }}{% endif %}</b></li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <div data-view-panel="table" hidden>
+    {% include "partials/table.html" %}
+  </div>
+</div>

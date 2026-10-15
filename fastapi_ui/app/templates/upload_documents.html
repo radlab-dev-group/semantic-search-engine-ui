@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}{{ t('upload.title') }}{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+  {% set kb_tab = 'add' %}
+  {% set kb_heading = t('upload.heading') %}
+  {% set kb_subtitle = t('upload.subtitle') %}
+  {% include "partials/kb_header.html" %}
+
+  {% set method = add_method or 'files' %}
+
+  <div class="card">
+
+    {% include "partials/messages.html" %}
+
+    {% if uploaded %}
+      <p class="section-title">{{ t('upload.summary') }}</p>
+      <dl class="kv">
+        <dt>{{ t('upload.collection') }}</dt>
+        <dd class="mono">{{ uploaded.collection_name }}</dd>
+        <dt>{{ t('upload.files') }}</dt>
+        <dd>{{ t.plural('upload.files_count', uploaded.files) }}</dd>
+        <dt>{{ t('upload.tokens_per_chunk') }}</dt>
+        <dd>{{ uploaded.max_tokens_in_chunk }}</dd>
+        <dt>{{ t('upload.overlap_tokens') }}</dt>
+        <dd>{{ uploaded.number_of_overlap_tokens }}</dd>
+      </dl>
+
+      <div class="btn-row">
+        <a class="btn btn-primary btn--sm" href="/search?collection_name={{ uploaded.collection_name | urlencode }}">{{ t('upload.search_in_collection') }}</a>
+        <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ uploaded.collection_name | urlencode }}">{{ t('upload.see_documents') }}</a>
+      </div>
+    {% endif %}
+
+    {% if not collections or collections | length == 0 %}
+      <div class="empty-state">
+        <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
+        <p>{{ t('upload.no_collections') }}</p>
+        <div class="btn-row btn-row--center">
+          <a class="btn btn-primary" href="/collections#new-collection">{{ t('upload.create_collection') }}</a>
+        </div>
+      </div>
+    {% else %}
+      <div class="tabs tabs--methods" role="tablist" aria-label="{{ t('upload.methods_label') }}" data-tabs>
+        <button type="button" class="tabs__btn {% if method == 'files' %}is-active{% endif %}" role="tab" id="tab-add-files"
+                aria-selected="{{ 'true' if method == 'files' else 'false' }}" aria-controls="panel-add-files">
+          {{ t('upload.method_files') }}
+        </button>
+        <button type="button" class="tabs__btn {% if method == 'text' %}is-active{% endif %}" role="tab" id="tab-add-text"
+                aria-selected="{{ 'true' if method == 'text' else 'false' }}" aria-controls="panel-add-text">
+          {{ t('upload.method_text') }}
+        </button>
+      </div>
+
+      <!-- Upload files -->
+      <div class="tab-panel {% if method == 'files' %}is-active{% endif %}" role="tabpanel" id="panel-add-files" aria-labelledby="tab-add-files">
+        <form method="post" action="/documents/upload" enctype="multipart/form-data" data-busy-form>
+          <input type="hidden" name="collection_name" value="{{ selected_collection }}">
+          <div class="grid-2">
+            <div class="card card--subtle">
+              <label for="files">{{ t('upload.add_files') }} <span class="muted">(pdf, docx, txt, html, md, zip)</span></label>
+              <div class="dropzone" data-dropzone>
+                <input type="file" id="files" name="files[]" accept=".pdf,.docx,.txt,.html,.md,.zip" multiple required
+                       data-file-summary="#file-summary">
+                <span class="dropzone__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
+                <span class="dropzone__title">{{ t('upload.dropzone_html') }}</span>
+                <span class="dropzone__formats" aria-hidden="true"><i>PDF</i><i>DOCX</i><i>TXT</i><i>HTML</i><i>MD</i><i>ZIP</i></span>
+              </div>
+              <p class="muted file-summary" id="file-summary">{{ t('upload.no_files_selected') }}</p>
+            </div>
+
+            <div class="card card--subtle">
+              {% set io_prefix = '' %}
+              {% include "partials/indexing_options.html" %}
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary" data-loading-label="{{ t('upload.starting') }}">{{ t('upload.start') }}</button>
+          </div>
+          <div class="progress hidden" id="upload-progress"><div class="progress__bar"></div></div>
+        </form>
+      </div>
+
+      <!-- Paste text -->
+      <div class="tab-panel {% if method == 'text' %}is-active{% endif %}" role="tabpanel" id="panel-add-text" aria-labelledby="tab-add-text">
+        <form method="post" action="/collections/manage/add-text" class="manage-form">
+          <input type="hidden" name="collection_name" value="{{ selected_collection }}">
+          <div class="grid-2">
+            <div class="card card--subtle">
+              <p class="muted">{{ t('manage.add_method_text_desc') }}</p>
+              <div class="form-row form-row--split">
+                <div>
+                  <label for="doc_filepath">{{ t('manage.doc_filepath') }}</label>
+                  <input type="text" id="doc_filepath" name="filepath" placeholder="{{ t('manage.doc_filepath_placeholder') }}" required value="doc_1.txt">
+                </div>
+                <div>
+                  <label for="doc_category">{{ t('manage.doc_category') }}</label>
+                  <input type="text" id="doc_category" name="category" placeholder="{{ t('manage.doc_category_placeholder') }}" list="categories_list">
+                  {% if categories %}
+                    <datalist id="categories_list">
+                      {% for cat in categories if cat %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                      {% endfor %}
+                    </datalist>
+                  {% endif %}
+                </div>
+              </div>
+
+              <label for="doc_content">{{ t('manage.doc_content') }}</label>
+              <textarea id="doc_content" name="page_content" rows="9" placeholder="{{ t('manage.doc_content_placeholder') }}" required></textarea>
+            </div>
+
+            <div class="card card--subtle">
+              {% set io_prefix = 'text_' %}
+              {% include "partials/indexing_options.html" %}
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary" data-loading-label="{{ t('manage.add_text_submitting') }}">
+              {{ t('manage.add_text_submit') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

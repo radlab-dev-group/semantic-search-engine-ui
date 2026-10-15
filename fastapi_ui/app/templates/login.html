@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ t('login.title') }}{% endblock %}
+{% block page_class %}page--auth{% endblock %}
+{% block content %}
+  <div class="auth">
+    <aside class="auth__showcase" aria-hidden="true">
+      <p class="eyebrow-pill"><span class="status-dot"></span> {{ t('login.showcase_eyebrow') }}</p>
+      <h2>{{ t('login.showcase_title_html') }}</h2>
+      <p>{{ t('login.showcase_text') }}</p>
+      <ul class="auth__facts">
+        <li><b>{{ t('login.fact_embeddings') }}</b><small>{{ t('login.fact_embeddings_text') }}</small></li>
+        <li><b>{{ t('login.fact_reranking') }}</b><small>{{ t('login.fact_reranking_text') }}</small></li>
+        <li><b>{{ t('login.fact_rag') }}</b><small>{{ t('login.fact_rag_text') }}</small></li>
+      </ul>
+      <svg class="auth__constellation" viewBox="0 0 320 120" fill="none">
+        <path d="M20 90 90 40l70 45 70-60 70 50" class="vs-links"/>
+        <circle cx="20" cy="90" r="5" class="auth__node"/>
+        <circle cx="90" cy="40" r="6" class="auth__node auth__node--b"/>
+        <circle cx="160" cy="85" r="5" class="auth__node"/>
+        <circle cx="230" cy="25" r="7" class="auth__node auth__node--c"/>
+        <circle cx="300" cy="75" r="5" class="auth__node auth__node--b"/>
+      </svg>
+    </aside>
+
+    <div class="card card--auth">
+      <p class="card__eyebrow">{{ t('login.eyebrow') }}</p>
+      <h1>{{ t('login.heading') }}</h1>
+      <p class="subtitle">{{ t('login.subtitle') }}</p>
+
+      {% include "partials/messages.html" %}
+
+      <form method="post" action="/login" class="stack">
+        <div>
+          <label for="username">{{ t('login.username') }}</label>
+          <input type="text" id="username" name="username" value="{{ username or '' }}" autocomplete="username" required autofocus>
+        </div>
+        <div>
+          <label for="password">{{ t('login.password') }}</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn--block" data-loading-label="{{ t('login.submitting') }}">{{ t('login.submit') }}</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

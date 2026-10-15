@@ -1,0 +1,80 @@
+{% if stats is defined %}
+  {#- A search opened from the history shows its stored answer right away -#}
+  {% if generation_id or qa_gen_results %}
+    {% include "partials/generative_answer.html" %}
+  {% endif %}
+  {% set active_tab = 'search-stats' %}
+  <section class="card results">
+    <div class="card__header">
+      <div>
+        <p class="card__eyebrow">{{ t('search.results_eyebrow') }}</p>
+        <h2>{{ t('search.results_heading') }}</h2>
+        {% if question %}
+          <p class="subtitle">{{ t('search.question_quote', question=question) }}</p>
+        {% endif %}
+      </div>
+      <div class="badge-row">
+        {% if history_view %}
+          <span class="badge badge--brand" title="{{ t('history.viewing_title') }}">{{ t('history.badge') }} <span class="badge__value">#{{ history_current }}</span></span>
+        {% endif %}
+        <span class="badge">{{ t('search.badge_documents') }} <span class="badge__value">{{ stats | length }}</span></span>
+        <span class="badge">{{ t('search.badge_snippets') }} <span class="badge__value">{{ detailed | length }}</span></span>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="{{ t('search.results_label') }}" data-tabs>
+      <button type="button" class="tabs__btn {% if active_tab == 'search-stats' %}is-active{% endif %}"
+              role="tab" aria-selected="{% if active_tab == 'search-stats' %}true{% else %}false{% endif %}"
+              aria-controls="panel-stats" id="tab-stats">
+        {{ t('search.tab_stats') }} <span class="tabs__count">{{ stats | length }}</span>
+      </button>
+      <button type="button" class="tabs__btn {% if active_tab == 'search-results' %}is-active{% endif %}"
+              role="tab" aria-selected="{% if active_tab == 'search-results' %}true{% else %}false{% endif %}"
+              aria-controls="panel-results" id="tab-results">
+        {{ t('search.tab_results') }} <span class="tabs__count">{{ detailed | length }}</span>
+      </button>
+      <button type="button" class="tabs__btn {% if active_tab == 'search-extractive' %}is-active{% endif %}"
+              role="tab" aria-selected="{% if active_tab == 'search-extractive' %}true{% else %}false{% endif %}"
+              aria-controls="panel-extractive" id="tab-extractive">
+        {{ t('search.tab_extractive') }} <span class="tabs__count">{{ qa_results | length if qa_results else 0 }}</span>
+      </button>
+    </div>
+
+    <div class="tab-panel {% if active_tab == 'search-stats' %}is-active{% endif %}" role="tabpanel"
+         id="panel-stats" aria-labelledby="tab-stats" tabindex="0">
+      {% if stats %}
+        {% set rows = stats %}
+        {% include "partials/doc_board.html" %}
+      {% else %}
+        <p class="muted">{{ t('search.no_stats') }}</p>
+      {% endif %}
+    </div>
+
+    <div class="tab-panel {% if active_tab == 'search-results' %}is-active{% endif %}" role="tabpanel"
+         id="panel-results" aria-labelledby="tab-results" tabindex="0">
+      {% if detailed %}
+        {% set rows = detailed %}
+        {% include "partials/hits.html" %}
+      {% else %}
+        <p class="muted">{{ t('search.no_detailed') }}</p>
+      {% endif %}
+    </div>
+
+    <div class="tab-panel {% if active_tab == 'search-extractive' %}is-active{% endif %}" role="tabpanel"
+         id="panel-extractive" aria-labelledby="tab-extractive" tabindex="0">
+      {% if qa_results %}
+        {% set rows = qa_results %}
+        {% include "partials/table.html" %}
+      {% else %}
+        <p class="muted">{{ t('search.no_extractive') }}</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {#- Filled with partials/feedback.html once the generative answer arrives -#}
+  <div class="feedback-slot" data-feedback-slot>
+    {%- if history_view and last_response_id is not none %}
+      {% include "partials/feedback.html" %}
+    {% endif -%}
+  </div>
+{% endif %}

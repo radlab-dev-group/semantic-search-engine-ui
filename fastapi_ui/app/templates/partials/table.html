@@ -1,0 +1,55 @@
+{#
+  Renders `rows` (list[dict]) as a scrollable table:
+  numeric columns are right-aligned, score columns get a bar, long texts are
+  clamped and can be expanded in place.
+#}
+{% if rows %}
+  {% set columns = rows[0].keys() | list %}
+  {% set numeric = namespace(columns = []) %}
+  {% for column in columns %}
+    {% set only_numbers = namespace(value = true) %}
+    {% for row in rows %}
+      {% if row.get(column) is not number %}
+        {% set only_numbers.value = false %}
+      {% endif %}
+    {% endfor %}
+    {% if only_numbers.value %}
+      {% set numeric.columns = numeric.columns + [column] %}
+    {% endif %}
+  {% endfor %}
+
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        {% for column in columns %}
+          <th scope="col" class="{% if column in numeric.columns %}is-num{% endif %}{% if column in ['score', 'score_weighted'] %} is-score{% endif %}">{{ column }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          {% for column in columns %}
+            {% set value = row.get(column) %}
+            <td class="{% if column in numeric.columns %}is-num{% endif %}">
+              {%- if column in ['score', 'score_weighted'] and value is number -%}
+                <span class="score" aria-label="{{ value }}">
+                  <span class="score__bar" aria-hidden="true" data-score="{{ value }}"></span>
+                  <span class="score__value">{{ '%.4f' | format(value) }}</span>
+                </span>
+              {%- elif value is none -%}
+                <span class="muted">—</span>
+              {%- elif value is string and value | length > 320 -%}
+                <span class="clamp" data-clamp tabindex="0" role="button" aria-expanded="false" title="{{ t('table.expand') }}">{{ value }}</span>
+              {%- else -%}
+                {{ value }}
+              {%- endif -%}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}

@@ -1,0 +1,200 @@
+{#
+  Detailed search results (`rows`, list[dict]) as ranked "hit" cards: the
+  passage text is the main content, the document, page, chunk and language
+  are metadata and the score is shown relative to the best hit. The raw table
+  stays available behind the "Table" view switch.
+  The passage and its left / right context (neighbouring chunks of the same
+  page) are rendered both as Markdown and as plain text; the toolbar switches
+  ([data-hits-toggle], app.js) choose which one is visible and whether the
+  context is shown.
+  Context variables:
+    rows      list[dict] sorted by score (best first)
+    question  the query, used to highlight matching words in passages
+#}
+{% set text_keys = ['text_str', 'text', 'content', 'chunk'] %}
+{% set doc_keys = ['document_name', 'document', 'name'] %}
+{% set path_keys = ['relative_filepath', 'filepath', 'path'] %}
+{% set page_keys = ['page_number', 'page'] %}
+{% set chunk_keys = ['text_number', 'chunk_number'] %}
+{% set lang_keys = ['language', 'lang'] %}
+{% set left_keys = ['left_context'] %}
+{% set right_keys = ['right_context'] %}
+{% set known_keys = text_keys + doc_keys + path_keys + page_keys + chunk_keys + lang_keys + left_keys + right_keys + ['score', 'result_id'] %}
+
+{#- The engine sends the context as a string; a list of chunks
+    ({text_str: ...} or plain strings) is accepted as well. A macro returns
+    escaped Markup, so callers .unescape() it before rendering. -#}
+{%- macro context_text(value) -%}
+  {%- if value is string -%}{{ value | trim }}
+  {%- elif value is iterable and value is not mapping -%}
+    {%- set parts = [] -%}
+    {%- for item in value -%}
+      {%- set part = (item.get('text_str') or item.get('text') or '') if item is mapping else (item if item is not none else '') -%}
+      {%- if part | string | trim %}{% set _ = parts.append(part | string | trim) %}{% endif -%}
+    {%- endfor -%}
+    {{ parts | join('\n\n') }}
+  {%- elif value is mapping -%}{{ (value.get('text_str') or value.get('text') or '') | trim }}
+  {%- endif -%}
+{%- endmacro -%}
+{%- macro passage(text, id='') -%}
+  <div class="hit__md markdown markdown--passage" data-hit-text>{{ text | markdown }}</div>
+  <div class="hit__raw"{% if id %} id="{{ id }}"{% endif %} data-hit-text>{{ text }}</div>
+{%- endmacro -%}
+
+{% set has_context = namespace(value = false) %}
+{% for row in rows %}
+  {% for key in left_keys + right_keys %}{% if context_text(row.get(key)) %}{% set has_context.value = true %}{% endif %}{% endfor %}
+{% endfor %}
+
+{% set scores = rows | map(attribute='score') | select('number') | list %}
+{% set top_score = scores | max if scores else 0 %}
+
+{% set documents = namespace(names = [], counts = {}) %}
+{% for row in rows %}
+  {% set doc = namespace(value = none) %}
+  {% for key in doc_keys %}{% if doc.value is none and row.get(key) %}{% set doc.value = row.get(key) | string %}{% endif %}{% endfor %}
+  {% if doc.value is not none %}
+    {% if doc.value not in documents.names %}{% set documents.names = documents.names + [doc.value] %}{% endif %}
+    {% set _ = documents.counts.update({doc.value: documents.counts.get(doc.value, 0) + 1}) %}
+  {% endif %}
+{% endfor %}
+
+<div class="results-view" data-view-switch>
+  <div class="results-toolbar">
+    {% if documents.names | length > 1 %}
+      <div class="doc-filter" role="group" aria-label="{{ t('hits.filter_label') }}">
+        <button type="button" class="doc-filter__chip is-active" data-hit-filter="" aria-pressed="true">
+          {{ t('hits.all') }} <span class="doc-filter__count">{{ rows | length }}</span>
+        </button>
+        {% for name in documents.names %}
+          <button type="button" class="doc-filter__chip" data-hit-filter="{{ name }}" aria-pressed="false" title="{{ name }}">
+            <span class="doc-filter__name">{{ name }}</span> <span class="doc-filter__count">{{ documents.counts[name] }}</span>
+          </button>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="results-toolbar__summary muted">
+        {{ t.plural('hits.passages', rows | length) }}{% if documents.names %} {{ t('hits.from_html', document=documents.names[0]) }}{% endif %}
+      </p>
+    {% endif %}
+
+    <div class="hits-switches" data-hits-switches>
+      {% if has_context.value %}
+        <label class="switch-chip" title="{{ t('hits.context_title') }}">
+          <input type="checkbox" data-hits-toggle="context" checked>
+          <span>{{ t('hits.context') }}</span>
+        </label>
+      {% endif %}
+      <label class="switch-chip" title="{{ t('hits.markdown_title') }}">
+        <input type="checkbox" data-hits-toggle="markdown" checked>
+        <span>{{ t('hits.markdown') }}</span>
+      </label>
+    </div>
+
+    <div class="segmented" role="group" aria-label="{{ t('hits.view_label') }}">
+      <button type="button" class="segmented__btn is-active" data-view="cards" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4.5" width="16" height="6" rx="1.5"/><rect x="4" y="13.5" width="16" height="6" rx="1.5"/></svg>
+        {{ t('hits.view_passages') }}
+      </button>
+      <button type="button" class="segmented__btn" data-view="table" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4.5" width="16" height="15" rx="1.5"/><path d="M4 9.5h16M4 14.5h16M10 9.5v10"/></svg>
+        {{ t('hits.view_table') }}
+      </button>
+    </div>
+  </div>
+
+  <div data-view-panel="cards">
+    <ol class="hits" data-hits data-highlight="{{ question or '' }}">
+      {% for row in rows %}
+        {% set f = namespace(text = none, doc = none, path = none, page = none, chunk = none, lang = none) %}
+        {% for key in text_keys %}{% if f.text is none and row.get(key) is not none %}{% set f.text = row.get(key) | string %}{% endif %}{% endfor %}
+        {% for key in doc_keys %}{% if f.doc is none and row.get(key) %}{% set f.doc = row.get(key) | string %}{% endif %}{% endfor %}
+        {% for key in path_keys %}{% if f.path is none and row.get(key) %}{% set f.path = row.get(key) | string %}{% endif %}{% endfor %}
+        {% for key in page_keys %}{% if f.page is none and row.get(key) is not none %}{% set f.page = row.get(key) %}{% endif %}{% endfor %}
+        {% for key in chunk_keys %}{% if f.chunk is none and row.get(key) is not none %}{% set f.chunk = row.get(key) %}{% endif %}{% endfor %}
+        {% for key in lang_keys %}{% if f.lang is none and row.get(key) %}{% set f.lang = row.get(key) | string %}{% endif %}{% endfor %}
+        {% set score = row.get('score') %}
+        {% set folder = f.path %}
+        {% if f.path and f.doc and f.path.endswith(f.doc) %}{% set folder = f.path[:(f.path | length) - (f.doc | length)] %}{% endif %}
+        {% set extra = row | dictsort | rejectattr('0', 'in', known_keys) | list %}
+        {% set ctx = namespace(left = '', right = '') %}
+        {% for key in left_keys %}{% if not ctx.left %}{% set ctx.left = context_text(row.get(key)).unescape() %}{% endif %}{% endfor %}
+        {% for key in right_keys %}{% if not ctx.right %}{% set ctx.right = context_text(row.get(key)).unescape() %}{% endif %}{% endfor %}
+        {% set long_text = (f.text and f.text | length > 360) %}
+        {% set expandable = long_text or ctx.left or ctx.right %}
+
+        <li class="hit {% if loop.index <= 3 %}hit--top{% endif %}" data-hit data-doc="{{ f.doc or '' }}">
+          <div class="hit__rank" aria-label="{{ t('hits.rank', rank=loop.index) }}">
+            <span class="hit__rank-num">{{ loop.index }}</span>
+          </div>
+
+          <div class="hit__body">
+            <header class="hit__head">
+              <span class="hit__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"/></svg></span>
+              <div class="hit__title">
+                <b title="{{ f.path or f.doc or '' }}">{{ f.doc or t('hits.passage') }}</b>
+                <ul class="hit__meta">
+                  {% if folder and folder not in ['/', '.', './'] %}<li class="hit__folder" title="{{ f.path }}">{{ folder }}</li>{% endif %}
+                  {% if f.page is not none %}<li>{{ t('hits.page') }} <b>{{ f.page }}</b></li>{% endif %}
+                  {% if f.chunk is not none %}<li>{{ t('hits.chunk') }} <b>{{ f.chunk }}</b></li>{% endif %}
+                  {% if row.get('result_id') is not none %}<li>{{ t('hits.id') }} <b>{{ row.get('result_id') }}</b></li>{% endif %}
+                  {% if f.lang %}<li class="hit__lang">{{ f.lang | upper }}</li>{% endif %}
+                </ul>
+              </div>
+              {% if score is number %}
+                <div class="hit__score">
+                  <span class="hit__score-value">{{ '%.4f' | format(score) }}</span>
+                  <span class="score__bar hit__score-bar" aria-hidden="true" data-score="{{ score }}" data-score-max="{{ top_score }}"></span>
+                  <small>{% if top_score %}{{ t('hits.of_top', percent=((score / top_score) * 100) | round | int) }}{% else %}{{ t('hits.score') }}{% endif %}</small>
+                </div>
+              {% endif %}
+            </header>
+
+            {% if f.text or ctx.left or ctx.right %}
+              <div class="hit__text" id="hit-box-{{ loop.index }}">
+                {% if ctx.left %}
+                  <section class="hit__ctx hit__ctx--left" data-hit-ctx aria-label="{{ t('hits.context_before') }}">
+                    <span class="hit__ctx-label">{{ t('hits.context_before') }}</span>
+                    <div class="hit__ctx-body">{{ passage(ctx.left) }}</div>
+                  </section>
+                {% endif %}
+                {% if f.text %}
+                  <div class="hit__passage{% if long_text %} is-clamped{% endif %}">{{ passage(f.text, 'hit-text-' ~ loop.index) }}</div>
+                {% endif %}
+                {% if ctx.right %}
+                  <section class="hit__ctx hit__ctx--right" data-hit-ctx aria-label="{{ t('hits.context_after') }}">
+                    <span class="hit__ctx-label">{{ t('hits.context_after') }}</span>
+                    <div class="hit__ctx-body">{{ passage(ctx.right) }}</div>
+                  </section>
+                {% endif %}
+              </div>
+            {% endif %}
+
+            <footer class="hit__foot">
+              {% if expandable %}
+                <button type="button" class="hit__action" data-hit-expand aria-controls="hit-box-{{ loop.index }}" aria-expanded="false"{% if not long_text %} data-ctx-only{% endif %}>{{ t('hits.show_full') if long_text else t('hits.show_context') }}</button>
+              {% endif %}
+              {% if f.text %}
+                <button type="button" class="hit__action" data-copy="hit-text-{{ loop.index }}">{{ t('hits.copy') }}</button>
+              {% endif %}
+              {% if extra %}
+                <details class="hit__extra">
+                  <summary>{{ t.plural('hits.more_fields', extra | length) }}</summary>
+                  <dl>
+                    {% for key, value in extra %}
+                      <div><dt>{{ key }}</dt><dd>{% if value is none %}—{% else %}{{ value }}{% endif %}</dd></div>
+                    {% endfor %}
+                  </dl>
+                </details>
+              {% endif %}
+            </footer>
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <div data-view-panel="table" hidden>
+    {% include "partials/table.html" %}
+  </div>
+</div>

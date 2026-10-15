@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}{{ t('manage.title') }}{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+  {% set kb_tab = 'documents' %}
+  {% set kb_heading = t('manage.heading') %}
+  {% set kb_subtitle = t('manage.subtitle') %}
+  {% include "partials/kb_header.html" %}
+
+  {% include "partials/messages.html" %}
+
+  {% if not collections %}
+    <div class="card">
+      <div class="empty-state">
+        <span class="empty-state__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5.5" rx="7.5" ry="3"/>
+            <path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/>
+            <path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3 1.3 0 2.5-.13 3.5-.35"/>
+          </svg>
+        </span>
+        <p>{{ t('manage.no_collections') }}</p>
+        <div class="btn-row btn-row--center">
+          <a class="btn btn-primary" href="/collections#new-collection">{{ t('manage.create_collection') }}</a>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="manage-layout">
+      <!-- Documents of the collection -->
+      <section class="card manage-card" id="delete-docs">
+        <div class="card__header">
+          <div>
+            <p class="card__eyebrow">{{ active_coll_info.display_name if active_coll_info else selected_collection }}</p>
+            <h2>{{ t('manage.doc_list_heading') }}</h2>
+            {% if active_coll_info and active_coll_info.description %}
+              <p class="subtitle">{{ active_coll_info.description }}</p>
+            {% endif %}
+          </div>
+          <div class="badge-row">
+            <span class="badge badge--brand">
+              <span class="badge__value">{{ documents | length }}</span>
+              {{ t.plural('manage.doc_list_count_word', documents | length) }}
+            </span>
+            <span class="badge badge--muted{% if not disabled_count %} hidden{% endif %}" data-doc-disabled-badge>
+              <span class="badge__value" data-doc-disabled-count>{{ disabled_count or 0 }}</span>
+              {{ t('manage.disabled_word') }}
+            </span>
+            <a class="btn btn-primary btn--sm" href="/documents/upload?collection_name={{ selected_collection | urlencode }}">{{ t('manage.add_content') }}</a>
+          </div>
+        </div>
+
+        {% if documents %}
+          <form method="post" action="/collections/manage/delete-documents" id="delete-docs-form" data-doc-list
+                data-confirm-title="{{ t('confirm.delete_documents_title') }}"
+                data-confirm-ok="{{ t('manage.delete_doc_btn') }}">
+            <input type="hidden" name="collection_name" value="{{ selected_collection }}">
+
+            <div class="doc-list-toolbar">
+              <div class="doc-search-box">
+                <input type="search" placeholder="{{ t('manage.doc_filter_placeholder') }}" data-doc-filter aria-label="{{ t('manage.doc_filter_placeholder') }}">
+              </div>
+              <div class="doc-selection-actions">
+                <span class="doc-selection-count muted" data-doc-selected aria-live="polite"></span>
+                <button type="submit" class="btn btn--ghost btn--xs" data-doc-bulk disabled
+                        formaction="/collections/manage/visibility?use_in_search=1"
+                        title="{{ t('manage.enable_selected_title') }}">
+                  {{ t('manage.enable_selected') }}
+                </button>
+                <button type="submit" class="btn btn--ghost btn--xs" data-doc-bulk disabled
+                        formaction="/collections/manage/visibility?use_in_search=0"
+                        title="{{ t('manage.disable_selected_title') }}">
+                  {{ t('manage.disable_selected') }}
+                </button>
+                <button type="submit" class="btn btn--danger btn--xs" data-doc-delete-selected disabled
+                        data-confirm="{{ t('manage.delete_doc_selected_confirm') }}">
+                  {{ t('manage.delete_selected') }}
+                </button>
+              </div>
+            </div>
+
+            <div class="doc-table-wrap">
+              <table class="doc-table">
+                <thead>
+                  <tr>
+                    <th class="doc-th--check">
+                      <input type="checkbox" data-doc-master title="{{ t('manage.select_all') }}" aria-label="{{ t('manage.select_all') }}">
+                    </th>
+                    <th>{{ t('manage.doc_column') }}</th>
+                    <th class="doc-th--action">{{ t('manage.in_search_column') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for doc in documents %}
+                    {% set in_search = doc.use_in_search %}
+                    <tr class="doc-row{% if not in_search %} is-disabled{% endif %}" data-name="{{ doc.name | lower }}">
+                      <td class="doc-td--check">
+                        <input type="checkbox" name="documents[]" value="{{ doc.name }}" class="doc-checkbox" aria-label="{{ doc.name }}">
+                      </td>
+                      <td class="doc-td--name">
+                        <span class="doc-name-text">{{ doc.name }}</span>
+                        {% if doc.relative_path and doc.relative_path != '/' %}
+                          <span class="doc-path-badge">{{ doc.relative_path }}</span>
+                        {% endif %}
+                        <span class="doc-state-badge{% if in_search %} hidden{% endif %}" data-doc-state>{{ t('manage.disabled_badge') }}</span>
+                      </td>
+                      <td class="doc-td--action">
+                        <div class="doc-actions">
+                        <button type="submit" class="doc-switch" role="switch" data-doc-toggle
+                                aria-checked="{{ 'true' if in_search else 'false' }}"
+                                formaction="/collections/manage/visibility?use_in_search={{ '0' if in_search else '1' }}"
+                                name="toggle_document" value="{{ doc.name }}"
+                                title="{{ t('manage.visibility_on_title') if in_search else t('manage.visibility_off_title') }}"
+                                data-title-on="{{ t('manage.visibility_on_title') }}"
+                                data-title-off="{{ t('manage.visibility_off_title') }}"
+                                aria-label="{{ t('manage.visibility_label') }}: {{ doc.name }}">
+                          <span class="doc-switch__track" aria-hidden="true"><span class="doc-switch__thumb"></span></span>
+                        </button>
+                        <button type="submit" name="document_name" value="{{ doc.name }}" class="btn btn--danger-ghost btn--xs btn--icon"
+                                title="{{ t('manage.delete_doc_btn') }}" aria-label="{{ t('manage.delete_doc_btn') }}: {{ doc.name }}"
+                                data-confirm="{{ t('manage.delete_doc_confirm', name=doc.name) }}"
+                                data-confirm-items="{{ doc.name }}">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l.9 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12"/><path d="M10 11v5.5M14 11v5.5"/></svg>
+                        </button>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              <p class="doc-empty-filter muted hidden" data-doc-nomatch>{{ t('manage.doc_filter_nomatch') }}</p>
+            </div>
+            <p class="doc-visibility-hint muted">{{ t('manage.visibility_hint') }}</p>
+            <p class="doc-visibility-status" data-doc-visibility-status role="status" aria-live="polite"></p>
+          </form>
+        {% else %}
+          <div class="empty-state">
+            <span class="empty-state__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/>
+              </svg>
+            </span>
+            <p>{{ t('manage.no_documents') }}</p>
+            <div class="btn-row btn-row--center">
+              <a class="btn btn-primary" href="/documents/upload?collection_name={{ selected_collection | urlencode }}">{{ t('manage.add_content') }}</a>
+            </div>
+          </div>
+        {% endif %}
+      </section>
+
+      <aside class="manage-side">
+        <!-- Delete text chunks by ID -->
+        <section class="card manage-card" id="delete-texts">
+          <p class="card__eyebrow">{{ t('manage.tab_delete_text') }}</p>
+          <h2 class="manage-side__title">{{ t('manage.delete_texts_heading') }}</h2>
+          <p class="muted">{{ t('manage.delete_texts_desc') }}</p>
+
+          <form method="post" action="/collections/manage/delete-texts" class="manage-form"
+                data-confirm="{{ t('manage.delete_texts_confirm') }}"
+                data-confirm-title="{{ t('confirm.delete_texts_title') }}"
+                data-confirm-ok="{{ t('manage.delete_texts_submit') }}"
+                data-confirm-items-from="chunk_ids">
+            <input type="hidden" name="collection_name" value="{{ selected_collection }}">
+
+            <label for="chunk_ids">{{ t('manage.chunk_ids_label') }}</label>
+            <input type="text" id="chunk_ids" name="chunk_ids" placeholder="{{ t('manage.chunk_ids_placeholder') }}" required pattern="[0-9,\s]+" title="{{ t('manage.chunk_ids_title') }}">
+
+            <div class="btn-row">
+              <button type="submit" class="btn btn--danger-ghost btn--sm" data-loading-label="{{ t('manage.delete_texts_submitting') }}">
+                {{ t('manage.delete_texts_submit') }}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Danger zone: delete the collection -->
+        <section class="card card--danger-zone manage-card" id="danger-zone">
+          <p class="card__eyebrow danger-eyebrow">{{ t('manage.tab_danger') }}</p>
+          <h2 class="manage-side__title">{{ t('manage.danger_heading') }}</h2>
+          <p class="muted">{{ t('manage.danger_desc') }}</p>
+
+          <form method="post" action="/collections/delete" class="manage-form"
+                data-confirm="{{ t('manage.danger_confirm', name=selected_collection) }}"
+                data-confirm-title="{{ t('confirm.delete_collection_title') }}"
+                data-confirm-ok="{{ t('manage.danger_btn') }}"
+                data-confirm-phrase="{{ selected_collection }}">
+            <input type="hidden" name="collection_name" value="{{ selected_collection }}">
+            <div class="btn-row">
+              <button type="submit" class="btn btn--danger btn--sm">
+                {{ t('manage.danger_btn') }}
+              </button>
+            </div>
+          </form>
+        </section>
+      </aside>
+    </div>
+  {% endif %}
+{% endblock %}

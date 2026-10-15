@@ -1,0 +1,41 @@
+{#
+  Indexing options shared by "Upload files" and "Paste text" - same fields
+  (names of the engine indexing_options) and the same defaults.
+  Context variables:
+    io_prefix (str): prefix of the element ids, unique per form
+#}
+<p class="section-title">{{ t('upload.indexing_options') }}</p>
+
+<div class="chunk-preview" data-chunk-preview aria-hidden="true">
+  <span class="chunk-preview__label">{{ t('upload.chunk_preview') }}</span>
+  <div class="chunk-preview__track">
+    <span class="chunk-preview__chunk"></span>
+    <span class="chunk-preview__chunk"></span>
+    <span class="chunk-preview__chunk"></span>
+  </div>
+  <span class="chunk-preview__legend"><i class="chunk-preview__key"></i>{{ t('upload.legend_chunk') }} <i class="chunk-preview__key chunk-preview__key--overlap"></i>{{ t('upload.legend_overlap') }}</span>
+</div>
+
+<div class="field-slider">
+  <span>{{ t('upload.max_tokens') }}</span>
+  <input type="range" name="max_tokens_in_chunk" min="10" max="{{ constants.MAX_TOKENS_IN_CHUNK_LIMIT }}" step="10" value="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}">
+  <output>{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}</output>
+</div>
+<div class="field-slider">
+  <span>{{ t('upload.overlap') }}</span>
+  <input type="range" name="number_of_overlap_tokens" min="0" max="{{ constants.OVERLAP_TOKENS_LIMIT }}" step="5" value="{{ constants.DEFAULT_OVERLAP_TOKENS }}">
+  <output>{{ constants.DEFAULT_OVERLAP_TOKENS }}</output>
+</div>
+
+{% for name, label_key, checked in [
+  ('clear_text', 'upload.clear_text', true),
+  ('use_text_denoiser', 'upload.denoise', false),
+  ('check_text_lang', 'upload.check_lang', true),
+  ('prepare_proper_pages', 'upload.proper_pages', true),
+  ('merge_document_pages', 'upload.merge_pages', false),
+] %}
+  <div class="check-row">
+    <input type="checkbox" id="{{ io_prefix }}{{ name }}" name="{{ name }}" {% if checked %}checked{% endif %}>
+    <label for="{{ io_prefix }}{{ name }}">{{ t(label_key) }}</label>
+  </div>
+{% endfor %}

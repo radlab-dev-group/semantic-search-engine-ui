@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% set force_generative = false %}
+{% set show_content_supervisor = false %}
+{% set show_rag_supervisor = false %}
+{% block title %}{{ t('search.title') }}{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <div>
+      <p class="card__eyebrow">{{ t('search.eyebrow') }}</p>
+      <h1>{{ t('search.heading') }}</h1>
+      <p class="subtitle">{{ t('search.subtitle') }}</p>
+    </div>
+    {% set current_step = 3 %}
+    {% include "partials/stepper.html" %}
+  </header>
+
+  {% include "partials/messages.html" %}
+
+  {% if not collections or collections | length == 0 %}
+    <div class="card">
+      <div class="empty-state">
+        <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6"/><path d="M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3"/></svg></span>
+        <p>{{ t('search.no_collections') }}</p>
+        <div class="btn-row btn-row--center">
+          <a class="btn btn-primary" href="/collections">{{ t('search.create_collection') }}</a>
+        </div>
+      </div>
+    </div>
+    {% include "partials/search_results.html" %}
+  {% else %}
+    {% set has_results = stats is defined %}
+    <div class="search-layout{% if has_results %} search-layout--results{% endif %}">
+      <form method="post" action="/search" class="search-layout__form" data-busy-form>
+        <aside class="sidebar search-layout__side">
+          {% include "partials/search_params.html" %}
+        </aside>
+
+        <div class="stack search-layout__query">
+          <div class="query-console">
+            <div class="query-console__head">
+              <span class="query-console__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>
+              <p class="section-title">{{ t('search.your_question') }}</p>
+            </div>
+            <label for="question">{{ t('search.question_label') }}</label>
+            <textarea id="question" name="question" class="query-console__question" placeholder="{{ t('search.question_placeholder') }}" required>{{ question or '' }}</textarea>
+
+            <label for="prompt">{{ t('search.prompt_label') }}</label>
+            <textarea id="prompt" name="prompt" placeholder="{{ t('search.prompt_placeholder') }}">{{ prompt or '' }}</textarea>
+
+            <div class="query-console__foot">
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary btn--lg" data-loading-label="{{ t('search.running') }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
+                  {{ t('search.run') }}
+                </button>
+                {# A link, not type="reset": after a search the question is the
+                   initial value of the field, so a reset would keep it #}
+                <a class="btn btn--ghost" href="/search?clear=1{% if selected_collection %}&amp;collection_name={{ selected_collection | urlencode }}{% endif %}" title="{{ t('search.clear_title') }}">{{ t('search.clear') }}</a>
+              </div>
+              <span class="muted query-console__hint">{{ t('search.hint') }}</span>
+            </div>
+          </div>
+
+          {#- Collapsed once there are results, so they start right below -#}
+          {% set history_open = not has_results %}
+          {% include "partials/search_history.html" %}
+
+          {% if not has_results %}
+          <div class="examples">
+            <p class="section-title">{{ t('search.examples') }}</p>
+            <ul>
+              {% for number in range(1, 4) %}
+                <li><button type="button" class="example-chip" data-example>{{ t('search.example_' ~ number) }}</button></li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+      </form>
+
+      {% if has_results %}
+        <div class="stack search-layout__results">
+          {% include "partials/search_results.html" %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+{% endblock %}

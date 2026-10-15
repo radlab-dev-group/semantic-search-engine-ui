@@ -1,13 +1,13 @@
 {
   "api_hosts": {
     "conversational_search": {
-      "host": "http://192.168.100.65:8271",
+      "host": "http://192.168.100.70:8271",
       "ep": {
         "conversation_with_model": "api/conversation_with_model"
       }
     },
     "semantic_search_engine": {
-      "host": "http://192.168.100.65:8271",
+      "host": "http://192.168.100.70:8271",
       "ep": {
         "login": "api/login",
         "new_collection": "api/new_collection",
@@ -21,6 +21,13 @@
         "generative_answer": "api/generative_answer",
         "rate_generative_answer": "api/rate_generative_answer",
         "upload_and_index_files": "api/upload_and_index_files",
+        "search_history": "api/search_history",
+        "get_search_history": "api/get_search_history",
+        "delete_collection": "api/delete_collection",
+        "delete_documents": "api/delete_documents",
+        "delete_texts": "api/delete_texts",
+        "set_documents_use_in_search": "api/set_documents_use_in_search",
+        "add_and_index_texts": "api/add_and_index_texts",
         "new_chat": "api/new_chat",
         "add_user_message": "api/add_user_message"
       }

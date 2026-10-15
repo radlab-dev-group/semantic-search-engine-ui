@@ -1,0 +1,221 @@
+{#
+  Shared sidebar of search parameters.
+  Context variables:
+    collections (rows: name, display_name, ...), generative_models, categories,
+    documents, selected_collection
+    show_content_supervisor (bool)
+    show_rag_supervisor (bool)
+    search_params (SearchParams, optional) - options of the last search, they
+      replace the defaults below
+
+  Groups are <details>: a closed group still submits its fields. The live
+  one-line summaries of the groups ([data-group-summary]) and the filter
+  pickers ([data-picker]) are filled by app.js (initParamsPanel).
+#}
+{%- set sp = search_params if search_params is defined and search_params else none -%}
+{%- macro checked(name, default=false) -%}
+  {%- if (sp.checked(name, default) if sp else default) %} checked{% endif -%}
+{%- endmacro -%}
+{%- macro is_checked(name, default=false) -%}
+  {{- 'on' if (sp.checked(name, default) if sp else default) else '' -}}
+{%- endmacro -%}
+{%- macro val(name, default) -%}
+  {{- sp.value(name, default) if sp else default -}}
+{%- endmacro -%}
+{%- macro selected(name, value, default=false) -%}
+  {%- if (sp.selected(name, value) if sp else default) %} selected{% endif -%}
+{%- endmacro -%}
+{%- macro icon(name) -%}
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    {%- if name == 'collection' -%}<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6.5c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V5.5"/><path d="M4.5 12v6.5c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V12"/>
+    {%- elif name == 'models' -%}<path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 1.9 1.9.8-1.9.8L19 20.4l-.8-1.9-1.9-.8 1.9-.8z"/>
+    {%- elif name == 'filters' -%}<path d="M4 5h16l-6 7.5V19l-4 1.5v-8z"/>
+    {%- elif name == 'hybrid' -%}<circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>
+    {%- elif name == 'rerank' -%}<path d="M7 4v16"/><path d="m3.5 7.5 3.5-3.5 3.5 3.5"/><path d="M17 20V4"/><path d="m20.5 16.5-3.5 3.5-3.5-3.5"/>
+    {%- elif name == 'shield' -%}<path d="M12 3l7.5 3v5.5c0 4.5-3.2 8.2-7.5 9.5-4.3-1.3-7.5-5-7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/>
+    {%- elif name == 'factor' -%}<path d="M5 5l14 14"/><path d="M19 5 5 19"/>
+    {%- elif name == 'extract' -%}<path d="M5 4h10l4 4v12H5z"/><path d="M9 12h6"/><path d="M9 16h4"/><path d="M15 4v4h4"/>
+    {%- elif name == 'generate' -%}<path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10z"/><path d="m14 7 3 3"/>
+    {%- elif name == 'docs' -%}<path d="M8 3h8l3 3v12H8z"/><path d="M5 7v14h11"/>
+    {%- elif name == 'translate' -%}<path d="M4 6h9"/><path d="M8.5 4v2c0 4-2 7-4.5 8.5"/><path d="M6 10c1 2 3 3.5 5.5 4.5"/><path d="m13 20 4-9 4 9"/><path d="M14.5 17h5"/>
+    {%- elif name == 'tune' -%}<path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h2"/><path d="M10 17h10"/><circle cx="8" cy="17" r="2"/>
+    {%- endif -%}
+  </svg>
+{%- endmacro -%}
+{%- macro option(name, title, desc='', glyph='', default=false, extra_class='') -%}
+  <label class="opt{{ ' ' ~ extra_class if extra_class }}" for="{{ name }}">
+    {%- if glyph %}<span class="opt__icon">{{ icon(glyph) }}</span>{% endif %}
+    <span class="opt__text">
+      <span class="opt__title">{{ title }}</span>
+      {%- if desc %}<span class="opt__desc">{{ desc }}</span>{% endif %}
+    </span>
+    <input type="checkbox" id="{{ name }}" name="{{ name }}"{{ checked(name, default) }}>
+  </label>
+{%- endmacro -%}
+{%- macro slider(name, label, min, max, step, default, desc='', row_id='') -%}
+  <div class="field-slider field-slider--stack{% if row_id and not is_checked('set_max_new_tokens') %} hidden{% endif %}"{% if row_id %} id="{{ row_id }}"{% endif %}>
+    <span class="field-slider__name">{{ label }}</span>
+    <output data-default="{{ default }}">{{ val(name, default) }}</output>
+    <input type="range" name="{{ name }}" min="{{ min }}" max="{{ max }}" step="{{ step }}" value="{{ val(name, default) }}" data-default="{{ default }}" aria-label="{{ label }}">
+    {%- if desc %}<span class="field-slider__desc">{{ desc }}</span>{% endif %}
+  </div>
+{%- endmacro -%}
+{%- set generative_on = force_generative or is_checked('use_qa_generative') -%}
+{%- set filters_on = (sp.value('categories', '') if sp else '') or (sp.value('documents', '') if sp else '') -%}
+<div class="card card--panel params" data-params>
+  <div class="params-head">
+    <p class="card__eyebrow">{{ t('params.eyebrow') }}</p>
+    {% if sp %}
+      <a class="params-reset" href="/search/params/reset{% if selected_collection %}?collection_name={{ selected_collection | urlencode }}{% endif %}" title="{{ t('params.reset_title') }}">↺ {{ t('params.reset') }}</a>
+    {% endif %}
+  </div>
+
+  {#- 1. Collection and number of results ------------------------------ -#}
+  <details class="pgroup" open data-group="collection">
+    <summary class="pgroup__head">
+      <span class="pgroup__icon">{{ icon('collection') }}</span>
+      <span class="pgroup__titles">
+        <span class="pgroup__title">{{ t('params.collection') }}</span>
+        <span class="pgroup__summary" data-group-summary></span>
+      </span>
+    </summary>
+    <div class="pgroup__body">
+      <label for="collection_name">{{ t('params.collection_name') }}</label>
+      <select id="collection_name" name="collection_name" required>
+        <option value="" disabled {% if not selected_collection %}selected{% endif %}>{{ t('params.choose_collection') }}</option>
+        {% for coll in collections %}
+          <option value="{{ coll.name }}" {% if coll.name == selected_collection %}selected{% endif %}>{{ coll.display_name }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="results_count">{{ t('params.results_count') }} <span class="muted">(1–{{ constants.MAX_RESULTS_LIMIT }})</span></label>
+      <div class="num-stepper" data-stepper>
+        <button type="button" class="num-stepper__btn" data-step="-1" aria-label="{{ t('params.decrease') }}">−</button>
+        <input type="number" id="results_count" name="results_count" value="{{ val('results_count', constants.DEFAULT_MAX_RESULTS) }}" min="1" max="{{ constants.MAX_RESULTS_LIMIT }}" inputmode="numeric">
+        <button type="button" class="num-stepper__btn" data-step="1" aria-label="{{ t('params.increase') }}">+</button>
+      </div>
+      <div class="presets" role="group" aria-label="{{ t('params.presets') }}">
+        {% for preset in [5, 8, 15, 30, 50] %}
+          {% if preset <= constants.MAX_RESULTS_LIMIT %}
+            <button type="button" class="presets__chip" data-preset="{{ preset }}" data-preset-for="results_count">{{ preset }}</button>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="opt-list">
+        {{ option('hybrid_search', t('params.hybrid_search'), t('params.hybrid_search_desc'), 'hybrid', true) }}
+        {{ option('rerank_results', t('params.rerank'), t('params.rerank_desc'), 'rerank') }}
+        {% if show_content_supervisor %}
+          {{ option('use_content_supervisor', t('params.content_supervisor'), '', 'shield') }}
+        {% endif %}
+        {% if show_rag_supervisor %}
+          {{ option('use_rag_supervisor', t('params.rag_supervisor'), '', 'shield', true) }}
+        {% endif %}
+      </div>
+    </div>
+  </details>
+
+  {#- 2. Answer models ------------------------------------------------- -#}
+  <details class="pgroup" open data-group="models">
+    <summary class="pgroup__head">
+      <span class="pgroup__icon">{{ icon('models') }}</span>
+      <span class="pgroup__titles">
+        <span class="pgroup__title">{{ t('params.models') }}</span>
+        <span class="pgroup__summary" data-group-summary></span>
+      </span>
+    </summary>
+    <div class="pgroup__body">
+      {% if not force_generative %}
+        <div class="opt-list">
+          {{ option('use_qa_generative', t('params.generative'), t('params.generative_desc'), 'generate', false, 'opt--primary') }}
+        </div>
+      {% else %}
+        <input type="hidden" name="use_qa_generative" value="on">
+      {% endif %}
+
+      <div id="generative-qa-block" class="opt-nest{% if not generative_on %} hidden{% endif %}">
+        <label for="qa_gen_model">{{ t('params.gen_model') }}</label>
+        <select id="qa_gen_model" name="qa_gen_model">
+          {% for model in generative_models %}
+            <option value="{{ model }}"{{ selected('qa_gen_model', model) }}>{{ model }}</option>
+          {% endfor %}
+        </select>
+
+        <div class="field-slider field-slider--stack field-slider--wide">
+          <label class="field-slider__name" for="perc_rank_to_gen_qa">{{ t('params.perc_rank_short') }}</label>
+          <output data-suffix="%" data-default="{{ constants.DEFAULT_PERC_RANK_TO_GEN_QA }}">{{ val('perc_rank_to_gen_qa', constants.DEFAULT_PERC_RANK_TO_GEN_QA) }}%</output>
+          <input type="range" id="perc_rank_to_gen_qa" name="perc_rank_to_gen_qa" value="{{ val('perc_rank_to_gen_qa', constants.DEFAULT_PERC_RANK_TO_GEN_QA) }}" min="1" max="100" step="1" data-default="{{ constants.DEFAULT_PERC_RANK_TO_GEN_QA }}">
+          <span class="field-slider__desc">{{ t('params.perc_rank_desc') }}</span>
+        </div>
+
+        <div class="opt-list">
+          {{ option('use_doc_names_in_response', t('params.doc_names'), t('params.doc_names_desc'), 'docs') }}
+          {{ option('translate_output', t('params.translate'), '', 'translate') }}
+        </div>
+        <div class="lang-options-row opt-sub{% if not is_checked('translate_output') %} hidden{% endif %}">
+          <label for="lang_options">{{ t('params.target_language') }}</label>
+          <select id="lang_options" name="lang_options">
+            {% for lang in constants.ANSWER_LANGUAGES %}
+              <option value="{{ lang }}"{{ selected('lang_options', lang) }}>{{ lang }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <details class="expander expander--tune">
+          <summary>
+            <span class="expander__icon">{{ icon('tune') }}</span>
+            {{ t('params.generation_options') }}
+            <span class="expander__changed" data-changed-count hidden></span>
+          </summary>
+          <div class="expander-body">
+            {{ slider('temperature', 'temperature', '0.0', '2.0', '0.01', constants.DEFAULT_TEMPERATURE, t('params.temperature_desc')) }}
+            {{ slider('top_p', 'top_p', '0.0', '1.0', '0.01', constants.DEFAULT_TOP_P, t('params.top_p_desc')) }}
+            {{ slider('top_k', 'top_k', '0', '500', '1', constants.DEFAULT_TOP_K, t('params.top_k_desc')) }}
+            {{ slider('typical_p', 'typical_p', '0.0', '2.0', '0.01', constants.DEFAULT_TYPICAL_P, t('params.typical_p_desc')) }}
+            {{ slider('repetition_penalty', t('params.repetition_penalty'), '0.0', '2.0', '0.01', constants.DEFAULT_REPETITION_PENALTY, t('params.repetition_penalty_desc')) }}
+            <div class="opt-list">
+              {{ option('set_max_new_tokens', t('params.set_max_new_tokens')) }}
+            </div>
+            {{ slider('max_new_tokens', 'max_new_tokens', '10', constants.MAX_MAX_NEW_TOKENS, '1', constants.DEFAULT_MAX_NEW_TOKENS, '', 'max_new_tokens_row') }}
+          </div>
+        </details>
+      </div>
+
+      {% if not force_generative %}
+        <p class="pgroup__label">{{ t('params.more_models') }}</p>
+        <div class="opt-list">
+          {{ option('use_qa_extractive', t('params.extractive'), t('params.extractive_desc'), 'extract') }}
+          {{ option('return_with_factored_fields', t('params.factored'), t('params.factored_desc'), 'factor') }}
+        </div>
+      {% endif %}
+    </div>
+  </details>
+
+  {#- 3. Filters ------------------------------------------------------- -#}
+  <details class="pgroup" data-group="filters"{% if filters_on %} open{% endif %}>
+    <summary class="pgroup__head">
+      <span class="pgroup__icon">{{ icon('filters') }}</span>
+      <span class="pgroup__titles">
+        <span class="pgroup__title">{{ t('params.filters') }}</span>
+        <span class="pgroup__summary" data-group-summary></span>
+      </span>
+    </summary>
+    <div class="pgroup__body">
+      <label for="categories">{{ t('params.categories') }} <span class="muted">(<span data-count-for="categories">{{ categories | length }}</span>)</span></label>
+      <select id="categories" name="categories" multiple size="5" data-picker>
+        {% for cat in categories %}
+          <option value="{{ cat }}"{{ selected('categories', cat) }}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+      <p class="muted" data-picker-hint>{{ t('params.categories_hint') }}</p>
+
+      <label for="documents">{{ t('params.documents') }} <span class="muted">(<span data-count-for="documents">{{ documents | length }}</span>)</span></label>
+      <select id="documents" name="documents" multiple size="5" data-picker>
+        {% for doc in documents %}
+          <option value="{{ doc }}"{{ selected('documents', doc) }}>{{ doc }}</option>
+        {% endfor %}
+      </select>
+      <p class="muted" data-picker-hint>{{ t('params.documents_hint') }}</p>
+    </div>
+  </details>
+</div>
