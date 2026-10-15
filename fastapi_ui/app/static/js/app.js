@@ -844,8 +844,76 @@ function initConfirmDialogs() {
   const phraseLabel = dialog.querySelector("[data-confirm-phrase-label]");
   const phraseInput = phraseBox.querySelector("input");
   const okButton = dialog.querySelector("[data-confirm-ok]");
-  const defaults = { title: title.textContent, ok: okButton.textContent };
+  const warning = dialog.querySelector(".confirm-dialog__warning");
+  const icon = dialog.querySelector(".confirm-dialog__icon");
+  const defaults = {
+    title: title.textContent,
+    ok: okButton.textContent,
+    iconHtml: icon ? icon.innerHTML : "",
+  };
+  const resetIconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
   const canShowModal = typeof dialog.showModal === "function";
+
+  const resetDialogVisuals = () => {
+    if (warning) warning.classList.remove("hidden");
+    if (icon) icon.innerHTML = defaults.iconHtml;
+  };
+
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("a[data-confirm], button[data-confirm]:not([type=submit])");
+    if (!trigger) return;
+    const text = trigger.dataset.confirm;
+    if (!text) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const phrase = trigger.dataset.confirmPhrase || "";
+    const showWarning = trigger.dataset.confirmWarning !== "false";
+    const iconType = trigger.dataset.confirmIcon;
+
+    if (!canShowModal) {
+      if (window.confirm(text)) {
+        if (trigger.tagName === "A" && trigger.href) {
+          window.location.href = trigger.href;
+        }
+      }
+      return;
+    }
+
+    title.textContent = trigger.dataset.confirmTitle || defaults.title;
+    okButton.textContent = trigger.dataset.confirmOk || defaults.ok;
+    message.textContent = text;
+    if (warning) warning.classList.toggle("hidden", !showWarning);
+    if (icon) {
+      icon.innerHTML = iconType === "reset" ? resetIconSvg : defaults.iconHtml;
+    }
+
+    list.replaceChildren();
+    list.classList.add("hidden");
+
+    phraseBox.classList.toggle("hidden", !phrase);
+    phraseInput.value = "";
+    okButton.disabled = Boolean(phrase);
+    if (phrase) {
+      phraseLabel.textContent = t("confirm_type", { phrase }, "Type {phrase} to confirm");
+      phraseInput.oninput = () => {
+        okButton.disabled = phraseInput.value.trim() !== phrase;
+      };
+    }
+
+    dialog.onclose = () => {
+      dialog.onclose = null;
+      resetDialogVisuals();
+      if (dialog.returnValue !== "ok") return;
+      if (trigger.tagName === "A" && trigger.href) {
+        window.location.href = trigger.href;
+      }
+    };
+    dialog.returnValue = "";
+    dialog.showModal();
+    (phrase ? phraseInput : dialog.querySelector("[data-confirm-cancel]")).focus();
+  });
 
   document.addEventListener("submit", (event) => {
     const form = event.target;
@@ -868,6 +936,8 @@ function initConfirmDialogs() {
       question = t("confirm_docs_selected", { n: items.length }, text);
     }
     const phrase = confirmAttr("confirmPhrase", submitter, form) || "";
+    const showWarning = confirmAttr("confirmWarning", submitter, form) !== "false";
+    const iconType = confirmAttr("confirmIcon", submitter, form);
 
     if (!canShowModal) {
       if (window.confirm(question)) {
@@ -880,6 +950,10 @@ function initConfirmDialogs() {
     title.textContent = confirmAttr("confirmTitle", submitter, form) || defaults.title;
     okButton.textContent = confirmAttr("confirmOk", submitter, form) || defaults.ok;
     message.textContent = question;
+    if (warning) warning.classList.toggle("hidden", !showWarning);
+    if (icon) {
+      icon.innerHTML = iconType === "reset" ? resetIconSvg : defaults.iconHtml;
+    }
 
     list.replaceChildren(...items.slice(0, 8).map((item) => {
       const li = document.createElement("li");
@@ -906,6 +980,7 @@ function initConfirmDialogs() {
 
     dialog.onclose = () => {
       dialog.onclose = null;
+      resetDialogVisuals();
       if (dialog.returnValue !== "ok") return;
       form.dataset.confirmed = "true";
       form.requestSubmit(submitter);

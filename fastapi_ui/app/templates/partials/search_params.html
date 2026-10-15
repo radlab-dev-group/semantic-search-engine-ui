@@ -66,7 +66,13 @@
   <div class="params-head">
     <p class="card__eyebrow">{{ t('params.eyebrow') }}</p>
     {% if sp %}
-      <a class="params-reset" href="/search/params/reset{% if selected_collection %}?collection_name={{ selected_collection | urlencode }}{% endif %}" title="{{ t('params.reset_title') }}">↺ {{ t('params.reset') }}</a>
+      <a class="params-reset" href="/search/params/reset{% if selected_collection %}?collection_name={{ selected_collection | urlencode }}{% endif %}"
+         title="{{ t('params.reset_title') }}"
+         data-confirm="{{ t('params.reset_confirm') }}"
+         data-confirm-title="{{ t('params.reset_confirm_title') }}"
+         data-confirm-ok="{{ t('params.reset_confirm_ok') }}"
+         data-confirm-warning="false"
+         data-confirm-icon="reset">↺ {{ t('params.reset') }}</a>
     {% endif %}
   </div>
 
