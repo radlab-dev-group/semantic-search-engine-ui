@@ -998,8 +998,29 @@ function initCollectionChunking() {
   const defaultHint = limitHint ? limitHint.textContent : "";
   if (!chunk || !overlap) return;
 
+  // The slider span used when the model sets no ceiling (data-range-max of
+  // the field, stretched by the server when the shown value asks for more)
+  const span = (field) => {
+    const range = Number(field.dataset.rangeMax);
+    return Number.isFinite(range) && range > 0 ? range : null;
+  };
+  // A range input clamps its value to a new max by itself; its <output> and
+  // track are refreshed here (no "input" event, so nothing counts as an edit)
+  const setMax = (field, max) => {
+    const before = field.value;
+    if (max === null) field.removeAttribute("max");
+    else field.max = String(max);
+    if (field.type !== "range" || field.value === before) return;
+    const row = field.closest(".field-slider");
+    const output = row ? row.querySelector("output") : null;
+    if (output) output.textContent = field.value;
+    paintRange(field);
+  };
+
   const setInvalid = (field, message, note) => {
     field.classList.toggle("is-invalid", Boolean(message));
+    const row = field.closest(".field-slider");
+    if (row) row.classList.toggle("is-invalid", Boolean(message));
     if (message) field.setAttribute("aria-invalid", "true");
     else field.removeAttribute("aria-invalid");
     field.setCustomValidity(message || "");
@@ -1012,9 +1033,9 @@ function initCollectionChunking() {
   const validate = () => {
     const limit = modelLimit(embedder);
     const model = embedder ? (modelOption(embedder)?.textContent || "").trim() : "";
-    // null = no ceiling: the attribute is dropped, not set to a magic number
-    if (limit) chunk.max = String(limit);
-    else chunk.removeAttribute("max");
+    // null = no ceiling: a slider then spans its usual range (a number input
+    // drops the attribute, no magic number either way)
+    setMax(chunk, limit || span(chunk));
     if (limitHint) {
       limitHint.textContent = limit
         ? t("chunk_limit_hint", { model, n: limit }, "Ceiling for the embedder {model}: {n} tokens.")
@@ -1024,7 +1045,6 @@ function initCollectionChunking() {
     }
 
     const size = chunk.value === "" ? null : Number(chunk.value);
-    const over = overlap.value === "" ? null : Number(overlap.value);
 
     let chunkError = "";
     if (size !== null && limit && size > limit) {
@@ -1035,16 +1055,21 @@ function initCollectionChunking() {
     setInvalid(chunk, chunkError, chunkMsg);
 
     let overlapError = "";
+    const overlapSpan = span(overlap);
     if (size !== null && size >= 1) {
-      overlap.max = String(size - 1);
+      // The overlap stays below the chunk; a slider also keeps its usual span
+      setMax(overlap, overlapSpan ? Math.min(size - 1, overlapSpan) : size - 1);
+    } else {
+      setMax(overlap, overlapSpan);
+    }
+    // Read after the max was set: a slider may have been clamped by it
+    const over = overlap.value === "" ? null : Number(overlap.value);
+    if (size !== null && size >= 1) {
       if (over !== null && !(over >= 0 && over < size)) {
         overlapError = t("chunk_overlap_error", { n: size - 1 }, "The overlap must be a number from 0 to {n}.");
       }
-    } else {
-      overlap.removeAttribute("max");
-      if (over !== null && over < 0) {
-        overlapError = t("chunk_overlap_error", { n: 0 }, "The overlap must be a number from 0 to {n}.");
-      }
+    } else if (over !== null && over < 0) {
+      overlapError = t("chunk_overlap_error", { n: 0 }, "The overlap must be a number from 0 to {n}.");
     }
     setInvalid(overlap, overlapError, overlapMsg);
 

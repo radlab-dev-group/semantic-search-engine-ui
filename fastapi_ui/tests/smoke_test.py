@@ -254,11 +254,13 @@ def check_chunking(client) -> None:
         "",
     )
     check(
-        "new collection form is prefilled with chunking_defaults of the engine",
-        'name="max_tokens_in_chunk" inputmode="numeric" min="1" step="1" value="500"'
+        "new collection form has chunking sliders prefilled with chunking_defaults",
+        f'name="max_tokens_in_chunk" min="10" max="{server.constants.MAX_TOKENS_IN_CHUNK_LIMIT}" step="1" value="500" data-chunk-size data-range-max="{server.constants.MAX_TOKENS_IN_CHUNK_LIMIT}">'
         in page
-        and 'name="number_of_overlap_tokens" inputmode="numeric" min="0" step="1" value="0"'
+        and f'name="number_of_overlap_tokens" min="0" max="{server.constants.OVERLAP_TOKENS_LIMIT}" step="1" value="0" data-chunk-overlap data-range-max="{server.constants.OVERLAP_TOKENS_LIMIT}">'
         in page
+        and page.count('<input type="range" id="new_') == 2
+        and '<output>500</output>' in page
         and 'name="chunking_default_max" value="500"' in page
         and 'name="chunking_default_overlap" value="0"' in page
         and 'name="chunking_edited" value="0"' in page
@@ -362,7 +364,7 @@ def check_chunking(client) -> None:
         "overlap not smaller than the chunk is refused before the engine",
         response.status_code == 200
         and "The overlap must be within 0 and the chunk size" in response.text
-        and 'value="100" placeholder="engine default" data-chunk-overlap class="is-invalid" aria-invalid="true"'
+        and 'value="100" data-chunk-overlap data-range-max="200" class="is-invalid" aria-invalid="true"'
         in response.text
         and not any(
             entry["path"].endswith("new_collection") for entry in REQUEST_LOG[before:]
@@ -390,7 +392,9 @@ def check_chunking(client) -> None:
         response.status_code == 200
         and "The chunk is longer than the maximum input length of the embedder."
         in response.text
-        and 'value="600" placeholder="engine default" data-chunk-size class="is-invalid" aria-invalid="true"'
+        and 'value="600" data-chunk-size data-range-max="1000" class="is-invalid" aria-invalid="true"'
+        in response.text
+        and 'class="field-slider field-slider--stack field-slider--wide is-invalid"'
         in response.text
         and 'class="card card--subtle chunking-card has-error"' in response.text
         and 'name="collection_name" value="long"' in response.text

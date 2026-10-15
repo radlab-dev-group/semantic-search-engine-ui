@@ -138,16 +138,19 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
     akcje Dokumenty / Dodaj treść / Szukaj, usuwanie ikoną kosza).
   - **Nowa kolekcja**: oprócz modeli i typu indeksu karta „Podział na chunki”
     (`max_tokens_in_chunk`, `number_of_overlap_tokens`, przełącznik
-    `strict_chunking`). Pola są wypełnione `chunking_defaults` z
-    `GET api/filter_options`; `chunking` trafia do `POST api/new_collection`
-    tylko wtedy, gdy użytkownik je zmienił (`app.js` ustawia ukryte
-    `chunking_edited`, serwer porównuje też z wartościami wyrenderowanymi w
-    formularzu). Opcje embedderów i rerankerów niosą `models_info`
-    (`data-max-length`, `data-vector-size`, `data-device`): sufit rozmiaru
-    chunka to `max_model_length` wybranego embedera (brak = bez sufitu), zakładka
-    musi mieścić się w `[0, chunk)`, a chunk ≥ `max_model_length` rerankera
-    daje tylko ostrzeżenie. Nic nie jest w kodzie zaszyte na sztywno — bez
-    `filter_options` pola są puste („wg silnika”).
+    `strict_chunking`). Oba parametry to suwaki (jak przy indeksowaniu)
+    ustawione na `chunking_defaults` z `GET api/filter_options`; `chunking`
+    trafia do `POST api/new_collection` tylko wtedy, gdy użytkownik je
+    przesunął (`app.js` ustawia ukryte `chunking_edited`, serwer porównuje też
+    z wartościami wyrenderowanymi w formularzu). Opcje embedderów i rerankerów
+    niosą `models_info` (`data-max-length`, `data-vector-size`,
+    `data-device`): zakres suwaka chunka kończy się na `max_model_length`
+    wybranego embedera (brak = zwykły zakres `MAX_TOKENS_IN_CHUNK_LIMIT`,
+    rozciągany, gdy pokazywana wartość jest większa), suwak zakładki jest
+    ograniczany do `[0, chunk)` (i `OVERLAP_TOKENS_LIMIT`), a chunk ≥
+    `max_model_length` rerankera daje tylko ostrzeżenie. Bez `filter_options`
+    suwaki stają na `DEFAULT_MAX_TOKENS_IN_CHUNK` / `DEFAULT_OVERLAP_TOKENS`,
+    ale dopóki ich nie ruszysz, do silnika nadal nic nie jest wysyłane.
   - **Dokumenty**: lista z filtrem i zaznaczaniem wielu pozycji, obok panel
     usuwania chunków po ID i strefa usunięcia kolekcji. Przy każdym dokumencie,
     obok kosza, jest przełącznik „W wyszukiwaniu” (`use_in_search`): wyłączony

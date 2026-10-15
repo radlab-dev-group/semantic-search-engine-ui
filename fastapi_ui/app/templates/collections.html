@@ -141,8 +141,13 @@
     {% set cerr = chunking_error or {} %}
     {% set embedder_info = embedder_info or {} %}
     {% set reranker_info = reranker_info or {} %}
-    {% set chunk_value = fv.max_tokens_in_chunk if fv.max_tokens_in_chunk is defined and fv.max_tokens_in_chunk != '' else (chunking_defaults.max_tokens_in_chunk if chunking_defaults else '') %}
-    {% set overlap_value = fv.number_of_overlap_tokens if fv.number_of_overlap_tokens is defined and fv.number_of_overlap_tokens != '' else (chunking_defaults.number_of_overlap_tokens if chunking_defaults else '') %}
+    {#- The sliders always show a value: the typed one, the defaults of the
+        engine, or (when those are unknown) the UI constants; the slider range
+        is stretched when the shown value asks for more -#}
+    {% set chunk_value = fv.max_tokens_in_chunk if fv.max_tokens_in_chunk is defined and fv.max_tokens_in_chunk != '' else (chunking_defaults.max_tokens_in_chunk if chunking_defaults else constants.DEFAULT_MAX_TOKENS_IN_CHUNK) %}
+    {% set overlap_value = fv.number_of_overlap_tokens if fv.number_of_overlap_tokens is defined and fv.number_of_overlap_tokens != '' else (chunking_defaults.number_of_overlap_tokens if chunking_defaults else constants.DEFAULT_OVERLAP_TOKENS) %}
+    {% set chunk_range = [constants.MAX_TOKENS_IN_CHUNK_LIMIT, chunk_value | int(0)] | max %}
+    {% set overlap_range = [constants.OVERLAP_TOKENS_LIMIT, overlap_value | int(0)] | max %}
     <form method="post" action="/collections/new" data-collection-form>
 
       <div class="form-grid">
@@ -198,20 +203,30 @@
           <p class="section-title">{{ t('collections.chunking') }}</p>
           <p class="muted chunking-card__lead">{{ t('collections.chunking_lead') }}</p>
           <input type="hidden" name="chunking_edited" value="{{ '1' if fv.max_tokens_in_chunk is defined and fv.max_tokens_in_chunk != '' else '0' }}" data-chunking-edited>
-          <input type="hidden" name="chunking_default_max" value="{{ chunking_defaults.max_tokens_in_chunk if chunking_defaults else '' }}">
-          <input type="hidden" name="chunking_default_overlap" value="{{ chunking_defaults.number_of_overlap_tokens if chunking_defaults else '' }}">
+          {#- What the sliders were rendered with: the server sends "chunking"
+              only when the submitted values differ from these (or were touched) -#}
+          <input type="hidden" name="chunking_default_max" value="{{ chunking_defaults.max_tokens_in_chunk if chunking_defaults else chunk_value }}">
+          <input type="hidden" name="chunking_default_overlap" value="{{ chunking_defaults.number_of_overlap_tokens if chunking_defaults else overlap_value }}">
 
+          {#- data-range-*: the slider span when the embedder knows no limit
+              (the chunk one) / the usual overlap span, see app.js -#}
           <div class="form-row form-row--split">
             <div>
-              <label for="new_max_tokens_in_chunk">{{ t('collections.chunk_size') }}</label>
-              <input type="number" id="new_max_tokens_in_chunk" name="max_tokens_in_chunk" inputmode="numeric" min="1" step="1" value="{{ chunk_value }}" placeholder="{{ t('collections.chunk_placeholder') }}" data-chunk-size{% if cerr.code == 'too_long' %} class="is-invalid" aria-invalid="true"{% endif %}>
+              <div class="field-slider field-slider--stack field-slider--wide{% if cerr.code == 'too_long' %} is-invalid{% endif %}">
+                <label class="field-slider__name" for="new_max_tokens_in_chunk">{{ t('collections.chunk_size') }}</label>
+                <output>{{ chunk_value }}</output>
+                <input type="range" id="new_max_tokens_in_chunk" name="max_tokens_in_chunk" min="10" max="{{ chunk_range }}" step="1" value="{{ chunk_value }}" data-chunk-size data-range-max="{{ chunk_range }}"{% if cerr.code == 'too_long' %} class="is-invalid" aria-invalid="true"{% endif %}>
+              </div>
               <p class="field-msg field-msg--error" data-chunk-msg{% if cerr.code != 'too_long' %} hidden{% endif %}>{{ t('collections.chunking_too_long') if cerr.code == 'too_long' else '' }}</p>
               <p class="field-msg field-msg--warn" data-reranker-msg hidden></p>
               <p class="muted" data-chunk-limit>{% if chunking_defaults %}{{ t('collections.chunk_default_hint', n=chunking_defaults.max_tokens_in_chunk) }}{% else %}{{ t('collections.chunk_default_unknown') }}{% endif %}</p>
             </div>
             <div>
-              <label for="new_number_of_overlap_tokens">{{ t('collections.chunk_overlap') }}</label>
-              <input type="number" id="new_number_of_overlap_tokens" name="number_of_overlap_tokens" inputmode="numeric" min="0" step="1" value="{{ overlap_value }}" placeholder="{{ t('collections.chunk_placeholder') }}" data-chunk-overlap{% if cerr.code == 'overlap' %} class="is-invalid" aria-invalid="true"{% endif %}>
+              <div class="field-slider field-slider--stack field-slider--wide{% if cerr.code == 'overlap' %} is-invalid{% endif %}">
+                <label class="field-slider__name" for="new_number_of_overlap_tokens">{{ t('collections.chunk_overlap') }}</label>
+                <output>{{ overlap_value }}</output>
+                <input type="range" id="new_number_of_overlap_tokens" name="number_of_overlap_tokens" min="0" max="{{ overlap_range }}" step="1" value="{{ overlap_value }}" data-chunk-overlap data-range-max="{{ overlap_range }}"{% if cerr.code == 'overlap' %} class="is-invalid" aria-invalid="true"{% endif %}>
+              </div>
               <p class="field-msg field-msg--error" data-overlap-msg{% if cerr.code != 'overlap' %} hidden{% endif %}>{{ t('collections.chunking_overlap_error') if cerr.code == 'overlap' else '' }}</p>
               <p class="muted">{{ t('collections.chunk_overlap_hint') }}</p>
             </div>
