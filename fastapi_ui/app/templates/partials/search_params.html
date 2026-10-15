@@ -1,7 +1,8 @@
 {#
   Shared sidebar of search parameters.
   Context variables:
-    collections, generative_models, categories, documents, selected_collection
+    collections (rows: name, display_name, ...), generative_models, categories,
+    documents, selected_collection
     show_content_supervisor (bool)
     show_rag_supervisor (bool)
     search_params (SearchParams, optional) - options of the last search, they
@@ -83,7 +84,7 @@
       <select id="collection_name" name="collection_name" required>
         <option value="" disabled {% if not selected_collection %}selected{% endif %}>{{ t('params.choose_collection') }}</option>
         {% for coll in collections %}
-          <option value="{{ coll }}" {% if coll == selected_collection %}selected{% endif %}>{{ coll }}</option>
+          <option value="{{ coll.name }}" {% if coll.name == selected_collection %}selected{% endif %}>{{ coll.display_name }}</option>
         {% endfor %}
       </select>
 

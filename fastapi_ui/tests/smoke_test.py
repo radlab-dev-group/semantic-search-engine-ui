@@ -751,6 +751,22 @@ def main() -> int:
             '<option value="user_col" selected>' in response.text,
             "",
         )
+        check(
+            "search offers the collections by their full (display) name",
+            '<option value="user_col" selected>Moje dokumenty</option>' in response.text
+            and '<option value="user_kol" >user_kol</option>' in response.text
+            and 'class="history__collection"' in response.text
+            and ">Moje dokumenty</span>" in response.text,
+            "",
+        )
+        payload = client.get(
+            "/search/history?collection_name=user_col&collection_label=Moje+dokumenty"
+        ).json()
+        check(
+            "history panel refreshed with the full collection name",
+            ">Moje dokumenty</span>" in payload.get("html", ""),
+            "",
+        )
 
         response = client.post(
             "/documents/upload", data={"collection_name": "user_col"}

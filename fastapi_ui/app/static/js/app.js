@@ -569,7 +569,10 @@ function initGroupSummaries(panel) {
     collection: () => {
       const collection = field("collection_name");
       const parts = [];
-      parts.push(collection && collection.value ? collection.value : t("sum_no_collection", {}, "no collection"));
+      const label = collection && collection.value && collection.selectedOptions
+        ? (collection.selectedOptions[0]?.textContent || collection.value).trim()
+        : "";
+      parts.push(label || t("sum_no_collection", {}, "no collection"));
       const count = Number(field("results_count")?.value) || 0;
       parts.push(t("sum_results", { n: count }, "{n} results"));
       if (isOn("hybrid_search")) {
@@ -1162,11 +1165,12 @@ function initHistory(root = document) {
 }
 
 // Another collection chosen in the sidebar: show its history.
-async function refreshHistory(collectionName) {
+async function refreshHistory(collectionName, collectionLabel = "") {
   const panel = document.querySelector("[data-history]");
   if (!panel) return;
+  const query = new URLSearchParams({ collection_name: collectionName, collection_label: collectionLabel });
   try {
-    const response = await fetch(`/search/history?collection_name=${encodeURIComponent(collectionName)}`, {
+    const response = await fetch(`/search/history?${query}`, {
       credentials: "same-origin",
     });
     if (!response.ok) return;
@@ -1234,7 +1238,7 @@ document.addEventListener("change", async (event) => {
   if (select.closest("form[data-autosubmit]")) return;
 
   const scope = select.closest("form") || document;
-  refreshHistory(select.value);
+  refreshHistory(select.value, (select.selectedOptions[0]?.textContent || "").trim());
   const targets = {
     categories: scope.querySelector("select[name='categories']"),
     documents: scope.querySelector("select[name='documents']"),

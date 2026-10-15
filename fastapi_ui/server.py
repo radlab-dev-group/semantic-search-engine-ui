@@ -383,12 +383,16 @@ def fetch_generative_models(token: str) -> list:
 
 def fetch_page_context(token: str, collection_name: str = "") -> dict:
     """All data required to render the search page."""
-    result = fetch_collections(token)
-    if "status" in result and not result["status"]:
-        return {"error": result}
+    data = fetch_collection_rows(token)
+    if "error" in data:
+        return {"error": data["error"]}
 
+    # Rows with the full (display) name; the internal name is the value sent
+    collections = data["collections"]
+    selected = next((c for c in collections if c["name"] == collection_name), None)
     context = {
-        "collections": [c["name"] for c in result["body"]["collections"]],
+        "collections": collections,
+        "selected_collection_label": selected["display_name"] if selected else "",
         "generative_models": fetch_generative_models(token),
     }
     context.update(fetch_collection_filters(token, collection_name))
@@ -1431,7 +1435,9 @@ def rate_submit(request: Request, form: FormData = Depends(parsed_form)):
 
 
 @app.get("/search/history", include_in_schema=False)
-def search_history_panel(request: Request, collection_name: str = ""):
+def search_history_panel(
+    request: Request, collection_name: str = "", collection_label: str = ""
+):
     """History panel of a collection (HTML fragment, used when it changes)."""
     if require_login(request) is not None:
         return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
@@ -1440,6 +1446,7 @@ def search_history_panel(request: Request, collection_name: str = ""):
         t=translator(request),
         history=history,
         selected_collection=collection_name,
+        selected_collection_label=collection_label,
         history_open=True,
     )
     return JSONResponse(
