@@ -504,10 +504,26 @@ def fetch_page_context(token: str, collection_name: str = "") -> dict:
     return context
 
 
+def parse_min_similarity(raw) -> float:
+    """Cosine similarity cutoff of the form, a number clamped to [0, 1].
+
+    The engine falls back to its own default for anything outside that range,
+    so a mistyped value is tamed here instead of being silently ignored there.
+    """
+    try:
+        value = float(str(raw).strip()) if raw not in (None, "") else None
+    except (TypeError, ValueError):
+        value = None
+    if value is None or value != value:  # None or NaN
+        return float(constants.DEFAULT_MIN_SIMILARITY)
+    return round(min(1.0, max(0.0, value)), 2)
+
+
 def parse_search_form(form: FormData) -> dict:
     """Build (search_options, answer_options, run_models_options) from the HTML
     form."""
     results_count = int(form.get("results_count") or constants.DEFAULT_MAX_RESULTS)
+    min_similarity = parse_min_similarity(form.get("min_similarity"))
     rerank_results = form.get("rerank_results") is not None
     hybrid_search = form.get("hybrid_search") is not None
     use_content_supervisor = form.get("use_content_supervisor") is not None
@@ -549,6 +565,7 @@ def parse_search_form(form: FormData) -> dict:
         "categories": form.getlist("categories"),
         "documents": form.getlist("documents"),
         "max_results": results_count,
+        "min_similarity": min_similarity,
         "rerank_results": rerank_results,
         "hybrid_search": hybrid_search,
         "return_with_factored_fields": return_with_factored_fields,

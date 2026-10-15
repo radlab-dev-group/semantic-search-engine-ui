@@ -8,6 +8,11 @@ DEFAULT_CONFIG_PATH = "ui-configuration.json"
 DEFAULT_MAX_RESULTS = 8
 MAX_RESULTS_LIMIT = 100
 DEFAULT_PERC_RANK_TO_GEN_QA = 100
+# Cosine similarity cutoff of the vector search (search option
+# "min_similarity", a number in [0, 1]); the chunks scoring below are dropped.
+# Mirrors DEFAULT_MIN_SIMILARITY of the engine, which is used when the option
+# is missing or invalid. 0 disables the cutoff.
+DEFAULT_MIN_SIMILARITY = 0.5
 
 # Generative model defaults
 DEFAULT_TOP_K = 50

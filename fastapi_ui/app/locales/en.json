@@ -455,6 +455,8 @@
     "repetition_penalty": "repetition penalty",
     "set_max_new_tokens": "Set max new tokens",
     "filters": "Filters",
+    "min_similarity": "Minimum similarity (cosine)",
+    "min_similarity_desc": "Chunks whose cosine similarity to the question is below the cutoff are dropped — with a high cutoff a query may return no results at all. 0 disables the cutoff.",
     "categories": "Categories in collection",
     "categories_hint": "Hold Ctrl/Cmd to select multiple categories.",
     "documents": "Documents in collection",
@@ -561,6 +563,8 @@
     "sum_extractive": "extractive QA",
     "sum_search_only": "search only",
     "sum_no_filters": "no filters — whole collection",
+    "sum_min_similarity": "similarity ≥ {n}",
+    "sum_no_min_similarity": "no similarity cutoff",
     "sum_categories": {
       "one": "{n} category",
       "other": "{n} categories"

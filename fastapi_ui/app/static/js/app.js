@@ -564,6 +564,14 @@ function initGroupSummaries(panel) {
     const select = field(name);
     return select ? Array.from(select.selectedOptions).length : 0;
   };
+  // The similarity cutoff counts as a filter only when it differs from the
+  // default of the engine
+  const similarity = () => {
+    const range = field("min_similarity");
+    if (!range || range.dataset.default === undefined) return null;
+    const value = Number(range.value);
+    return Number.isFinite(value) && value !== Number(range.dataset.default) ? value : null;
+  };
 
   const summaries = {
     collection: () => {
@@ -599,6 +607,14 @@ function initGroupSummaries(panel) {
       const documents = chosen("documents");
       if (categories) parts.push(t("sum_categories", { n: categories }, "{n} categories"));
       if (documents) parts.push(t("sum_documents", { n: documents }, "{n} documents"));
+      const cutoff = similarity();
+      if (cutoff !== null) {
+        parts.push(
+          cutoff > 0
+            ? t("sum_min_similarity", { n: cutoff.toFixed(2) }, "similarity ≥ {n}")
+            : t("sum_no_min_similarity", {}, "no similarity cutoff")
+        );
+      }
       return parts.length ? parts.join(" · ") : t("sum_no_filters", {}, "no filters");
     },
   };
@@ -611,7 +627,12 @@ function initGroupSummaries(panel) {
       if (target && summary) target.textContent = summary();
     });
     const group = panel.querySelector("[data-group='filters']");
-    if (group) group.classList.toggle("is-active", chosen("categories") + chosen("documents") > 0);
+    if (group) {
+      group.classList.toggle(
+        "is-active",
+        chosen("categories") + chosen("documents") > 0 || similarity() !== null
+      );
+    }
 
     // Number of generation options that differ from their defaults
     if (tuning) {

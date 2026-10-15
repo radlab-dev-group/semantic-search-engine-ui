@@ -66,7 +66,8 @@
   </div>
 {%- endmacro -%}
 {%- set generative_on = force_generative or is_checked('use_qa_generative') -%}
-{%- set filters_on = (sp.value('categories', '') if sp else '') or (sp.value('documents', '') if sp else '') -%}
+{%- set similarity_changed = sp and sp.value('min_similarity', '') != '' and (sp.value('min_similarity', '') | float) != (constants.DEFAULT_MIN_SIMILARITY | float) -%}
+{%- set filters_on = (sp.value('categories', '') if sp else '') or (sp.value('documents', '') if sp else '') or similarity_changed -%}
 <div class="card card--panel params" data-params>
   <div class="params-head">
     <p class="card__eyebrow">{{ t('params.eyebrow') }}</p>
@@ -213,6 +214,15 @@
       </span>
     </summary>
     <div class="pgroup__body">
+      {#- Cosine cutoff of the vector search (engine option min_similarity):
+          chunks below it are dropped, so a query may return no results -#}
+      <div class="field-slider field-slider--stack field-slider--wide">
+        <label class="field-slider__name" for="min_similarity">{{ t('params.min_similarity') }}</label>
+        <output data-default="{{ constants.DEFAULT_MIN_SIMILARITY }}">{{ val('min_similarity', constants.DEFAULT_MIN_SIMILARITY) }}</output>
+        <input type="range" id="min_similarity" name="min_similarity" value="{{ val('min_similarity', constants.DEFAULT_MIN_SIMILARITY) }}" min="0" max="1" step="0.01" data-default="{{ constants.DEFAULT_MIN_SIMILARITY }}">
+        <span class="field-slider__desc">{{ t('params.min_similarity_desc') }}</span>
+      </div>
+
       <label for="categories">{{ t('params.categories') }} <span class="muted">(<span data-count-for="categories">{{ categories | length }}</span>)</span></label>
       <select id="categories" name="categories" multiple size="5" data-picker>
         {% for cat in categories %}

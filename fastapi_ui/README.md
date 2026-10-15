@@ -188,7 +188,12 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   wyszukiwania hybrydowego `hybrid_search` i rerankingu, licznik wyników
   z −/+ i szybkim wyborem, suwaki z opisem i oznaczeniem wartości innych niż
   domyślne, filtry jako listy z wyszukiwaniem — natywne `<select multiple>`
-  zostają w formularzu jako źródło prawdy), karta
+  zostają w formularzu jako źródło prawdy; w grupie Filtry jest też suwak
+  „Minimalne podobieństwo (cosinus)” → opcja `min_similarity` zapytania
+  `search_with_options` w zakresie 0–1, domyślnie `DEFAULT_MIN_SIMILARITY`
+  = 0.5 jak w silniku, 0 wyłącza próg — fragmenty poniżej progu są odrzucane,
+  więc wysoki próg może dać pustą listę wyników; serwer przycina wartość do
+  [0, 1], a próg inny niż domyślny widać w podsumowaniu grupy), karta
   odpowiedzi modelu z gradientowym akcentem nad wynikami, ocena odpowiedzi
   gwiazdkami. Przy generatywnym QA wyniki pokazują się od razu, a karta
   odpowiedzi ma animowany szkielet i licznik czasu, dopóki model nie skończy.

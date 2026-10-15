@@ -1131,6 +1131,7 @@ def main() -> int:
                 "question": "jakies pytanie",
                 "prompt": "odpowiedz zwięźle",
                 "results_count": "30",
+                "min_similarity": "0.35",
                 "rerank_results": "on",
                 "hybrid_search": "on",
                 "categories": ["a", "c"],
@@ -1203,6 +1204,7 @@ def main() -> int:
         def kept_options(html: str) -> dict:
             return {
                 "results_count": 'name="results_count" value="30"' in html,
+                "min_similarity": 'name="min_similarity" value="0.35"' in html,
                 "perc_rank": 'name="perc_rank_to_gen_qa" value="55"' in html,
                 "rerank": 'name="rerank_results" checked' in html,
                 "hybrid": 'name="hybrid_search" checked' in html,
@@ -1265,6 +1267,8 @@ def main() -> int:
         check(
             "restore defaults brings back the default options",
             f'name="results_count" value="{server.constants.DEFAULT_MAX_RESULTS}"'
+            in defaults_html
+            and f'name="min_similarity" value="{server.constants.DEFAULT_MIN_SIMILARITY}"'
             in defaults_html
             and 'name="hybrid_search" checked' in defaults_html
             and 'name="use_qa_generative" checked' not in defaults_html
@@ -1351,6 +1355,25 @@ def main() -> int:
             str(options),
         )
         check(
+            "min_similarity sent as a number",
+            options.get("min_similarity") == 0.35
+            and not isinstance(options.get("min_similarity"), str),
+            str(options),
+        )
+        parse = server.parse_min_similarity
+        check(
+            "min_similarity is clamped to [0, 1] and defaults when invalid",
+            parse("0.6") == 0.6
+            and parse("7") == 1.0
+            and parse("-1") == 0.0
+            and parse("0") == 0.0
+            and parse("") == server.constants.DEFAULT_MIN_SIMILARITY
+            and parse(None) == server.constants.DEFAULT_MIN_SIMILARITY
+            and parse("abc") == server.constants.DEFAULT_MIN_SIMILARITY
+            and parse("nan") == server.constants.DEFAULT_MIN_SIMILARITY,
+            str([parse(v) for v in ("0.6", "7", "-1", "0", "", None, "abc", "nan")]),
+        )
+        check(
             "convert_to_display added",
             options.get("convert_to_display") is True,
             str(options),
@@ -1422,6 +1445,11 @@ def main() -> int:
             options_vo.get("hybrid_search") is False,
             str(options_vo),
         )
+        check(
+            "missing min_similarity falls back to the engine default",
+            options_vo.get("min_similarity") == server.constants.DEFAULT_MIN_SIMILARITY,
+            str(options_vo),
+        )
 
         response = client.get("/search")
         check(
@@ -1440,6 +1468,7 @@ def main() -> int:
                 for field in [
                     "collection_name",
                     "results_count",
+                    "min_similarity",
                     "hybrid_search",
                     "rerank_results",
                     "return_with_factored_fields",
