@@ -203,6 +203,11 @@ class SemanticSearchEngineAPI(BaseApiInterface):
                     "add_and_index_texts", "api/add_and_index_texts"
                 )
             )
+            self.set_documents_use_in_search = (
+                api_config.semantic_search_engine_endpoints.get(
+                    "set_documents_use_in_search", "api/set_documents_use_in_search"
+                )
+            )
 
     def __init__(self, config_path: str = "configs/ui-configuration.json"):
         self._api_config = ApiConfiguration(config_path=config_path)
@@ -298,12 +303,19 @@ class SemanticSearchEngineAPI(BaseApiInterface):
         )
         return response
 
-    def list_documents_from_collection(self, token: str, collection_name: str):
+    def list_documents_from_collection(
+        self, token: str, collection_name: str, with_disabled: bool = False
+    ):
+        """Documents used in the search; ``with_disabled`` adds the documents
+        excluded from it (each one with its ``use_in_search`` flag)."""
+        params = {"collection_name": collection_name}
+        if with_disabled:
+            params["with_disabled"] = "true"
         response = self.general_call_get(
             token=token,
             api_call_url=self._api_host,
             api_function=self._engine_ep.list_documents_from_collection,
-            params={"collection_name": collection_name},
+            params=params,
             data=None,
         )
         return response
@@ -422,6 +434,27 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             api_function=self._engine_ep.delete_documents,
             params=None,
             json_data=payload,
+        )
+        return response
+
+    def set_documents_use_in_search(
+        self,
+        token: str,
+        collection_name: str,
+        document_names: list[str],
+        use_in_search: bool,
+    ):
+        """Enable / disable documents in the search (nothing is removed)."""
+        response = self.general_call_post(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.set_documents_use_in_search,
+            params=None,
+            json_data={
+                "collection_name": collection_name,
+                "documents[]": list(document_names),
+                "use_in_search": bool(use_in_search),
+            },
         )
         return response
 

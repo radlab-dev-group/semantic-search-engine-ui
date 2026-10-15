@@ -126,6 +126,10 @@ COLLECTIONS = [
     },
 ]
 
+# Documents of the collection with their use_in_search flag; GET documents
+# lists only the enabled ones, unless with_disabled=true is asked for
+DOCUMENTS_IN_SEARCH = {"b.pdf": True, "a.pdf": True, "old.pdf": False}
+
 REQUEST_LOG = []
 
 
@@ -231,8 +235,29 @@ class MockHandler(BaseHTTPRequestHandler):
         if ep == "categories":
             return self._send(_ok({"categories": ["b", "a", None, "c"]}))
         if ep == "documents":
+            if query.get("with_disabled") == "true":
+                return self._send(
+                    _ok(
+                        {
+                            "documents": [
+                                {"id": index, "name": name, "use_in_search": used}
+                                for index, (name, used) in enumerate(
+                                    DOCUMENTS_IN_SEARCH.items(), start=1
+                                )
+                            ]
+                        }
+                    )
+                )
             return self._send(
-                _ok({"documents": [{"name": "b.pdf"}, {"name": "a.pdf"}]})
+                _ok(
+                    {
+                        "documents": [
+                            {"name": name}
+                            for name, used in DOCUMENTS_IN_SEARCH.items()
+                            if used
+                        ]
+                    }
+                )
             )
         return self._send(_ok({}))
 
@@ -300,6 +325,29 @@ class MockHandler(BaseHTTPRequestHandler):
                         "deleted": {"texts": 2},
                         "deleted_vectors": 2,
                         "not_found": [],
+                    }
+                )
+            )
+        if ep == "set_documents_use_in_search":
+            names = body.get("documents[]") or []
+            found = [name for name in names if name in DOCUMENTS_IN_SEARCH]
+            if not found:
+                return self._send(
+                    {
+                        "status": False,
+                        "errors": [
+                            {"code": "DOCUMENT_NOT_FOUND", "msg": "Document not found"}
+                        ],
+                    }
+                )
+            for name in found:
+                DOCUMENTS_IN_SEARCH[name] = bool(body.get("use_in_search"))
+            return self._send(
+                _ok(
+                    {
+                        "updated_documents": len(found),
+                        "use_in_search": bool(body.get("use_in_search")),
+                        "not_found": [n for n in names if n not in found],
                     }
                 )
             )

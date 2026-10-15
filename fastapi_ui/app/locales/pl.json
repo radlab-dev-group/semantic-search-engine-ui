@@ -245,7 +245,32 @@
       "many": "{n} wektorów",
       "other": "{n} wektora"
     },
-    "not_found": "Nie znaleziono (pominięto): {ids}"
+    "not_found": "Nie znaleziono (pominięto): {ids}",
+    "doc_column": "Dokument",
+    "in_search_column": "W wyszukiwaniu",
+    "disabled_word": "wyłączone z wyszukiwania",
+    "disabled_badge": "wyłączony z wyszukiwania",
+    "enable_selected": "Włącz zaznaczone",
+    "enable_selected_title": "Przywróć zaznaczone dokumenty do wyszukiwania",
+    "disable_selected": "Wyłącz zaznaczone",
+    "disable_selected_title": "Wyłącz zaznaczone dokumenty z wyszukiwania (nic nie jest usuwane)",
+    "visibility_label": "Używaj w wyszukiwaniu",
+    "visibility_on_title": "Używany w wyszukiwaniu — kliknij, aby wyłączyć",
+    "visibility_off_title": "Wyłączony z wyszukiwania — kliknij, aby włączyć",
+    "visibility_hint": "Przełącznik tylko wyłącza dokument z wyszukiwania: jego teksty i wektory zostają w kolekcji, więc można go włączyć z powrotem bez ponownego indeksowania.",
+    "visibility_enabled": {
+      "one": "Włączono {n} dokument do wyszukiwania",
+      "few": "Włączono {n} dokumenty do wyszukiwania",
+      "many": "Włączono {n} dokumentów do wyszukiwania",
+      "other": "Włączono {n} dokumentu do wyszukiwania"
+    },
+    "visibility_disabled": {
+      "one": "Wyłączono {n} dokument z wyszukiwania",
+      "few": "Wyłączono {n} dokumenty z wyszukiwania",
+      "many": "Wyłączono {n} dokumentów z wyszukiwania",
+      "other": "Wyłączono {n} dokumentu z wyszukiwania"
+    },
+    "visibility_error": "Nie udało się zmienić użycia dokumentu w wyszukiwaniu."
   },
   "upload": {
     "title": "SSE - wgrywanie dokumentów",
@@ -555,6 +580,7 @@
       "few": "zaznaczono {n}",
       "many": "zaznaczono {n}",
       "other": "zaznaczono {n}"
-    }
+    },
+    "visibility_failed": "Nie udało się zmienić dokumentu — spróbuj ponownie."
   }
 }

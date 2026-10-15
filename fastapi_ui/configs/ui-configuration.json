@@ -26,6 +26,7 @@
         "delete_collection": "api/delete_collection",
         "delete_documents": "api/delete_documents",
         "delete_texts": "api/delete_texts",
+        "set_documents_use_in_search": "api/set_documents_use_in_search",
         "add_and_index_texts": "api/add_and_index_texts",
         "new_chat": "api/new_chat",
         "add_user_message": "api/add_user_message"

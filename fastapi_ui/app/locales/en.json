@@ -233,7 +233,28 @@
       "one": "{n} vector",
       "other": "{n} vectors"
     },
-    "not_found": "Not found (skipped): {ids}"
+    "not_found": "Not found (skipped): {ids}",
+    "doc_column": "Document",
+    "in_search_column": "In search",
+    "disabled_word": "excluded from search",
+    "disabled_badge": "excluded from search",
+    "enable_selected": "Include selected",
+    "enable_selected_title": "Use the selected documents in the search again",
+    "disable_selected": "Exclude selected",
+    "disable_selected_title": "Exclude the selected documents from the search (nothing is deleted)",
+    "visibility_label": "Use in search",
+    "visibility_on_title": "Used in the search — click to exclude it",
+    "visibility_off_title": "Excluded from the search — click to include it again",
+    "visibility_hint": "The switch only excludes a document from the search: its texts and vectors stay in the collection, so it can be switched back on without re-indexing.",
+    "visibility_enabled": {
+      "one": "Included {n} document in the search again",
+      "other": "Included {n} documents in the search again"
+    },
+    "visibility_disabled": {
+      "one": "Excluded {n} document from the search",
+      "other": "Excluded {n} documents from the search"
+    },
+    "visibility_error": "Could not change the use of the document in the search."
   },
   "upload": {
     "title": "SSE - upload documents",
@@ -515,6 +536,7 @@
     "docs_selected": {
       "one": "{n} selected",
       "other": "{n} selected"
-    }
+    },
+    "visibility_failed": "Could not change the document — try again."
   }
 }

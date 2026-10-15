@@ -19,7 +19,11 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR))
 
-from tests.mock_sse_backend import REQUEST_LOG, start_mock_backend  # noqa: E402
+from tests.mock_sse_backend import (  # noqa: E402
+    DOCUMENTS_IN_SEARCH,
+    REQUEST_LOG,
+    start_mock_backend,
+)
 
 mock = start_mock_backend()
 mock_host = f"http://127.0.0.1:{mock.server_address[1]}"
@@ -444,6 +448,104 @@ def main() -> int:
             in client.get("/documents/upload").text,
             "",
         )
+
+        # --- use of the documents in the search (use_in_search) ---------- #
+        manage_page = response.text
+        sent = last_request("GET", "api/documents")
+        check(
+            "documents tab lists also the documents excluded from the search",
+            sent.get("query", {}).get("with_disabled") == "true"
+            and "old.pdf" in manage_page,
+            str(sent.get("query")),
+        )
+        check(
+            "every document row has the in-search switch next to delete",
+            manage_page.count("data-doc-toggle") == 3
+            and 'aria-checked="true"' in manage_page
+            and 'aria-checked="false"' in manage_page
+            and re.search(
+                r'class="doc-row is-disabled" data-name="old\.pdf"', manage_page
+            )
+            is not None
+            and 'data-doc-disabled-count>1<' in manage_page,
+            "",
+        )
+        search_page = client.get("/search?collection_name=user_col").text
+        check(
+            "excluded documents are not offered in the search filters",
+            "a.pdf" in search_page and "old.pdf" not in search_page,
+            "",
+        )
+
+        response = client.post(
+            "/collections/manage/visibility",
+            data={
+                "collection_name": "user_col",
+                "toggle_document": "a.pdf",
+                "use_in_search": "0",
+            },
+            headers={"Accept": "application/json"},
+        )
+        sent = last_request("POST", "api/set_documents_use_in_search")
+        payload = response.json()
+        check(
+            "switch excludes a document from the search (JSON for app.js)",
+            response.status_code == 200
+            and payload.get("status") is True
+            and payload.get("use_in_search") is False
+            and payload.get("documents") == ["a.pdf"]
+            and "Excluded 1 document" in payload.get("message", "")
+            and sent.get("body")
+            == {
+                "collection_name": "user_col",
+                "documents[]": ["a.pdf"],
+                "use_in_search": False,
+            },
+            f"{payload} {sent.get('body')}",
+        )
+        check(
+            "excluded document is shown as switched off",
+            re.search(
+                r'class="doc-row is-disabled" data-name="a\.pdf"',
+                client.get("/collections/manage?collection_name=user_col").text,
+            )
+            is not None,
+            "",
+        )
+
+        response = client.post(
+            "/collections/manage/visibility?use_in_search=1",
+            data={
+                "collection_name": "user_col",
+                "documents[]": ["a.pdf", "old.pdf"],
+            },
+        )
+        sent = last_request("POST", "api/set_documents_use_in_search")
+        check(
+            "bulk include (form post without JS) re-renders the documents tab",
+            response.status_code == 200
+            and "Included 2 documents in the search again" in response.text
+            and sent.get("body", {}).get("documents[]") == ["a.pdf", "old.pdf"]
+            and sent.get("body", {}).get("use_in_search") is True
+            and 'aria-checked="false"' not in response.text,
+            str(sent.get("body")),
+        )
+
+        response = client.post(
+            "/collections/manage/visibility",
+            data={
+                "collection_name": "user_col",
+                "toggle_document": "missing.pdf",
+                "use_in_search": "0",
+            },
+            headers={"Accept": "application/json"},
+        )
+        check(
+            "switch reports an engine error as JSON",
+            response.status_code == 502 and response.json().get("status") is False,
+            str(response.status_code),
+        )
+        DOCUMENTS_IN_SEARCH.update({"b.pdf": True, "a.pdf": True, "old.pdf": False})
 
         response = client.post(
             "/collections/manage/add-text",

@@ -926,12 +926,14 @@ function initDocList() {
     const filter = form.querySelector("[data-doc-filter]");
     const counter = form.querySelector("[data-doc-selected]");
     const button = form.querySelector("[data-doc-delete-selected]");
+    const bulk = Array.from(form.querySelectorAll("[data-doc-bulk]"));
     const noMatch = form.querySelector("[data-doc-nomatch]");
     const visible = () => boxes.filter((box) => !box.closest(".doc-row").classList.contains("hidden"));
 
     const update = () => {
       const checked = boxes.filter((box) => box.checked).length;
       if (button) button.disabled = checked === 0;
+      bulk.forEach((control) => { control.disabled = checked === 0; });
       if (counter) counter.textContent = checked ? t("docs_selected", { n: checked }, "{n} selected") : "";
       boxes.forEach((box) => box.closest(".doc-row").classList.toggle("is-selected", box.checked));
       if (master) {
@@ -968,6 +970,84 @@ function initDocList() {
       });
     }
     update();
+  });
+}
+
+// "In search" switch of a document row: flips use_in_search of the document
+// in the engine without reloading the page (the switch is a submit button of
+// the list form, so without JS it posts the form to the same endpoint).
+function setDocRowState(row, inSearch) {
+  const toggle = row.querySelector("[data-doc-toggle]");
+  row.classList.toggle("is-disabled", !inSearch);
+  const badge = row.querySelector("[data-doc-state]");
+  if (badge) badge.classList.toggle("hidden", inSearch);
+  if (!toggle) return;
+  toggle.setAttribute("aria-checked", String(inSearch));
+  toggle.title = inSearch ? toggle.dataset.titleOn : toggle.dataset.titleOff;
+  toggle.setAttribute(
+    "formaction",
+    `/collections/manage/visibility?use_in_search=${inSearch ? 0 : 1}`
+  );
+}
+
+function initDocVisibility() {
+  document.querySelectorAll("[data-doc-list]").forEach((form) => {
+    const status = form.querySelector("[data-doc-visibility-status]");
+    const badge = document.querySelector("[data-doc-disabled-badge]");
+    const counter = document.querySelector("[data-doc-disabled-count]");
+
+    const refreshCount = () => {
+      const disabled = form.querySelectorAll(".doc-row.is-disabled").length;
+      if (counter) counter.textContent = String(disabled);
+      if (badge) badge.classList.toggle("hidden", disabled === 0);
+    };
+    const report = (text, isError) => {
+      if (!status) return;
+      status.textContent = text || "";
+      status.classList.toggle("is-error", Boolean(isError));
+    };
+
+    form.querySelectorAll("[data-doc-toggle]").forEach((toggle) => {
+      toggle.addEventListener("click", async (event) => {
+        event.preventDefault();
+        if (toggle.dataset.busy === "true") return;
+        const row = toggle.closest(".doc-row");
+        const wasOn = toggle.getAttribute("aria-checked") === "true";
+
+        const data = new FormData();
+        data.append("collection_name", form.elements.namedItem("collection_name").value);
+        data.append("toggle_document", toggle.value);
+        data.append("use_in_search", wasOn ? "0" : "1");
+
+        toggle.dataset.busy = "true";
+        toggle.classList.add("is-busy");
+        setDocRowState(row, !wasOn);
+        try {
+          const response = await fetch("/collections/manage/visibility", {
+            method: "POST",
+            body: data,
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (response.status === 401) {
+            window.location.href = "/login";
+            return;
+          }
+          if (!response.ok || !payload.status) throw new Error(payload.error || "");
+          const changed = (payload.documents || []).includes(toggle.value);
+          setDocRowState(row, changed ? Boolean(payload.use_in_search) : wasOn);
+          report(payload.message, !changed);
+        } catch (error) {
+          setDocRowState(row, wasOn);
+          report(error.message || t("visibility_failed", {}, "Could not change the document"), true);
+        } finally {
+          toggle.dataset.busy = "false";
+          toggle.classList.remove("is-busy");
+          refreshCount();
+        }
+      });
+    });
   });
 }
 
@@ -1128,6 +1208,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initHistory();
   initConfirmDialogs();
   initDocList();
+  initDocVisibility();
   initAutosubmit();
   initDismiss();
 });

@@ -300,10 +300,27 @@ def fetch_collection_filters(token: str, collection_name: str) -> dict:
         documents = sorted(
             doc["name"]
             for doc in documents_result["body"]["documents"]
-            if len(doc["name"])
+            if len(doc["name"]) and doc.get("use_in_search", True) is not False
         )
 
     return {"categories": categories, "documents": documents}
+
+
+def document_row(entry) -> dict | None:
+    """One document of the collection with its ``use_in_search`` flag.
+
+    An engine which does not report the flag lists only the documents used in
+    the search, so a missing flag means "enabled".
+    """
+    if not isinstance(entry, dict):
+        entry = {"name": entry}
+    name = str(entry.get("name") or "").strip()
+    if not name:
+        return None
+    flag = entry.get("use_in_search", True)
+    if isinstance(flag, str):
+        flag = flag.strip().lower() not in ("false", "0", "no", "off", "")
+    return {**entry, "name": name, "use_in_search": bool(flag)}
 
 
 def fetch_manage_collection_context(token: str, collection_name: str = "") -> dict:
@@ -333,10 +350,11 @@ def fetch_manage_collection_context(token: str, collection_name: str = "") -> di
 
     documents: list = []
     docs_result = sse_api_engine.list_documents_from_collection(
-        token=token, collection_name=selected_collection
+        token=token, collection_name=selected_collection, with_disabled=True
     )
     if docs_result.get("status"):
-        documents = docs_result.get("body", {}).get("documents", []) or []
+        raw_docs = docs_result.get("body", {}).get("documents", []) or []
+        documents = [doc for doc in (document_row(d) for d in raw_docs) if doc]
 
     categories: list = []
     categories_result = sse_api_engine.list_categories_from_collection(
@@ -351,6 +369,7 @@ def fetch_manage_collection_context(token: str, collection_name: str = "") -> di
         "selected_collection": selected_collection,
         "active_coll_info": active_coll_info,
         "documents": documents,
+        "disabled_count": sum(1 for doc in documents if not doc["use_in_search"]),
         "categories": categories,
     }
 
@@ -897,6 +916,92 @@ def manage_delete_documents_submit(
                 t.plural("manage.deleted_vectors", vectors_count),
             ],
         },
+    )
+
+
+TRUE_VALUES = ("1", "true", "on", "yes")
+
+
+@app.post("/collections/manage/visibility", include_in_schema=False)
+def manage_visibility_submit(
+    request: Request, form: FormData = Depends(parsed_form)
+):
+    """Enable / disable documents in the search (switch of a document row or
+    the bulk buttons). app.js asks for JSON and updates the row in place."""
+    wants_json = "application/json" in request.headers.get("accept", "")
+    redirect = require_login(request)
+    if redirect is not None:
+        if wants_json:
+            return JSONResponse({"status": False, "login": True}, status_code=401)
+        return redirect
+
+    token = get_token(request)
+    t = translator(request)
+    collection_name = (form.get("collection_name") or "").strip()
+    flag = form.get("use_in_search")
+    if flag is None:
+        flag = request.query_params.get("use_in_search", "")
+    use_in_search = str(flag).strip().lower() in TRUE_VALUES
+
+    single_doc = (form.get("toggle_document") or "").strip()
+    selected_docs = [d.strip() for d in form.getlist("documents[]") if d.strip()]
+    doc_names = [single_doc] if single_doc else selected_docs
+    if not collection_name or not doc_names:
+        if wants_json:
+            return JSONResponse(
+                {"status": False, "error": t("manage.visibility_error")},
+                status_code=400,
+            )
+        return RedirectResponse(
+            url=f"/collections/manage?collection_name={collection_name}",
+            status_code=303,
+        )
+
+    result = sse_api_engine.set_documents_use_in_search(
+        token=token,
+        collection_name=collection_name,
+        document_names=doc_names,
+        use_in_search=use_in_search,
+    )
+    ok = isinstance(result, dict) and bool(result.get("status"))
+    if not ok:
+        if wants_json:
+            return JSONResponse(
+                {
+                    "status": False,
+                    "error": t("manage.visibility_error"),
+                    "errors": result.get("errors", [])
+                    if isinstance(result, dict)
+                    else [],
+                },
+                status_code=502,
+            )
+        return render_api_error(request, result)
+
+    body = result.get("body") or {}
+    not_found = [str(name) for name in body.get("not_found") or []]
+    changed = [name for name in doc_names if name not in not_found]
+    updated = body.get("updated_documents", len(changed))
+    message = t.plural(
+        "manage.visibility_enabled" if use_in_search else "manage.visibility_disabled",
+        updated,
+    )
+
+    if wants_json:
+        return JSONResponse(
+            {
+                "status": True,
+                "use_in_search": use_in_search,
+                "documents": changed,
+                "not_found": not_found,
+                "message": message,
+            }
+        )
+    return render_kb_page(
+        request,
+        "manage_collection.html",
+        collection_name,
+        success=message,
     )
 
 

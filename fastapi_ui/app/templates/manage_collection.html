@@ -42,6 +42,10 @@
               <span class="badge__value">{{ documents | length }}</span>
               {{ t.plural('manage.doc_list_count_word', documents | length) }}
             </span>
+            <span class="badge badge--muted{% if not disabled_count %} hidden{% endif %}" data-doc-disabled-badge>
+              <span class="badge__value" data-doc-disabled-count>{{ disabled_count or 0 }}</span>
+              {{ t('manage.disabled_word') }}
+            </span>
             <a class="btn btn-primary btn--sm" href="/documents/upload?collection_name={{ selected_collection | urlencode }}">{{ t('manage.add_content') }}</a>
           </div>
         </div>
@@ -58,6 +62,16 @@
               </div>
               <div class="doc-selection-actions">
                 <span class="doc-selection-count muted" data-doc-selected aria-live="polite"></span>
+                <button type="submit" class="btn btn--ghost btn--xs" data-doc-bulk disabled
+                        formaction="/collections/manage/visibility?use_in_search=1"
+                        title="{{ t('manage.enable_selected_title') }}">
+                  {{ t('manage.enable_selected') }}
+                </button>
+                <button type="submit" class="btn btn--ghost btn--xs" data-doc-bulk disabled
+                        formaction="/collections/manage/visibility?use_in_search=0"
+                        title="{{ t('manage.disable_selected_title') }}">
+                  {{ t('manage.disable_selected') }}
+                </button>
                 <button type="submit" class="btn btn--danger btn--xs" data-doc-delete-selected disabled
                         data-confirm="{{ t('manage.delete_doc_selected_confirm') }}">
                   {{ t('manage.delete_selected') }}
@@ -72,13 +86,14 @@
                     <th class="doc-th--check">
                       <input type="checkbox" data-doc-master title="{{ t('manage.select_all') }}" aria-label="{{ t('manage.select_all') }}">
                     </th>
-                    <th>{{ t('board.document') }}</th>
-                    <th class="doc-th--action"></th>
+                    <th>{{ t('manage.doc_column') }}</th>
+                    <th class="doc-th--action">{{ t('manage.in_search_column') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for doc in documents %}
-                    <tr class="doc-row" data-name="{{ doc.name | lower }}">
+                    {% set in_search = doc.use_in_search %}
+                    <tr class="doc-row{% if not in_search %} is-disabled{% endif %}" data-name="{{ doc.name | lower }}">
                       <td class="doc-td--check">
                         <input type="checkbox" name="documents[]" value="{{ doc.name }}" class="doc-checkbox" aria-label="{{ doc.name }}">
                       </td>
@@ -87,14 +102,27 @@
                         {% if doc.relative_path and doc.relative_path != '/' %}
                           <span class="doc-path-badge">{{ doc.relative_path }}</span>
                         {% endif %}
+                        <span class="doc-state-badge{% if in_search %} hidden{% endif %}" data-doc-state>{{ t('manage.disabled_badge') }}</span>
                       </td>
                       <td class="doc-td--action">
+                        <div class="doc-actions">
+                        <button type="submit" class="doc-switch" role="switch" data-doc-toggle
+                                aria-checked="{{ 'true' if in_search else 'false' }}"
+                                formaction="/collections/manage/visibility?use_in_search={{ '0' if in_search else '1' }}"
+                                name="toggle_document" value="{{ doc.name }}"
+                                title="{{ t('manage.visibility_on_title') if in_search else t('manage.visibility_off_title') }}"
+                                data-title-on="{{ t('manage.visibility_on_title') }}"
+                                data-title-off="{{ t('manage.visibility_off_title') }}"
+                                aria-label="{{ t('manage.visibility_label') }}: {{ doc.name }}">
+                          <span class="doc-switch__track" aria-hidden="true"><span class="doc-switch__thumb"></span></span>
+                        </button>
                         <button type="submit" name="document_name" value="{{ doc.name }}" class="btn btn--danger-ghost btn--xs btn--icon"
                                 title="{{ t('manage.delete_doc_btn') }}" aria-label="{{ t('manage.delete_doc_btn') }}: {{ doc.name }}"
                                 data-confirm="{{ t('manage.delete_doc_confirm', name=doc.name) }}"
                                 data-confirm-items="{{ doc.name }}">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l.9 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12"/><path d="M10 11v5.5M14 11v5.5"/></svg>
                         </button>
+                        </div>
                       </td>
                     </tr>
                   {% endfor %}
@@ -102,6 +130,8 @@
               </table>
               <p class="doc-empty-filter muted hidden" data-doc-nomatch>{{ t('manage.doc_filter_nomatch') }}</p>
             </div>
+            <p class="doc-visibility-hint muted">{{ t('manage.visibility_hint') }}</p>
+            <p class="doc-visibility-status" data-doc-visibility-status role="status" aria-live="polite"></p>
           </form>
         {% else %}
           <div class="empty-state">
