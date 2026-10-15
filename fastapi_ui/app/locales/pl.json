@@ -221,7 +221,6 @@
     },
     "doc_filter_nomatch": "Żaden dokument nie pasuje do filtra.",
     "chunk_ids_title": "Liczby oddzielone przecinkami lub spacjami",
-    "text_indexing_options": "Opcje indeksowania tekstu",
     "deleted_docs": {
       "one": "Usunięto {n} dokument",
       "few": "Usunięto {n} dokumenty",

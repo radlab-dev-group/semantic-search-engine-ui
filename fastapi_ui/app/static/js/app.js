@@ -687,22 +687,23 @@ function initDropzone() {
 
 /* ------------------------------------------------------ chunking preview */
 // Visualises the chunk/overlap ratio chosen with the indexing sliders.
+// One preview per form ("Upload files" and "Paste text" each have their own)
 function initChunkPreview() {
-  const preview = document.querySelector("[data-chunk-preview]");
-  if (!preview) return;
-  const form = preview.closest("form") || document;
-  const chunk = form.querySelector("input[name='max_tokens_in_chunk']");
-  const overlap = form.querySelector("input[name='number_of_overlap_tokens']");
-  if (!chunk || !overlap) return;
+  document.querySelectorAll("[data-chunk-preview]").forEach((preview) => {
+    const form = preview.closest("form") || document;
+    const chunk = form.querySelector("input[name='max_tokens_in_chunk']");
+    const overlap = form.querySelector("input[name='number_of_overlap_tokens']");
+    if (!chunk || !overlap) return;
 
-  const render = () => {
-    const size = Math.max(1, Number(chunk.value) || 1);
-    const ratio = Math.max(0, Math.min(0.9, (Number(overlap.value) || 0) / size));
-    preview.style.setProperty("--overlap", ratio.toFixed(3));
-  };
-  chunk.addEventListener("input", render);
-  overlap.addEventListener("input", render);
-  render();
+    const render = () => {
+      const size = Math.max(1, Number(chunk.value) || 1);
+      const ratio = Math.max(0, Math.min(0.9, (Number(overlap.value) || 0) / size));
+      preview.style.setProperty("--overlap", ratio.toFixed(3));
+    };
+    chunk.addEventListener("input", render);
+    overlap.addEventListener("input", render);
+    render();
+  });
 }
 
 /* ------------------------------------------------------- example queries */

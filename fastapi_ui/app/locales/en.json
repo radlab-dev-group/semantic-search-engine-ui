@@ -217,7 +217,6 @@
     },
     "doc_filter_nomatch": "No documents match the filter.",
     "chunk_ids_title": "Numbers separated by commas or spaces",
-    "text_indexing_options": "Text indexing options",
     "deleted_docs": {
       "one": "Deleted {n} document",
       "other": "Deleted {n} documents"

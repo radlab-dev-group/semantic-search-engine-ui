@@ -181,6 +181,23 @@ async def parsed_form(request: Request) -> FormData:
         return await request.form()
 
 
+def parse_indexing_options(form: FormData) -> dict:
+    """indexing_options of the engine, the same for uploaded files and texts."""
+    return {
+        "clear_text": form.get("clear_text") is not None,
+        "use_text_denoiser": form.get("use_text_denoiser") is not None,
+        "check_text_lang": form.get("check_text_lang") is not None,
+        "prepare_proper_pages": form.get("prepare_proper_pages") is not None,
+        "merge_document_pages": form.get("merge_document_pages") is not None,
+        "max_tokens_in_chunk": int(
+            form.get("max_tokens_in_chunk") or constants.DEFAULT_MAX_TOKENS_IN_CHUNK
+        ),
+        "number_of_overlap_tokens": int(
+            form.get("number_of_overlap_tokens") or constants.DEFAULT_OVERLAP_TOKENS
+        ),
+    }
+
+
 # --------------------------------------------------------------------------- #
 # Data preparation (mirror of streamlit ui_utils.py)
 # --------------------------------------------------------------------------- #
@@ -795,32 +812,19 @@ def manage_add_text_submit(
     t = translator(request)
     collection_name = (form.get("collection_name") or "").strip()
     filepath = (form.get("filepath") or "").strip() or "document.txt"
-    category = (form.get("category") or "").strip() or None
+    category = (form.get("category") or "").strip()
     page_content = form.get("page_content") or ""
 
-    max_tokens = int(
-        form.get("max_tokens_in_chunk") or constants.DEFAULT_MAX_TOKENS_IN_CHUNK
-    )
-    overlap = int(
-        form.get("overlap_tokens") or constants.DEFAULT_OVERLAP_TOKENS
-    )
-    clear_text = form.get("clear_text_before_indexing") is not None
-    denoise = form.get("denoise_text_before_indexing") is not None
-    check_lang = form.get("check_language_before_indexing") is not None
+    indexing_options = parse_indexing_options(form)
 
-    indexing_options = {
-        "max_tokens_in_chunk": max_tokens,
-        "overlap_tokens": overlap,
-        "clear_text_before_indexing": clear_text,
-        "denoise_text_before_indexing": denoise,
-        "check_language_before_indexing": check_lang,
-    }
-
+    # Shape of one texts[] element expected by the engine
+    # (sse_lib.options.text_document)
     texts = [
         {
             "filepath": filepath,
+            "relative_filepath": filepath,
             "category": category,
-            "page_content": page_content,
+            "pages": [{"page_content": page_content}],
         }
     ]
 
@@ -988,19 +992,7 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
     if not len(uploaded_files):
         return page(error=t("upload.error_no_files"))
 
-    indexing_options = {
-        "clear_text": form.get("clear_text") is not None,
-        "use_text_denoiser": form.get("use_text_denoiser") is not None,
-        "check_text_lang": form.get("check_text_lang") is not None,
-        "prepare_proper_pages": form.get("prepare_proper_pages") is not None,
-        "merge_document_pages": form.get("merge_document_pages") is not None,
-        "max_tokens_in_chunk": int(
-            form.get("max_tokens_in_chunk") or constants.DEFAULT_MAX_TOKENS_IN_CHUNK
-        ),
-        "number_of_overlap_tokens": int(
-            form.get("number_of_overlap_tokens") or constants.DEFAULT_OVERLAP_TOKENS
-        ),
-    }
+    indexing_options = parse_indexing_options(form)
 
     upload_response = sse_api_engine.upload_files(
         token=token,

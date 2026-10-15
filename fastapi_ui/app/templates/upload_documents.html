@@ -70,49 +70,8 @@
             </div>
 
             <div class="card card--subtle">
-              <p class="section-title">{{ t('upload.indexing_options') }}</p>
-
-              <div class="chunk-preview" data-chunk-preview aria-hidden="true">
-                <span class="chunk-preview__label">{{ t('upload.chunk_preview') }}</span>
-                <div class="chunk-preview__track">
-                  <span class="chunk-preview__chunk"></span>
-                  <span class="chunk-preview__chunk"></span>
-                  <span class="chunk-preview__chunk"></span>
-                </div>
-                <span class="chunk-preview__legend"><i class="chunk-preview__key"></i>{{ t('upload.legend_chunk') }} <i class="chunk-preview__key chunk-preview__key--overlap"></i>{{ t('upload.legend_overlap') }}</span>
-              </div>
-
-              <div class="field-slider">
-                <span>{{ t('upload.max_tokens') }}</span>
-                <input type="range" name="max_tokens_in_chunk" min="10" max="{{ constants.MAX_TOKENS_IN_CHUNK_LIMIT }}" step="10" value="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}">
-                <output>{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}</output>
-              </div>
-              <div class="field-slider">
-                <span>{{ t('upload.overlap') }}</span>
-                <input type="range" name="number_of_overlap_tokens" min="0" max="{{ constants.OVERLAP_TOKENS_LIMIT }}" step="5" value="{{ constants.DEFAULT_OVERLAP_TOKENS }}">
-                <output>{{ constants.DEFAULT_OVERLAP_TOKENS }}</output>
-              </div>
-
-              <div class="check-row">
-                <input type="checkbox" id="clear_text" name="clear_text" checked>
-                <label for="clear_text">{{ t('upload.clear_text') }}</label>
-              </div>
-              <div class="check-row">
-                <input type="checkbox" id="use_text_denoiser" name="use_text_denoiser">
-                <label for="use_text_denoiser">{{ t('upload.denoise') }}</label>
-              </div>
-              <div class="check-row">
-                <input type="checkbox" id="check_text_lang" name="check_text_lang" checked>
-                <label for="check_text_lang">{{ t('upload.check_lang') }}</label>
-              </div>
-              <div class="check-row">
-                <input type="checkbox" id="prepare_proper_pages" name="prepare_proper_pages" checked>
-                <label for="prepare_proper_pages">{{ t('upload.proper_pages') }}</label>
-              </div>
-              <div class="check-row">
-                <input type="checkbox" id="merge_document_pages" name="merge_document_pages">
-                <label for="merge_document_pages">{{ t('upload.merge_pages') }}</label>
-              </div>
+              {% set io_prefix = '' %}
+              {% include "partials/indexing_options.html" %}
             </div>
           </div>
 
@@ -153,29 +112,8 @@
             </div>
 
             <div class="card card--subtle">
-              <p class="section-title">{{ t('manage.text_indexing_options') }}</p>
-              <div class="field-slider">
-                <span>{{ t('upload.max_tokens') }}</span>
-                <input type="range" name="max_tokens_in_chunk" min="10" max="{{ constants.MAX_TOKENS_IN_CHUNK_LIMIT }}" step="10" value="{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}">
-                <output>{{ constants.DEFAULT_MAX_TOKENS_IN_CHUNK }}</output>
-              </div>
-              <div class="field-slider">
-                <span>{{ t('upload.overlap') }}</span>
-                <input type="range" name="overlap_tokens" min="0" max="{{ constants.OVERLAP_TOKENS_LIMIT }}" step="5" value="{{ constants.DEFAULT_OVERLAP_TOKENS }}">
-                <output>{{ constants.DEFAULT_OVERLAP_TOKENS }}</output>
-              </div>
-              <div class="check-row">
-                <input type="checkbox" id="clear_text_before_indexing" name="clear_text_before_indexing" checked>
-                <label for="clear_text_before_indexing">{{ t('upload.clear_text') }}</label>
-              </div>
-              <div class="check-row">
-                <input type="checkbox" id="denoise_text_before_indexing" name="denoise_text_before_indexing" checked>
-                <label for="denoise_text_before_indexing">{{ t('upload.denoise') }}</label>
-              </div>
-              <div class="check-row">
-                <input type="checkbox" id="check_language_before_indexing" name="check_language_before_indexing" checked>
-                <label for="check_language_before_indexing">{{ t('upload.check_lang') }}</label>
-              </div>
+              {% set io_prefix = 'text_' %}
+              {% include "partials/indexing_options.html" %}
             </div>
           </div>
 

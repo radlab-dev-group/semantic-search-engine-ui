@@ -452,9 +452,10 @@ def main() -> int:
                 "filepath": "notes.txt",
                 "category": "notes",
                 "page_content": "This is a direct text content to be indexed.",
-                "max_tokens_in_chunk": "400",
-                "overlap_tokens": "60",
-                "clear_text_before_indexing": "on",
+                "max_tokens_in_chunk": "300",
+                "number_of_overlap_tokens": "30",
+                "clear_text": "on",
+                "prepare_proper_pages": "on",
             },
         )
         sent = last_request("POST", "api/add_and_index_texts")
@@ -476,6 +477,39 @@ def main() -> int:
             and len(sent.get("body", {}).get("texts[]", [])) == 1
             and sent.get("body", {}).get("texts[]")[0]["filepath"] == "notes.txt",
             str(sent),
+        )
+        text_doc = (sent.get("body", {}).get("texts[]") or [{}])[0]
+        check(
+            "add text sends the engine texts[] shape",
+            text_doc.get("relative_filepath") == "notes.txt"
+            and text_doc.get("category") == "notes"
+            and text_doc.get("pages")
+            == [{"page_content": "This is a direct text content to be indexed."}],
+            str(text_doc),
+        )
+        check(
+            "add text sends the same indexing options as the file upload",
+            sent.get("body", {}).get("indexing_options")
+            == {
+                "clear_text": True,
+                "use_text_denoiser": False,
+                "check_text_lang": False,
+                "prepare_proper_pages": True,
+                "merge_document_pages": False,
+                "max_tokens_in_chunk": 300,
+                "number_of_overlap_tokens": 30,
+            },
+            str(sent.get("body", {}).get("indexing_options")),
+        )
+        add_page = client.get("/documents/upload?collection_name=user_col").text
+        check(
+            "both add content forms share the indexing options and chunk preview",
+            add_page.count("data-chunk-preview") == 2
+            and add_page.count('name="number_of_overlap_tokens"') == 2
+            and add_page.count('name="merge_document_pages"') == 2
+            and 'id="text_use_text_denoiser"' in add_page
+            and "clear_text_before_indexing" not in add_page,
+            "",
         )
 
         response = client.post(
