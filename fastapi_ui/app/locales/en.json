@@ -330,7 +330,7 @@
     "tab_extractive": "Answers (extractive QA)",
     "no_stats": "No statistics available.",
     "no_detailed": "No detailed results available.",
-    "no_extractive": "No extractive QA results. Extractive QA runs on the engine side (it was commented out in the Streamlit UI as well).",
+    "no_extractive": "No extractive QA results. Extractive QA runs on the engine side.",
     "answer_eyebrow": "Generative QA",
     "answer_title": "Answer from the model",
     "answer_ready": "Summary of the best passages",

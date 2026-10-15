@@ -1,10 +1,7 @@
 # Semantic Search Engine UI — FastAPI + Jinja2
 
-Bliźniacza (twin) aplikacja dla `streamlit_ui/` zbudowana na **FastAPI + Jinja2**.
-Wszystkie funkcjonalności, końcówki API i zachowania UI odpowiadają wersji
-Streamlit — zmieniona jest tylko warstwa prezentacji (szablony HTML zamiast
-komponentów Streamlita) oraz sposób utrzymywania stanu (sesja w ciasteczku
-zamiast `st.session_state`).
+Aplikacja interfejsu użytkownika dla silnika **[semantic-search-engine](https://github.com/radlab-dev-group/semantic-search-engine)** zbudowana na **FastAPI + Jinja2**.
+Prezentacja oparta jest o renderowane po stronie serwera szablony HTML (bez zewnętrznych frameworków SPA) oraz stan sesji przechowywany w bezpiecznym, podpisanym ciasteczku sesyjnym i magazynie pamięciowym.
 
 ## Uruchomienie
 
@@ -30,35 +27,33 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 | `UI_PORT` | `8000` | port Uvicorn |
 | `UI_CONFIG_PATH` | `configs/ui-configuration.json` | ścieżka do konfiguracji API |
 | `UI_SECRET_KEY` | `change-me-in-production` | klucz podpisujący ciasteczko sesji (**zmień w produkcji**) |
-| `UI_MAX_UPLOAD_SIZE_MB` | `6000` | limit rozmiaru pojedynczego pliku przy uploadzie, odpowiednik `STREAMLIT_SERVER_MAX_UPLOAD_SIZE` |
+| `UI_MAX_UPLOAD_SIZE_MB` | `6000` | limit rozmiaru pojedynczego pliku przy uploadzie (w MB) |
 | `UI_MAX_UPLOAD_FILES` | `500` | maksymalna liczba plików w jednym żądaniu uploadu |
 | `UI_DEFAULT_LANGUAGE` | `en` | język interfejsu (`en` / `pl`), gdy użytkownik go nie wybrał, a przeglądarka nie podaje obsługiwanego języka |
 
-Konfiguracja hostów/endpointów backendu to ten sam plik co w wersji Streamlit:
-`configs/ui-configuration.json` (skopiowany z `streamlit_ui/configs/`).
+Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-configuration.json` (lub pod ścieżką wskazaną w `UI_CONFIG_PATH`).
 
-## Mapowanie stron Streamlit → FastAPI
+## Trasy i moduły aplikacji
 
-| Streamlit | Trasa FastAPI | Opis |
-| --- | --- | --- |
-| `Home.py` | `GET /home` | Strona główna z opisem projektu |
-| `pages/0_Login.py` | `GET/POST /login`, `GET /logout` | Logowanie (token Django `Authorization: Token ...`) |
-| `pages/1_New_Collection.py` | `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Lista kolekcji** (`GET api/collections`, odpowiednik `SSEClient.list_collections()`) + tworzenie kolekcji + usuwanie kolekcji (`POST api/delete_collection`) |
-| — | `GET /collections/manage`, `POST /collections/manage/delete-*` | **Baza wiedzy → Dokumenty**: lista dokumentów kolekcji, usuwanie dokumentów (`api/delete_documents`), usuwanie chunków tekstu (`api/delete_texts`), włączanie/wyłączanie dokumentów w wyszukiwaniu (`POST /collections/manage/visibility` → `api/set_documents_use_in_search`) oraz usuwanie kolekcji |
-| `pages/2_Upload_Documents.py` | `GET/POST /documents/upload`, `POST /collections/manage/add-text` | **Baza wiedzy → Dodaj treść**: upload `pdf/docx/txt/html/md/zip` + opcje indeksowania albo wklejenie tekstu (`api/add_and_index_texts`) |
-| `pages/3_Semantic_Search_Engine.py` | `GET/POST /search`, `POST /search/generate`, `POST /search/rate` | Wyszukiwanie + odpowiedź generatywna (doczytywana po wynikach) + ocenianie (gwiazdki) |
-| `pages/4_Conversational_Search.py` | — | **Wycofane**: zakładka Chat nie istnieje w tej aplikacji |
-| `pages/src/api.py` | `core/api.py` | Klient REST API (bez zależności od Streamlita) |
-| `pages/src/config.py` (`SessionConfig`) | `server.py` (`get_token`, `get_username`, `clear_session_state`) | Stan sesji użytkownika |
-| `pages/src/constants.py` | `core/constants.py` | Stałe, wartości domyślne formularzy |
-| `pages/src/ui_utils.py` | `server.py` (`fetch_*`, `parse_search_form`, `prepare_*_dataframe`) | Przygotowanie danych do widoków |
+| Trasa / Moduł | Opis |
+| --- | --- |
+| `GET /home` | Strona główna z opisem projektu i schematem pipeline'u RAG |
+| `GET/POST /login`, `GET /logout` | Logowanie użytkownika (token Django `Authorization: Token ...`) i wylogowanie |
+| `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Baza wiedzy → Kolekcje**: lista kolekcji (`GET api/collections`), tworzenie nowej kolekcji oraz usuwanie kolekcji (`POST api/delete_collection`) |
+| `GET /collections/manage`, `POST /collections/manage/delete-*` | **Baza wiedzy → Dokumenty**: lista dokumentów kolekcji, usuwanie dokumentów (`api/delete_documents`), usuwanie chunków tekstu (`api/delete_texts`), włączanie/wyłączanie dokumentów w wyszukiwaniu (`POST /collections/manage/visibility` → `api/set_documents_use_in_search`) oraz usuwanie kolekcji |
+| `GET/POST /documents/upload`, `POST /collections/manage/add-text` | **Baza wiedzy → Dodaj treść**: upload plików (`pdf/docx/txt/html/md/zip`) z opcjami indeksowania albo wklejenie surowego tekstu (`api/add_and_index_texts`) |
+| `GET/POST /search`, `POST /search/generate`, `POST /search/rate` | **Wyszukiwanie**: wyszukiwanie semantyczne/hybrydowe, odpowiedź generatywna (doczytywana asynchronicznie po wynikach) oraz ocenianie (gwiazdki i komentarz) |
+| `core/api.py` | Klient REST API backendu SSE |
+| `core/state_store.py` | Pamięciowy magazyn stanu sesji użytkownika |
+| `core/constants.py` | Stałe, wartości domyślne formularzy i limitów |
+| `server.py` | Główna aplikacja FastAPI: routing, obsługa sesji, walidacja i przygotowanie danych |
 
-Dodatkowo (poza oryginałem):
+### Dodatkowe endpointy i mechanizmy:
 
 - `GET /api/options?collection_name=...` — JSON z kategoriami i dokumentami
   kolekcji; używany przez `app/static/js/app.js` do odświeżania filtrów po zmianie
-  kolekcji (zastępuje automatyczny rerun Streamlita). Filtry (kategorie i
-  dokumenty) są — tak jak w oryginale — na stronie wyszukiwania.
+  kolekcji bez przeładowania całej strony. Filtry (kategorie i
+  dokumenty) są dostępne na stronie wyszukiwania.
 - `GET /lang/{pl|en}?next=/sciezka` — przełącza język interfejsu (ciasteczko
   `sse_lang`, rok ważności) i wraca na stronę `next` (tylko ścieżki lokalne).
 - `GET /search/history/{query_response_id}` — wyszukiwanie z historii: pytanie,
@@ -102,23 +97,14 @@ Format odpowiedzi backendu (radlab-semantic-search-engine):
 {"status": false, "errors": [{"code": "...", "msg": "...", "required_params": []}]}
 ```
 
-Kody błędów są renderowane na stronie `error.html`, odpowiednik
-`show_error_status()` z `streamlit_ui/pages/src/ui_utils.py`.
+Kody błędów są renderowane na dedykowanej stronie `error.html` z czytelnym podsumowaniem problemu i ewentualnymi szczegółami z odpowiedzi silnika.
 
-## Różnice względem wersji Streamlit
+## Uwagi implementacyjne
 
-- Extractive QA pozostaje opcją w formularzu, ale — tak jak w oryginale —
-  wywołanie jest zakomentowane po stronie UI i odpowiada za nie backend.
-- W wersji Streamlit wybór języka tłumaczenia odpowiedzi był martwym kodem
-  (`translate_output = False`); w FastAPI suwak/zaznaczenie „Translate generated
-  answer” jest w pełni funkcjonalne i wysyła `translate_answer` + `answer_language`.
-- Zakładka **Chat** (`pages/4_Conversational_Search.py`) została usunięta z tej
-  aplikacji: nie ma tras `/chat*`, ani powiązane z nimi opcje
-  (dyktowanie głosem `UI_SPEECH_INPUT`, stan RAG/supervisorów w sesji).
-  Wersja Streamlit nadal ją zawiera pod `streamlit_ui/`.
-- Ocena odpowiedzi (zamiast `st-star-rating`) to wybór 1-5 gwiazdek (radio).
-- Tabele wyników (`pandas`) są renderowane jako HTML — sortowanie
-  `score_weighted` / `score` bez zmian.
+- **Extractive QA**: pozostaje opcją w formularzu; faktyczne wykonanie ekstrakcji realizowane jest po stronie silnika.
+- **Tłumaczenie odpowiedzi**: suwak i wybór języka („Translate generated answer”) wysyła `translate_answer` + `answer_language` bezpośrednio do backendu.
+- **Ocena odpowiedzi**: wybór 1-5 gwiazdek (radio) z opcjonalnym komentarzem tekstowym, powiązany z ID wygenerowanej odpowiedzi.
+- **Tabele i fragmenty wyników**: renderowane jako karty HTML lub tabele z sortowaniem według `score_weighted` / `score`.
 
 ## Wygląd (UI)
 
@@ -266,21 +252,20 @@ fastapi_ui/
 ├── configs/
 │   └── ui-configuration.json
 ├── core/
-│   ├── api.py             # klient REST API SSE (port streamlit_ui/pages/src/api.py)
+│   ├── api.py             # klient REST API SSE
 │   ├── constants.py
 │   ├── i18n.py            # tłumaczenia interfejsu (pl / en), wybór języka
-│   └── state_store.py     # stan sesji (id ostatniej odpowiedzi) — odpowiednik st.session_state
+│   ├── markdown.py        # renderowanie Markdown z podświetlaniem i tabelami
+│   └── state_store.py     # stan sesji (id ostatniej odpowiedzi, parametry wyszukiwania)
 ├── tests/
 │   ├── mock_sse_backend.py # atrapa REST API silnika (uruchamiana lokalnie)
 │   └── smoke_test.py       # test end-to-end wszystkich stron
 ├── app/
 │   ├── locales/           # en.json, pl.json — teksty interfejsu
 │   ├── templates/         # Jinja2: base, home, login, error, collections,
-│   │   │                  #        upload_documents, search
+│   │                      #        upload_documents, search
 │   │   └── partials/      # search_params.html, table.html, messages.html, stepper.html, kb_header.html
 │   └── static/
 │       ├── css/style.css
 │       └── js/app.js
-```
-s/app.js
 ```

@@ -4,12 +4,12 @@ MAX_VAL_RATING_GENERATIVE_ANSWER = 5
 CONFIGS_DIR = "configs"
 DEFAULT_CONFIG_PATH = "ui-configuration.json"
 
-# Search form defaults (mirrors Streamlit ui_utils.prepare_search_params)
+# Search form defaults
 DEFAULT_MAX_RESULTS = 8
 MAX_RESULTS_LIMIT = 100
 DEFAULT_PERC_RANK_TO_GEN_QA = 100
 
-# Generative model defaults (mirrors Streamlit generation options)
+# Generative model defaults
 DEFAULT_TOP_K = 50
 DEFAULT_TOP_P = 0.95
 DEFAULT_TEMPERATURE = 0.65
@@ -24,7 +24,7 @@ ANSWER_LANGUAGES = ["pl", "en-us", "en-gb", "de", "cs"]
 # Embedder index types available for new collections
 INDEX_TYPES = ["IVF_FLAT", "HNSW"]
 
-# Upload indexing defaults (mirrors Streamlit 2_Upload_Documents.py)
+# Upload indexing defaults
 DEFAULT_MAX_TOKENS_IN_CHUNK = 400
 MAX_TOKENS_IN_CHUNK_LIMIT = 1000
 DEFAULT_OVERLAP_TOKENS = 60

@@ -348,7 +348,7 @@
     "tab_extractive": "Odpowiedzi (ekstrakcyjne QA)",
     "no_stats": "Brak dostępnych statystyk.",
     "no_detailed": "Brak szczegółowych wyników.",
-    "no_extractive": "Brak wyników ekstrakcyjnego QA. Ekstrakcyjne QA działa po stronie silnika (w interfejsie Streamlit również było wyłączone).",
+    "no_extractive": "Brak wyników ekstrakcyjnego QA. Ekstrakcyjne QA działa po stronie silnika.",
     "answer_eyebrow": "Generatywne QA",
     "answer_title": "Odpowiedź modelu",
     "answer_ready": "Podsumowanie najlepszych fragmentów",

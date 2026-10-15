@@ -1,16 +1,14 @@
 """
-FastAPI + Jinja2 twin of the Streamlit UI (streamlit_ui/).
+FastAPI + Jinja2 web interface for Semantic Search Engine.
 
-Pages of the Streamlit app mapped to routes:
-
-    streamlit_ui/Home.py                            -> /home
-    streamlit_ui/pages/0_Login.py                   -> /login, /logout
-    streamlit_ui/pages/1_New_Collection.py          -> /collections (list + new)
-    streamlit_ui/pages/2_Upload_Documents.py        -> /documents/upload
-    streamlit_ui/pages/3_Semantic_Search_Engine.py  -> /search, /search/rate
-
-    The Streamlit conversational search page (4_Conversational_Search.py) has
-    no counterpart: the Chat tab is intentionally absent from this UI.
+Application routes:
+    /home              -> Home page with project description
+    /login, /logout    -> User authentication (Django token)
+    /collections       -> Knowledge base: collections management
+    /collections/manage-> Knowledge base: document and chunk management
+    /documents/upload  -> Knowledge base: document upload and text indexing
+    /search            -> Semantic & hybrid search, generative QA, and rating
+    /search/history    -> Search history per collection
 
 Run with:
     cd fastapi_ui && bash run.sh
@@ -82,7 +80,7 @@ sse_api_engine = SemanticSearchEngineAPI(config_path=CONFIG_PATH)
 
 
 # --------------------------------------------------------------------------- #
-# Session helpers (mirror of streamlit SessionConfig)
+# Session helpers
 # --------------------------------------------------------------------------- #
 def get_token(request: Request) -> str | None:
     token = request.session.get("sse_token")
@@ -155,7 +153,7 @@ def render_page(
 def render_api_error(
     request: Request, result, status_code: int = 502
 ) -> HTMLResponse:
-    """Mirror of streamlit ui_utils.show_error_status."""
+    """Render error response page."""
     errors = result.get("errors", []) if isinstance(result, dict) else []
     return render_page(
         request,
@@ -166,8 +164,7 @@ def render_api_error(
     )
 
 
-# Upload limits, UI_MAX_UPLOAD_SIZE_MB is the equivalent of
-# STREAMLIT_SERVER_MAX_UPLOAD_SIZE (in MB, per single uploaded file/part)
+# Upload limits (in MB, per single uploaded file/part)
 MAX_UPLOAD_SIZE_MB = float(os.environ.get("UI_MAX_UPLOAD_SIZE_MB", "6000"))
 MAX_UPLOAD_FILES = int(os.environ.get("UI_MAX_UPLOAD_FILES", "500"))
 
@@ -199,7 +196,7 @@ def parse_indexing_options(form: FormData) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# Data preparation (mirror of streamlit ui_utils.py)
+# Data preparation
 # --------------------------------------------------------------------------- #
 def _clean_collection_part(name: str) -> str:
     return (
@@ -401,12 +398,12 @@ def fetch_page_context(token: str, collection_name: str = "") -> dict:
 
 def parse_search_form(form: FormData) -> dict:
     """Build (search_options, answer_options, run_models_options) from the HTML
-    form. Mirrors streamlit ui_utils.prepare_search_params."""
+    form."""
     results_count = int(form.get("results_count") or constants.DEFAULT_MAX_RESULTS)
     rerank_results = form.get("rerank_results") is not None
     hybrid_search = form.get("hybrid_search") is not None
     use_content_supervisor = form.get("use_content_supervisor") is not None
-    # The RAG supervisor switch defaults to "on" (same as in the Streamlit UI),
+    # The RAG supervisor switch defaults to "on",
     # so an absent field (checkbox not rendered) means True.
     if "use_rag_supervisor" in form:
         use_rag_supervisor = form.get("use_rag_supervisor") is not None
@@ -481,9 +478,9 @@ def parse_search_form(form: FormData) -> dict:
 def _frame(data, sort_by: str, index_label: str = "id") -> list:
     """Render an engine table as a list of row dicts.
 
-    The engine returns the results as a dict keyed by document/result id
-    (that is why the Streamlit UI transposed them); a flat list is accepted as
-    well so a different response shape does not break the page.
+    The engine returns the results as a dict keyed by document/result id;
+    a flat list is accepted as well so a different response shape does not
+    break the page.
     """
     if isinstance(data, str):
         data = json.loads(data)
@@ -495,7 +492,7 @@ def _frame(data, sort_by: str, index_label: str = "id") -> list:
     )
     if isinstance(data, dict):
         # The index of the transposed frame is the document / result name and
-        # has to stay visible in the table (Streamlit showed it as well).
+        # has to stay visible in the table.
         df = df.transpose()
         df.index.name = index_label
         df = df.reset_index()
@@ -505,7 +502,7 @@ def _frame(data, sort_by: str, index_label: str = "id") -> list:
 
 
 def prepare_stats_dataframe(stats) -> list:
-    """Mirror of streamlit: transposed dataframe sorted by score_weighted."""
+    """Transposed dataframe sorted by score_weighted."""
     return _frame(stats, "score_weighted", index_label="document")
 
 
@@ -611,7 +608,7 @@ def index(request: Request):
     return RedirectResponse(url="/search", status_code=303)
 
 
-# --- Home (streamlit_ui/Home.py) -------------------------------------------- #
+# --- Home ------------------------------------------------------------------- #
 @app.get("/home", include_in_schema=False)
 def home(request: Request):
     redirect = require_login(request)
@@ -620,7 +617,7 @@ def home(request: Request):
     return render_page(request, "home.html")
 
 
-# --- Login (streamlit_ui/pages/0_Login.py) ---------------------------------- #
+# --- Login ------------------------------------------------------------------ #
 @app.get("/login", include_in_schema=False)
 def login_page(request: Request):
     if get_token(request) is not None and get_username(request) is not None:
@@ -701,7 +698,7 @@ def render_kb_page(
     return render_page(request, name, **{**context, **extra})
 
 
-# --- Collections (streamlit_ui/pages/1_New_Collection.py) ------------------- #
+# --- Collections ------------------------------------------------------------ #
 def render_collections_page(request: Request, **context) -> HTMLResponse:
     """List of the collections plus the form that creates a new one."""
     token = get_token(request)
@@ -1068,7 +1065,7 @@ def manage_delete_texts_submit(
     )
 
 
-# --- Upload documents (streamlit_ui/pages/2_Upload_Documents.py) ------------ #
+# --- Upload documents ------------------------------------------------------- #
 @app.get("/documents/upload", include_in_schema=False)
 def upload_documents_page(request: Request):
     redirect = require_login(request)
@@ -1123,7 +1120,7 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
     )
 
 
-# --- Semantic search engine (streamlit_ui/pages/3_Semantic_Search_Engine.py)  #
+# --- Semantic search engine ------------------------------------------------- #
 @app.get("/search", include_in_schema=False)
 def search_page(request: Request):
     redirect = require_login(request)
@@ -1296,8 +1293,7 @@ def search_submit(request: Request, form: FormData = Depends(parsed_form)):
 
     qa_results = []
     if run_models_options["use_qa_extractive"]:
-        # Extractive QA was commented out in the Streamlit UI as well
-        # (pages/3_Semantic_Search_Engine.py: prepare_extractive_qa_results)
+        # Extractive QA is handled on the engine side
         pass
 
     # The generative answer is not awaited here: the results are shown right
@@ -1523,7 +1519,7 @@ def search_history_entry(request: Request, query_response_id: int):
     )
 
 
-# --- JSON endpoints (used by the page JS, no Streamlit counterpart) --------- #
+# --- JSON endpoints (used by the page JS) ----------------------------------- #
 @app.get("/api/options", include_in_schema=False)
 def api_options(request: Request, collection_name: str = ""):
     redirect_target = require_login(request)

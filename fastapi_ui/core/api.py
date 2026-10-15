@@ -1,9 +1,7 @@
 """
 HTTP client for the RadLab Semantic Search Engine REST API.
 
-This is a port of streamlit_ui/pages/src/api.py with all Streamlit specific
-code (spinners, page navigation) removed. The backend API contract is
-identical:
+The backend API contract:
 
 - login:              POST {host}/api/login              form: username, password
 - new_collection:     POST {host}/api/new_collection     form: collection params

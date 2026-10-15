@@ -2,9 +2,7 @@
 In-memory per-browser state store.
 
 The signed session cookie keeps only small values (token, username, state id),
-while the id of the last generated answer lives here. This is the FastAPI
-equivalent of
-``st.session_state`` from the Streamlit application.
+while the id of the last generated answer lives here.
 """
 
 import threading
