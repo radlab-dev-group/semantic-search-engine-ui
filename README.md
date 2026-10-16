@@ -40,6 +40,9 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 ### Backend Configuration
 
 Backend endpoint URLs and hosts are configured in `configs/ui-configuration.json` (or the path set via `UI_CONFIG_PATH`).
+Endpoints added later (`api/indexing_status`, `api/search_history`, …) fall back
+to their default path when the configuration file does not list them, so an old
+file keeps working.
 
 ## Key Features
 
@@ -47,6 +50,7 @@ Backend endpoint URLs and hosts are configured in `configs/ui-configuration.json
   - Create, view, and delete collections. A new collection may declare its chunking (`max_tokens_in_chunk`, `number_of_overlap_tokens`, prefilled with the engine `chunking_defaults`) and `strict_chunking`; the chunk size is capped by `max_model_length` of the chosen embedder (`models_info`). Collection cards show the declared chunking and a `strict` badge.
   - Manage documents, toggle document visibility in search, and inspect/delete text chunks.
   - Upload multiple file formats (`.pdf`, `.docx`, `.txt`, `.html`, `.md`, `.zip`) or paste raw text, split with the settings of the collection or with custom chunking; the engine errors `CHUNKING_TOO_LONG` (`000005_DATA`) and `CHUNKING_MISMATCH` (`000006_DATA`) are shown inline on the form.
+  - **Indexing progress** (`GET api/indexing_status`): a panel shows how many documents are indexed, which one the worker is embedding, how many are still waiting and which ones failed; document rows carry a status badge. Indexing runs inside the request or in a Celery + RabbitMQ queue on the engine side (`ENV_USE_CELERY=1`) — the panel looks the same, it just moves on its own.
 - **Semantic & Hybrid Search**:
   - Vector similarity search with cosine similarity scoring.
   - Hybrid search (RRF) combining vector search and full-text keyword retrieval.

@@ -42,6 +42,7 @@ Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-conf
 | `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Baza wiedzy → Kolekcje**: lista kolekcji (`GET api/collections`, z chunkingiem z `metadata_json`), tworzenie nowej kolekcji (`api/embedders` / `api/rerankers` z `models_info`, `api/filter_options` → `chunking_defaults`, opcjonalne `chunking` + `strict_chunking` w `POST api/new_collection`) oraz usuwanie kolekcji (`POST api/delete_collection`) |
 | `GET /collections/manage`, `POST /collections/manage/delete-*` | **Baza wiedzy → Dokumenty**: lista dokumentów kolekcji, usuwanie dokumentów (`api/delete_documents`), usuwanie chunków tekstu (`api/delete_texts`), włączanie/wyłączanie dokumentów w wyszukiwaniu (`POST /collections/manage/visibility` → `api/set_documents_use_in_search`) oraz usuwanie kolekcji |
 | `GET/POST /documents/upload`, `POST /collections/manage/add-text` | **Baza wiedzy → Dodaj treść**: upload plików (`pdf/docx/txt/html/md/zip`) z opcjami indeksowania albo wklejenie surowego tekstu (`api/add_and_index_texts`); klucze chunkingu w `indexing_options` są opcjonalne (domyślnie ustawienia kolekcji), błędy `000005_DATA` / `000006_DATA` wracają na formularz |
+| `GET /collections/indexing-status` | **Baza wiedzy → Indeksacja**: JSON z postępem indeksacji (`api/indexing_status`) — liczniki najnowszego zadania kolekcji (albo zadania o danym `job_id`), dokumenty z ich statusami i ile dokumentów wciąż czeka; czyta go panel postępu i `app.js` |
 | `GET/POST /search`, `POST /search/generate`, `POST /search/rate` | **Wyszukiwanie**: wyszukiwanie semantyczne/hybrydowe, odpowiedź generatywna (doczytywana asynchronicznie po wynikach) oraz ocenianie (gwiazdki i komentarz) |
 | `core/api.py` | Klient REST API backendu SSE |
 | `core/state_store.py` | Pamięciowy magazyn stanu sesji użytkownika |
@@ -86,6 +87,37 @@ Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-conf
   `feedback_html`, czyli formularz oceny). Nieznany/zużyty `generation_id` → 409.
 - `GET /healthz` — endpoint kontrolny (health check).
 - `GET /docs` — wbudowana dokumentacja OpenAPI.
+
+## Indeksacja i jej postęp
+
+Silnik indeksuje dokumenty **w wątku żądania** (domyślnie) albo w **kolejce
+Celery z RabbitMQ** (`ENV_USE_CELERY=1` w backendzie, opis w
+`../semantic-search-engine/README.md`). Interfejs nie musi się o to martwić:
+endpointy `api/upload_and_index_files` i `api/add_and_index_texts` odpowiadają
+zadaniem indeksacji w polu `indexing_job` (plus `"async": true`, gdy praca
+została tylko wpisana do kolejki), a `GET api/indexing_status` mówi, na czym
+polega.
+
+**Panel „Postęp indeksowania"** (`app/templates/partials/indexing_status.html`)
+widać na stronach *Dodaj treść* i *Dokumenty*:
+
+- pasek postępu (wyznaczony, gdy znana jest liczba dokumentów, w przeciwnym
+  razie przesuwający się), liczniki: zaindeksowane / oczekujące / błędy /
+  pominięte oraz procent,
+- dokument indeksowany w tej chwili, lista dokumentów, którym się nie powiodło,
+  i komunikat błędu zadania,
+- licznik dokumentów kolekcji, które wciąż czekają na indeksowanie.
+
+Dokumenty na liście dostają plakietkę stanu (`pending` / `indexing` /
+`failed` / `skipped`); zaindeksowany dokument nie potrzebuje plakietki.
+
+Dopóki zadanie jest w toku, `app.js` (`initIndexingStatus`) odpytuje
+`GET /collections/indexing-status?collection_name=…&job_id=…` co
+`constants.INDEXING_POLL_INTERVAL_MS` (2 s): aktualizuje panel i plakietki
+wierszy, pauzuje, gdy karta jest niewidoczna (`visibilitychange`), i kończy,
+gdy zadanie się skończyło albo po `INDEXING_POLL_TIMEOUT_MS` (30 min).
+Silnik bez `api/indexing_status` (albo z błędującym endpointem) nie psuje
+stron — panel po prostu nie pojawia się, a trasa JSON zwraca 502.
 
 ## Obsługa API backendu
 
@@ -280,13 +312,17 @@ Smoke test odpala aplikację FastAPI wraz z **mockowanym backendem SSE**
 `radlab-semantic-search-engine`), przechodzi całą ścieżkę: logowanie, tworzenie
 kolekcji, upload plików, wyszukiwanie z odpowiedzią generatywną, ocenianie,
 przełączanie języka (zgodność kluczy PL/EN, formy mnogie, brak
-nieprzetłumaczonych kluczy na stronach), wylogowanie. Nie wymaga prawdziwego
-backendu ani bazy wektorów.
+nieprzetłumaczonych kluczy na stronach), wylogowanie. Osobna funkcja
+`check_indexing` przechodzi indeksację: zadanie w kolejce (atrapa silnika
+przesuwa kolekcję o jeden dokument na każde pytanie o status), trasę JSON
+`/collections/indexing-status`, plakietki stanów na liście dokumentów i
+zachowanie stron, gdy silnik nie ma `api/indexing_status`. Nie wymaga
+prawdziwego backendu ani bazy wektorów.
 
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py   # 77 checków, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py     # 169 checków, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów
