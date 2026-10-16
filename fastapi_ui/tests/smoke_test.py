@@ -56,6 +56,7 @@ config = {
                 "delete_documents": "api/delete_documents",
                 "delete_texts": "api/delete_texts",
                 "add_and_index_texts": "api/add_and_index_texts",
+                "indexing_status": "api/indexing_status",
             },
         },
     }
@@ -87,7 +88,7 @@ def last_request(method: str, endpoint: str) -> dict:
 
 UNTRANSLATED_KEY = re.compile(
     r"\b(?:base|nav|stepper|messages|home|login|error|collections|upload|search"
-    r"|params|history|hits|board|table|manage|js)\.[a-z_]+\b"
+    r"|params|history|hits|board|table|manage|indexing|js)\.[a-z_]+\b"
 )
 
 
@@ -549,6 +550,226 @@ def check_chunking(client) -> None:
         and 'class="field-slider is-invalid"' not in response.text.split('id="panel-add-text"')[0],
         response.text[:300],
     )
+
+
+# The panel of a request which has not finished yet, before its status
+INDEXING_RUNNING_PANEL = 'class="indexing-panel is-running indexing-panel--preparing"'
+
+
+def indexing_panel(html: str) -> str:
+    """The indexing panel of a page with collapsed whitespace, for the messages
+    of the checks below."""
+    match = re.search(r'<section class="indexing-panel.*?</section>', html, re.S)
+    return re.sub(r"\s+", " ", match.group(0)) if match else "no indexing panel"
+
+
+def check_indexing(client) -> None:
+    """Progress of the indexing: the panel of the newest request, the JSON
+    route the page polls and the badges of the document rows. The queue of the
+    fake engine advances one step every time its status is asked for, which is
+    what a page render and a polling client do."""
+    # --- nothing indexed yet ------------------------------------------------ #
+    page = client.get("/collections/manage?collection_name=user_queue").text
+    check(
+        "a collection without indexing has no progress panel",
+        "data-indexing-status" not in page and "queue-1.pdf" not in page,
+        "",
+    )
+
+    # --- indexed inside the request ----------------------------------------- #
+    response = client.post(
+        "/documents/upload",
+        data={"collection_name": "user_col", "chunking_mode": "collection"},
+        files=[("files[]", ("a.pdf", b"PDF-A", "application/pdf"))],
+    )
+    check(
+        "indexing in the request reports a finished job",
+        response.status_code == 200
+        and "uploaded and indexed" in response.text
+        and 'class="indexing-panel indexing-panel--completed"' in response.text
+        and ">Indexing finished<" in response.text
+        and "Documents indexed: 2 of 2" in response.text,
+        indexing_panel(response.text),
+    )
+
+    # --- a worker of the queue takes the files ------------------------------ #
+    response = client.post(
+        "/documents/upload",
+        data={
+            "collection_name": "user_queue",
+            "chunking_mode": "collection",
+            "clear_text": "on",
+        },
+        files=[("files[]", ("queue-1.pdf", b"PDF", "application/pdf"))],
+    )
+    first_job = re.search(r'data-job-id="(\d+)"', response.text)
+    check(
+        "a queued upload says so and shows a running panel",
+        "queued for indexing" in response.text
+        and INDEXING_RUNNING_PANEL in response.text
+        and ">Preparing documents<" in response.text
+        and "is-indeterminate" in response.text
+        and 'data-label-queued="Waiting in the queue"' in response.text
+        and 'data-collection="user_queue"' in response.text
+        and 'data-poll-interval="2000"' in response.text
+        and first_job is not None,
+        indexing_panel(response.text),
+    )
+
+    # --- the JSON route which app.js polls ---------------------------------- #
+    polled = []
+    payload = {}
+    for _ in range(4):
+        payload = client.get(
+            "/collections/indexing-status", params={"job_id": first_job.group(1)}
+        ).json()
+        job = payload.get("job") or {}
+        polled.append(
+            (
+                job.get("status"),
+                job.get("documents_processed"),
+                payload.get("pending_documents"),
+                job.get("finished"),
+            )
+        )
+    check(
+        "the queue advances one document at a time while its status is asked for",
+        polled
+        == [
+            ("indexing", 1, 2, False),
+            ("indexing", 2, 1, False),
+            ("partial", 3, 0, True),
+            ("partial", 3, 0, True),
+        ],
+        str(polled),
+    )
+    check(
+        "the status names every document of the request",
+        [(d["name"], d["indexing_status"]) for d in payload.get("documents") or []]
+        == [
+            ("queue-1.pdf", "indexed"),
+            ("queue-2.pdf", "failed"),
+            ("queue-3.pdf", "indexed"),
+        ]
+        and payload["job"]["current_document"] is None
+        and "queue-2.pdf" in (payload["job"]["error_message"] or "")
+        and payload["job"]["percent"] == 100,
+        str(payload)[:400],
+    )
+
+    manage = client.get("/collections/manage?collection_name=user_queue").text
+    check(
+        "an older finished request is gone, the broken document keeps its badge",
+        "data-indexing-status" not in manage
+        and 'data-doc-index-badge="failed"' in manage
+        and 'data-doc-index-badge="indexed"' not in manage
+        and "queue-1.pdf" in manage,
+        indexing_panel(manage)
+        + " || "
+        + str(re.findall(r'data-doc-index-badge="([a-z]+)"', manage)),
+    )
+
+    # --- a request which is still running ----------------------------------- #
+    response = client.post(
+        "/documents/upload",
+        data={"collection_name": "user_queue", "chunking_mode": "collection"},
+        files=[("files[]", ("queue-1.pdf", b"PDF", "application/pdf"))],
+    )
+    second_job = re.search(r'data-job-id="(\d+)"', response.text)
+    running_page = client.get("/collections/manage?collection_name=user_queue").text
+    client.cookies.set("sse_lang", "pl")
+    polish_page = client.get("/collections/manage?collection_name=user_queue").text
+    client.cookies.delete("sse_lang")
+    check(
+        "the panel and the rows tell what the worker has done so far",
+        'class="indexing-panel is-running indexing-panel--indexing"' in running_page
+        and "Now indexing: queue-2.pdf" in running_page
+        and "Documents indexed: 1 of 3" in running_page
+        and "waiting: 2" in running_page
+        and 'data-doc-index-badge="indexing"' in running_page
+        and 'data-doc-index-badge="pending"' in running_page,
+        indexing_panel(running_page)
+        + " || "
+        + str(re.findall(r'data-doc-index-badge="([a-z]+)"', running_page)),
+    )
+    check(
+        "the progress of indexing is translated",
+        ">Indeksowanie<" in polish_page
+        and "Indeksowany dokument: queue-3.pdf" in polish_page
+        and "Zaindeksowane dokumenty: 2 z 3" in polish_page
+        and "oczekuj" in polish_page
+        and not UNTRANSLATED_KEY.findall(polish_page),
+        str(UNTRANSLATED_KEY.findall(polish_page)) + indexing_panel(polish_page),
+    )
+
+    polled = [
+        client.get(
+            "/collections/indexing-status", params={"collection_name": "user_queue"}
+        ).json()
+        for _ in range(3)
+    ]
+    check(
+        "the panel of a collection follows its newest request until it is finished",
+        [answer["job"]["status"] for answer in polled]
+        == ["partial", "partial", "partial"]
+        and all(answer["job"]["id"] == int(second_job.group(1)) for answer in polled)
+        and int(second_job.group(1)) > int(first_job.group(1)),
+        str([answer["job"]["status"] for answer in polled]),
+    )
+
+    response = client.post(
+        "/collections/manage/add-text",
+        data={
+            "collection_name": "user_queue",
+            "filepath": "uwagi.txt",
+            "category": "notes",
+            "page_content": "Tekst do kolejki indeksowania.",
+            "chunking_mode": "collection",
+        },
+    )
+    check(
+        "a pasted text goes to the queue as well",
+        "The text was queued for indexing" in response.text
+        and INDEXING_RUNNING_PANEL in response.text
+        and 'data-label-completed="Indexing finished"' in response.text,
+        indexing_panel(response.text),
+    )
+
+    # --- failures the page has to live with --------------------------------- #
+    unknown_job = client.get("/collections/indexing-status", params={"job_id": 999999})
+    unknown_collection = client.get(
+        "/collections/indexing-status", params={"collection_name": "there_is_none"}
+    )
+    without_params = client.get("/collections/indexing-status")
+    check(
+        "an unknown request or collection fails as JSON",
+        unknown_job.status_code == 502
+        and unknown_collection.status_code == 502
+        and without_params.status_code == 502
+        and unknown_job.json().get("status") is False,
+        f"{unknown_job.status_code} {unknown_collection.status_code}",
+    )
+
+    def without_endpoint(**kwargs):
+        raise RuntimeError("an engine without api/indexing_status")
+
+    original = server.sse_api_engine.indexing_status
+    server.sse_api_engine.indexing_status = without_endpoint
+    try:
+        page = client.get("/collections/manage?collection_name=user_col").text
+        fallback = client.get(
+            "/collections/indexing-status", params={"collection_name": "user_col"}
+        )
+        check(
+            "an engine without api/indexing_status keeps all its pages",
+            "data-indexing-status" not in page
+            and "Documents in collection" in page
+            and fallback.status_code == 502
+            and fallback.json().get("status") is False,
+            "",
+        )
+    finally:
+        server.sse_api_engine.indexing_status = original
 
 
 def main() -> int:
@@ -1059,6 +1280,7 @@ def main() -> int:
         )
 
         check_chunking(client)
+        check_indexing(client)
 
         response = client.get("/search?collection_name=user_col")
         check(
@@ -1762,6 +1984,15 @@ def main() -> int:
             "after logout -> login",
             response.status_code == 303 and "/login" in response.headers["location"],
             str(response.headers),
+        )
+
+        response = client.get(
+            "/collections/indexing-status", params={"collection_name": "user_col"}
+        )
+        check(
+            "the indexing status endpoint asks for a login first",
+            response.status_code == 401 and response.json().get("login") is True,
+            str(response.status_code),
         )
 
     print()

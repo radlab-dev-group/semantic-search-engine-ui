@@ -143,6 +143,16 @@ COLLECTIONS = [
             "strict_chunking": True,
         },
     },
+    # indexed by a worker of the queue ("async": true), see
+    # ASYNC_INDEXING_COLLECTIONS below
+    {
+        "id": 4,
+        "name": "user_queue",
+        "display_name": "Indeksowanie w kolejce",
+        "description": "Kolekcja indeksowana przez workera Celery",
+        "created_on": "2026-10-16T09:30:00+02:00",
+        "metadata_json": None,
+    },
 ]
 
 # GET filter_options: what the engine uses for an undeclared collection
@@ -238,11 +248,183 @@ def _multipart_fields(raw: bytes, content_type: str) -> dict:
 # lists only the enabled ones, unless with_disabled=true is asked for
 DOCUMENTS_IN_SEARCH = {"b.pdf": True, "a.pdf": True, "old.pdf": False}
 
+# Indexing (api/indexing_status).
+#
+# Collections listed here are indexed by a worker - the upload answers with
+# "async": true and a queued job - the other ones index in the request and
+# answer with a finished job. A queued job moves one step forward every time
+# its status is asked for, which is what a polling client does.
+ASYNC_INDEXING_COLLECTIONS = {"user_queue"}
+INDEXING_QUEUE_DOCUMENTS = ["queue-1.pdf", "queue-2.pdf", "queue-3.pdf"]
+INDEXING_BROKEN_DOCUMENTS = {"queue-2.pdf"}
+INDEXING_FINISHED = ("completed", "partial", "failed")
+
+# job id -> job (status, counters and the documents with their own status)
+INDEXING_JOBS = {}
+# name of a document -> indexing_status of GET documents
+DOCUMENT_INDEXING = {}
+# collection -> documents created by its indexing requests
+INDEXED_DOCUMENTS = {}
+_NEXT_JOB_ID = [1]
+
 REQUEST_LOG = []
 
 
 def _ok(body):
     return {"status": True, "body": body}
+
+
+def _indexing_document_rows(job):
+    return [dict(document) for document in job["documents"]]
+
+
+def _indexing_payload(job):
+    """One job as api/indexing_status answers with it (job_payload of the engine)."""
+    processed = (
+        job["documents_indexed"] + job["documents_failed"] + job["documents_skipped"]
+    )
+    total = job["total_documents"]
+    return {
+        "id": job["id"],
+        "kind": job["kind"],
+        "status": job["status"],
+        "total_documents": total,
+        "documents_indexed": job["documents_indexed"],
+        "documents_failed": job["documents_failed"],
+        "documents_skipped": job["documents_skipped"],
+        "documents_pending": max(0, total - processed),
+        "documents_processed": processed,
+        "current_document": job["current_document"],
+        "error_message": job["error_message"],
+        "percent": int(round(100.0 * processed / total)) if total else 0,
+        "finished": job["status"] in INDEXING_FINISHED,
+        "created_on": "2026-10-16T10:00:00+02:00",
+        "started_on": "2026-10-16T10:00:01+02:00" if job["steps"] else None,
+        "finished_on": "2026-10-16T10:05:00+02:00"
+        if job["status"] in INDEXING_FINISHED
+        else None,
+    }
+
+
+def _start_indexing_job(collection_name, kind, documents, queued):
+    """Registers a new indexing request; ``queued`` = a worker does the work."""
+    job_id = _NEXT_JOB_ID[0]
+    _NEXT_JOB_ID[0] += 1
+    job = {
+        "id": job_id,
+        "kind": kind,
+        "collection_name": collection_name,
+        "status": "queued" if queued else "indexing",
+        # what is indexed stays unknown until a worker has read the files
+        "total_documents": 0 if queued else len(documents),
+        "documents_indexed": 0,
+        "documents_failed": 0,
+        "documents_skipped": 0,
+        "current_document": None,
+        "error_message": None,
+        "steps": 0,
+        "documents": [
+            {
+                "id": 900 + number,
+                "name": name,
+                "indexing_status": "pending" if queued else "indexed",
+            }
+            for number, name in enumerate(documents, start=1)
+        ],
+    }
+    if not queued:
+        job["status"] = "completed"
+        job["documents_indexed"] = len(documents)
+    INDEXING_JOBS[job_id] = job
+    if queued:
+        # only the worker adds documents to the collection here: an indexing
+        # inside the request rewrites documents the fake already knows
+        created = INDEXED_DOCUMENTS.setdefault(collection_name, {})
+        for name in documents:
+            created[name] = True
+    _remember_indexing_statuses(job)
+    return job
+
+
+def _remember_indexing_statuses(job):
+    for document in job["documents"]:
+        DOCUMENT_INDEXING[document["name"]] = document["indexing_status"]
+
+
+def _advance_indexing(job):
+    """One step of the queue per status question: queued -> preparing (the
+    worker stores the documents of the upload) -> indexing one document at a
+    time -> partial, because one document of the queue is broken."""
+    if job["status"] in INDEXING_FINISHED:
+        return job
+    job["steps"] += 1
+    documents = job["documents"]
+    if job["steps"] == 1:
+        # the worker is reading the files: how many documents it will be is
+        # not known until they are stored (mark_job_indexing of the engine)
+        job["status"] = "preparing"
+        for document in documents:
+            document["indexing_status"] = "pending"
+    else:
+        job["total_documents"] = job["total_documents"] or len(documents)
+        total = len(documents)
+        done = min(job["steps"] - 1, total)
+        job["status"] = "indexing"
+        for index, document in enumerate(documents):
+            if index < done:
+                document["indexing_status"] = (
+                    "failed"
+                    if document["name"] in INDEXING_BROKEN_DOCUMENTS
+                    else "indexed"
+                )
+            elif index == done and done < total:
+                document["indexing_status"] = "indexing"
+            else:
+                document["indexing_status"] = "pending"
+        if done >= total:
+            broken = [
+                document["name"]
+                for document in documents
+                if document["indexing_status"] == "failed"
+            ]
+            job["status"] = "partial" if broken else "completed"
+            if broken:
+                job["error_message"] = (
+                    f"The embedder refused the text of {broken[0]}; "
+                    "the other documents are indexed."
+                )
+    indexed = [d for d in documents if d["indexing_status"] == "indexed"]
+    failed = [d for d in documents if d["indexing_status"] == "failed"]
+    running = [d for d in documents if d["indexing_status"] == "indexing"]
+    job["documents_indexed"] = len(indexed)
+    job["documents_failed"] = len(failed)
+    job["current_document"] = running[0]["name"] if running else None
+    _remember_indexing_statuses(job)
+    return job
+
+
+def _latest_indexing_job(collection_name):
+    jobs = [
+        job
+        for job in INDEXING_JOBS.values()
+        if job["collection_name"] == collection_name
+    ]
+    return max(jobs, key=lambda job: job["id"]) if jobs else None
+
+
+def _collection_documents(collection_name):
+    """GET documents of a collection: the documents it always had plus the ones
+    its indexing requests have created."""
+    return {**DOCUMENTS_IN_SEARCH, **(INDEXED_DOCUMENTS.get(collection_name) or {})}
+
+
+def _indexing_body(job):
+    payload = _indexing_payload(job) if job else None
+    return {
+        "job": payload,
+        "documents": _indexing_document_rows(job) if job else [],
+        "pending_documents": payload["documents_pending"] if payload else 0,
+    }
 
 
 class MockHandler(BaseHTTPRequestHandler):
@@ -368,15 +550,58 @@ class MockHandler(BaseHTTPRequestHandler):
             )
         if ep == "categories":
             return self._send(_ok({"categories": ["b", "a", None, "c"]}))
+        if ep == "indexing_status":
+            job = None
+            if str(query.get("job_id") or "").isdigit():
+                job = INDEXING_JOBS.get(int(query["job_id"]))
+                if job is None:
+                    return self._send(
+                        {
+                            "status": False,
+                            "errors": [
+                                {
+                                    "error_code": "000007_DATA",
+                                    "message": "This indexing process was not found.",
+                                }
+                            ],
+                        }
+                    )
+            else:
+                name = query.get("collection_name")
+                if _collection(name) is None:
+                    return self._send(
+                        {
+                            "status": False,
+                            "errors": [
+                                {
+                                    "error_code": "000002_DATA",
+                                    "message": "Collection not found!",
+                                }
+                            ],
+                        }
+                    )
+                job = _latest_indexing_job(name)
+            # every question moves the fake queue one step forward
+            _advance_indexing(job)
+            return self._send(_ok(_indexing_body(job)))
         if ep == "documents":
             if query.get("with_disabled") == "true":
                 return self._send(
                     _ok(
                         {
                             "documents": [
-                                {"id": index, "name": name, "use_in_search": used}
+                                {
+                                    "id": index,
+                                    "name": name,
+                                    "use_in_search": used,
+                                    # null = indexed before the feature existed
+                                    "indexing_status": DOCUMENT_INDEXING.get(name),
+                                }
                                 for index, (name, used) in enumerate(
-                                    DOCUMENTS_IN_SEARCH.items(), start=1
+                                    _collection_documents(
+                                        query.get("collection_name")
+                                    ).items(),
+                                    start=1,
                                 )
                             ]
                         }
@@ -387,7 +612,9 @@ class MockHandler(BaseHTTPRequestHandler):
                     {
                         "documents": [
                             {"name": name}
-                            for name, used in DOCUMENTS_IN_SEARCH.items()
+                            for name, used in _collection_documents(
+                                query.get("collection_name")
+                            ).items()
                             if used
                         ]
                     }
@@ -449,7 +676,25 @@ class MockHandler(BaseHTTPRequestHandler):
             )
             if refused is not None:
                 return self._send(refused)
-            return self._send(_ok({"documents": 2, "indexed_chunks": 42}))
+            name = body.get("collection_name")
+            # A collection with a queue: the files are only stored here, a
+            # worker indexes them and the client follows the job.
+            queued = name in ASYNC_INDEXING_COLLECTIONS
+            job = _start_indexing_job(
+                name,
+                "files",
+                INDEXING_QUEUE_DOCUMENTS if queued else ["a.pdf", "b.pdf"],
+                queued,
+            )
+            response_body = {
+                "documents": job["total_documents"],
+                "indexed_chunks": 42,
+                "indexing_job": _indexing_payload(job),
+            }
+            if queued:
+                response_body["async"] = True
+                response_body.pop("indexed_chunks")
+            return self._send(_ok(response_body))
         if ep == "search_with_options":
             if body.get("collection_name") == "err_col":
                 return self._send(
@@ -537,7 +782,24 @@ class MockHandler(BaseHTTPRequestHandler):
             )
             if refused is not None:
                 return self._send(refused)
-            return self._send(_ok({"indexed_documents": 1, "indexed_chunks": 3}))
+            name = body.get("collection_name")
+            queued = name in ASYNC_INDEXING_COLLECTIONS
+            texts = [
+                item
+                for item in body.get("texts[]") or [{}]
+                if isinstance(item, dict)
+            ]
+            names = [str(item.get("filepath") or "document.txt") for item in texts]
+            job = _start_indexing_job(name, "texts", names, queued)
+            response_body = {
+                "indexed_documents": job["total_documents"],
+                "indexed_chunks": 3,
+                "indexing_job": _indexing_payload(job),
+            }
+            if queued:
+                response_body["async"] = True
+                response_body.pop("indexed_chunks")
+            return self._send(_ok(response_body))
         return self._send(_ok({}))
 
 
