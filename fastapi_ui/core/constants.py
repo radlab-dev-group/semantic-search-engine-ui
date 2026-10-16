@@ -41,3 +41,9 @@ OVERLAP_TOKENS_LIMIT = 200
 
 # Accepted file types for document upload
 ACCEPTED_FILE_EXTENSIONS = [".pdf", ".docx", ".txt", ".html", ".md", ".zip"]
+
+# Indexing progress panel (app.js): how often the status is asked for and how
+# long a running job is followed before the page gives up (the engine keeps
+# indexing in its queue either way).
+INDEXING_POLL_INTERVAL_MS = 2000
+INDEXING_POLL_TIMEOUT_MS = 30 * 60 * 1000

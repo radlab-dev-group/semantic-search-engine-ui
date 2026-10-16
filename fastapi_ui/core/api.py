@@ -12,6 +12,7 @@ The backend API contract:
 - filter_options:     GET  {host}/api/filter_options (incl. chunking_defaults)
 - categories:         GET  {host}/api/categories?collection_name=...
 - documents:          GET  {host}/api/documents?collection_name=...
+- indexing_status:    GET  {host}/api/indexing_status?collection_name=...|job_id=...
 - search_with_options:POST {host}/api/search_with_options
 - generative_answer:  POST {host}/api/generative_answer
 - rate_generative_answer: POST {host}/api/rate_generative_answer
@@ -206,6 +207,9 @@ class SemanticSearchEngineAPI(BaseApiInterface):
                 api_config.semantic_search_engine_endpoints.get(
                     "add_and_index_texts", "api/add_and_index_texts"
                 )
+            )
+            self.indexing_status = api_config.semantic_search_engine_endpoints.get(
+                "indexing_status", "api/indexing_status"
             )
             self.set_documents_use_in_search = (
                 api_config.semantic_search_engine_endpoints.get(
@@ -559,6 +563,29 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             api_function=self._engine_ep.add_and_index_texts,
             params=None,
             json_data=payload,
+        )
+        return response
+
+    def indexing_status(
+        self,
+        token: str,
+        collection_name: str | None = None,
+        job_id: int | None = None,
+    ):
+        """Progress of the indexing: one job by ``job_id`` or the newest job
+        of a ``collection_name`` (counters, documents with statuses and the
+        collection still waiting for indexing)."""
+        params: dict = {}
+        if job_id is not None:
+            params["job_id"] = int(job_id)
+        if collection_name:
+            params["collection_name"] = collection_name
+        response = self.general_call_get(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.indexing_status,
+            params=params,
+            data=None,
         )
         return response
 
