@@ -276,7 +276,8 @@
       "one": "Excluded {n} document from the search",
       "other": "Excluded {n} documents from the search"
     },
-    "visibility_error": "Could not change the use of the document in the search."
+    "visibility_error": "Could not change the use of the document in the search.",
+    "add_text_queued": "The text was queued for indexing — see the progress in the Documents tab."
   },
   "upload": {
     "title": "SSE - upload documents",
@@ -314,6 +315,7 @@
     "error_no_files": "There are no files to upload!",
     "error_upload": "Problem while uploading files to engine backend",
     "success": "Files are uploaded and indexed! Go to the Search Engine page and ask about knowledge from the indexed documents.",
+    "queued": "Files are saved and queued for indexing — the progress is shown below and in the Documents tab.",
     "methods_label": "How to add content",
     "method_files": "Upload files",
     "method_text": "Paste text",
@@ -599,6 +601,43 @@
     "chunk_too_long": "The chunk cannot exceed {n} tokens (max input of the embedder {model}).",
     "chunk_overlap_error": "The overlap must be a number from 0 to {n} (smaller than the chunk size).",
     "chunk_reranker_warning": "A chunk of {chunk} tokens does not fit the reranker {model} (limit {n} tokens for a query + text pair) — reranking sees only the beginning of every chunk.",
-    "chunk_size_error": "The chunk size must be a whole number above 0."
+    "chunk_size_error": "The chunk size must be a whole number above 0.",
+    "indexing_done": "Documents indexed: {done} of {total}",
+    "indexing_waiting": "waiting: {n}",
+    "indexing_failed_count": "failed: {n}",
+    "indexing_skipped_count": "skipped: {n}",
+    "indexing_current": "Now indexing: {name}",
+    "indexing_no_document": "Waiting for the next document",
+    "indexing_collection_pending": "Still waiting for indexing in the collection: {n}",
+    "indexing_queued_note": "The documents are indexed in the background queue — this page updates itself.",
+    "indexing_failed_documents": "Documents which failed:",
+    "indexing_unavailable": "The indexing status could not be loaded.",
+    "indexing_doc_pending": "waiting for indexing",
+    "indexing_doc_indexing": "indexing",
+    "indexing_doc_failed": "indexing failed",
+    "indexing_doc_skipped": "skipped"
+  },
+  "indexing": {
+    "title": "Indexing progress",
+    "queued": "Waiting in the queue",
+    "preparing": "Preparing documents",
+    "indexing": "Indexing",
+    "completed": "Indexing finished",
+    "partial": "Indexing finished with errors",
+    "failed": "Indexing failed",
+    "documents_done": "Documents indexed: {done} of {total}",
+    "documents_pending": "waiting: {n}",
+    "documents_failed": "failed: {n}",
+    "documents_skipped": "skipped: {n}",
+    "current_document": "Now indexing: {name}",
+    "no_document": "Waiting for the next document",
+    "collection_pending": "Still waiting for indexing in the collection: {n}",
+    "failed_documents": "Documents which failed:",
+    "queued_note": "The documents are indexed in the background queue — this page updates itself.",
+    "doc_pending": "waiting for indexing",
+    "doc_indexing": "indexing",
+    "doc_indexed": "indexed",
+    "doc_failed": "indexing failed",
+    "doc_skipped": "skipped"
   }
 }

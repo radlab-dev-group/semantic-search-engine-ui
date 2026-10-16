@@ -292,7 +292,8 @@
       "many": "Wyłączono {n} dokumentów z wyszukiwania",
       "other": "Wyłączono {n} dokumentu z wyszukiwania"
     },
-    "visibility_error": "Nie udało się zmienić użycia dokumentu w wyszukiwaniu."
+    "visibility_error": "Nie udało się zmienić użycia dokumentu w wyszukiwaniu.",
+    "add_text_queued": "Tekst został dodany do kolejki indeksowania — postęp zobaczysz w zakładce Dokumenty."
   },
   "upload": {
     "title": "SSE - wgrywanie dokumentów",
@@ -332,6 +333,7 @@
     "error_no_files": "Brak plików do wgrania!",
     "error_upload": "Problem podczas wysyłania plików do silnika wyszukiwania",
     "success": "Pliki zostały wgrane i zaindeksowane! Przejdź do wyszukiwarki i zapytaj o wiedzę z zaindeksowanych dokumentów.",
+    "queued": "Pliki zostały zapisane i dodane do kolejki indeksowania — postęp widać poniżej oraz w zakładce Dokumenty.",
     "methods_label": "Sposób dodania treści",
     "method_files": "Wgraj pliki",
     "method_text": "Wklej tekst",
@@ -643,6 +645,43 @@
     "chunk_too_long": "Chunk nie może przekraczać {n} tokenów (maks. wejście embedera {model}).",
     "chunk_overlap_error": "Zakładka musi być liczbą od 0 do {n} (mniejszą niż rozmiar chunka).",
     "chunk_reranker_warning": "Chunk o długości {chunk} nie zmieści się w rerankerze {model} (limit {n} tokenów dla pary zapytanie + tekst) — reranking zobaczy tylko początek każdego chunka.",
-    "chunk_size_error": "Rozmiar chunka musi być liczbą całkowitą większą od 0."
+    "chunk_size_error": "Rozmiar chunka musi być liczbą całkowitą większą od 0.",
+    "indexing_done": "Zaindeksowane dokumenty: {done} z {total}",
+    "indexing_waiting": "oczekujące: {n}",
+    "indexing_failed_count": "błędy: {n}",
+    "indexing_skipped_count": "pominięte: {n}",
+    "indexing_current": "Indeksowany dokument: {name}",
+    "indexing_no_document": "Oczekiwanie na kolejny dokument",
+    "indexing_collection_pending": "Wciąż czeka na indeksowanie w kolekcji: {n}",
+    "indexing_queued_note": "Dokumenty są indeksowane w kolejce w tle — ta strona odświeża się sama.",
+    "indexing_failed_documents": "Dokumenty, którym się nie powiodło:",
+    "indexing_unavailable": "Nie udało się pobrać statusu indeksowania.",
+    "indexing_doc_pending": "czeka na indeksowanie",
+    "indexing_doc_indexing": "indeksowany",
+    "indexing_doc_failed": "błąd indeksacji",
+    "indexing_doc_skipped": "pominięty"
+  },
+  "indexing": {
+    "title": "Postęp indeksowania",
+    "queued": "Oczekuje w kolejce",
+    "preparing": "Przygotowywanie dokumentów",
+    "indexing": "Indeksowanie",
+    "completed": "Indeksowanie zakończone",
+    "partial": "Indeksowanie zakończone z błędami",
+    "failed": "Indeksowanie nie powiodło się",
+    "documents_done": "Zaindeksowane dokumenty: {done} z {total}",
+    "documents_pending": "oczekujące: {n}",
+    "documents_failed": "błędy: {n}",
+    "documents_skipped": "pominięte: {n}",
+    "current_document": "Indeksowany dokument: {name}",
+    "no_document": "Oczekiwanie na kolejny dokument",
+    "collection_pending": "Wciąż czeka na indeksowanie w kolekcji: {n}",
+    "failed_documents": "Dokumenty, którym się nie powiodło:",
+    "queued_note": "Dokumenty są indeksowane w kolejce w tle — ta strona odświeża się sama.",
+    "doc_pending": "czeka na indeksowanie",
+    "doc_indexing": "indeksowany",
+    "doc_indexed": "zaindeksowany",
+    "doc_failed": "błąd indeksacji",
+    "doc_skipped": "pominięty"
   }
 }
