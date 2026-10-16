@@ -2078,10 +2078,10 @@ function renderIndexingPanel(panel, payload) {
     error.classList.toggle("hidden", !job.error_message);
   }
 
-  const waiting = Number(payload.pending_documents) || 0;
+  const waiting = Number(job.documents_pending) || 0;
   const collectionPending = panel.querySelector("[data-indexing-collection]");
   if (collectionPending) {
-    collectionPending.textContent = t("indexing_collection_pending", { n: waiting });
+    collectionPending.textContent = t("indexing_session_pending", { n: waiting });
     collectionPending.classList.toggle("hidden", waiting === 0);
   }
 

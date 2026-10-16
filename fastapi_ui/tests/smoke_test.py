@@ -722,6 +722,37 @@ def check_indexing(client) -> None:
         str(UNTRANSLATED_KEY.findall(polish_page)) + indexing_panel(polish_page),
     )
 
+    original_fetch_indexing_status = server.fetch_indexing_status
+    server.fetch_indexing_status = lambda *args, **kwargs: {
+        "job": {
+            "id": 99,
+            "status": "indexing",
+            "finished": False,
+            "percent": 25,
+            "total_documents": 4,
+            "documents_processed": 1,
+            "documents_pending": 3,
+            "documents_failed": 0,
+            "documents_skipped": 0,
+            "current_document": "session.pdf",
+            "error_message": None,
+        },
+        "documents": [],
+        "pending_documents": 47,
+    }
+    try:
+        session_count_page = client.get(
+            "/collections/manage?collection_name=user_queue"
+        ).text
+    finally:
+        server.fetch_indexing_status = original_fetch_indexing_status
+    check(
+        "the indexing panel shows the current session count, not the collection total",
+        "Still waiting for indexing in this session: 3" in session_count_page
+        and "Still waiting for indexing in the collection: 47" not in session_count_page,
+        indexing_panel(session_count_page),
+    )
+
     polled = [
         client.get(
             "/collections/indexing-status", params={"collection_name": "user_queue"}

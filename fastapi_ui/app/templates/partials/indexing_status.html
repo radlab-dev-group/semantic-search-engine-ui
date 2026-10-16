@@ -14,7 +14,7 @@
   document rows (manage_collection.html) as long as the job is running.
 #}
 {% set job = indexing.job if indexing else none %}
-{% set waiting = (indexing.pending_documents if indexing else 0) or 0 %}
+{% set waiting = (job.documents_pending if job else 0) or 0 %}
 {% set failed = [] %}
 {% for document in (indexing.documents if indexing) or [] %}
   {% if document.indexing_status == 'failed' %}{% set _ = failed.append(document.name) %}{% endif %}
@@ -97,7 +97,7 @@
 
     <p class="indexing-panel__note{% if not job.error_message %} hidden{% endif %}" data-indexing-error>{{ job.error_message or '' }}</p>
 
-    <p class="indexing-panel__note{% if not waiting %} hidden{% endif %}" data-indexing-collection>{{ t('indexing.collection_pending', n=waiting) }}</p>
+    <p class="indexing-panel__note{% if not waiting %} hidden{% endif %}" data-indexing-collection>{{ t('indexing.session_pending', n=waiting) }}</p>
 
     <p class="indexing-panel__hint{% if not running %} hidden{% endif %}" data-indexing-hint>{{ t('indexing.queued_note') }}</p>
   </section>
