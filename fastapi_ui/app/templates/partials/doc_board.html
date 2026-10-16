@@ -51,7 +51,8 @@
             {% if facts %}
               <ul class="doc-board__facts">
                 {% for key, value in facts %}
-                  <li><span>{{ key | replace('_', ' ') }}</span> <b>{% if value is none %}—{% elif value is float %}{{ '%.4g' | format(value) }}{% else %}{{ value }}{% endif %}</b></li>
+                  {% set val_str = '—' if value is none else ('%.4g' | format(value) if value is float else value | string) %}
+                  <li title="{{ key | replace('_', ' ') }}: {{ val_str }}"><span>{{ key | replace('_', ' ') }}</span> <b>{{ val_str }}</b></li>
                 {% endfor %}
               </ul>
             {% endif %}
