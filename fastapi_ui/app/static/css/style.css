@@ -4929,6 +4929,151 @@ input[type="range"]::-moz-range-thumb {
   animation: indeterminate 1.4s var(--ease) infinite;
 }
 
+/* Indexing progress (queue of the engine): a determinate bar when the number
+   of documents is known, an indeterminate one while the job is still being
+   prepared. Rendered by partials/indexing_status.html, refreshed by app.js. */
+.indexing-panel {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-inset);
+}
+
+.indexing-panel.is-running {
+  border-color: rgb(124 108 255 / 35%);
+  box-shadow: var(--shadow-sm);
+}
+
+.indexing-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.indexing-panel__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.indexing-badge {
+  padding: 0.15em 0.65em;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-solid);
+  white-space: nowrap;
+}
+
+.indexing-badge--queued,
+.indexing-badge--preparing {
+  color: var(--info-fg);
+  border-color: rgb(59 130 246 / 35%);
+  background: rgb(59 130 246 / 10%);
+}
+
+.indexing-badge--indexing {
+  color: var(--brand-600);
+  border-color: rgb(124 108 255 / 40%);
+  background: rgb(124 108 255 / 12%);
+}
+
+.indexing-badge--completed {
+  color: var(--success-fg);
+  border-color: rgb(34 197 139 / 40%);
+  background: var(--success-bg);
+}
+
+.indexing-badge--partial,
+.indexing-badge--failed {
+  color: var(--error-fg);
+  border-color: rgb(240 68 106 / 40%);
+  background: var(--error-bg);
+}
+
+.indexing-progress {
+  position: relative;
+  height: 8px;
+  margin: var(--space-3) 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--bg-solid);
+  overflow: hidden;
+}
+
+.indexing-progress__bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  border-radius: inherit;
+  background: var(--gradient-vector);
+  transition: width 0.4s var(--ease);
+}
+
+.indexing-progress.is-indeterminate .indexing-progress__bar {
+  width: 35%;
+  animation: indeterminate 1.4s var(--ease) infinite;
+}
+
+.indexing-panel__count {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.indexing-panel__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.indexing-stat--failed {
+  color: var(--error-fg);
+}
+
+.indexing-stat--percent {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.indexing-panel__current {
+  margin: var(--space-2) 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.indexing-panel__meta,
+.indexing-panel__note,
+.indexing-panel__hint {
+  margin: var(--space-2) 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.indexing-panel__meta-title {
+  font-weight: 600;
+  color: var(--error-fg);
+}
+
+.indexing-panel__hint--error {
+  color: var(--error-fg);
+}
+
 /* --------------------------------------------------------------------------
    16. Footer
    -------------------------------------------------------------------------- */
@@ -5527,6 +5672,32 @@ input[type="range"]::-moz-range-thumb {
 
 [data-theme="dark"] .doc-state-badge {
   color: #fbbf24;
+}
+
+/* Status of a document of a running indexing request (pending / indexing /
+   failed / skipped); an indexed document carries no badge. */
+.doc-index-badge--pending {
+  color: var(--text-muted);
+  background: var(--bg-inset);
+  border: 1px solid var(--border-strong);
+}
+
+.doc-index-badge--indexing {
+  color: var(--brand-600);
+  background: rgb(124 108 255 / 12%);
+  border: 1px solid rgb(124 108 255 / 30%);
+}
+
+.doc-index-badge--failed {
+  color: var(--error-fg);
+  background: var(--error-bg);
+  border: 1px solid rgb(240 68 106 / 35%);
+}
+
+.doc-index-badge--skipped {
+  color: var(--warning-fg);
+  background: var(--warning-bg);
+  border: 1px solid rgb(240 169 42 / 35%);
 }
 
 @media (prefers-color-scheme: dark) {

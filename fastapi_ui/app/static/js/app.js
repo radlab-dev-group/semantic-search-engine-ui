@@ -1602,6 +1602,257 @@ function initDocVisibility() {
   });
 }
 
+/* ------------------------------------------------- indexing progress */
+// The engine indexes a document at a time, in a Celery queue when it runs one
+// (ENV_USE_CELERY=1) or inside the upload request otherwise; both modes report
+// the same numbers. While a job is running the panel asks
+// /collections/indexing-status for the newest state: how many documents are
+// already indexed, which one is being indexed, how many are still waiting and
+// which ones failed. The badges of the document rows follow the same answer.
+const INDEXING_PANEL_STATUSES = [
+  "queued",
+  "preparing",
+  "indexing",
+  "completed",
+  "partial",
+  "failed",
+];
+const INDEXING_ROW_LABELS = {
+  pending: "indexing_doc_pending",
+  indexing: "indexing_doc_indexing",
+  failed: "indexing_doc_failed",
+  skipped: "indexing_doc_skipped",
+};
+const MAX_INDEXING_FAILURES = 3;
+
+// The words of the job statuses come from the panel (data-label-*), the rest
+// of the texts from the "js" section of the locale file.
+function indexingStatusLabel(panel, status) {
+  const key = `label${String(status).replace(/^./, (letter) => letter.toUpperCase())}`;
+  return panel.dataset[key] || String(status);
+}
+
+function setIndexingStat(panel, selector, key, value) {
+  const node = panel.querySelector(selector);
+  if (!node) return;
+  const count = Number(value) || 0;
+  node.textContent = t(key, { n: count });
+  node.classList.toggle("hidden", count === 0);
+}
+
+function setIndexingBar(panel, percent, known) {
+  const track = panel.querySelector("[data-indexing-progress]");
+  const bar = panel.querySelector("[data-indexing-bar]");
+  const value = Math.max(0, Math.min(100, Number(percent) || 0));
+  if (track) {
+    track.classList.toggle("is-indeterminate", !known);
+    track.dataset.percent = String(value);
+    track.setAttribute("aria-valuenow", String(value));
+  }
+  if (bar) bar.style.width = known ? `${value}%` : "";
+}
+
+function renderIndexingPanel(panel, payload) {
+  const job = payload.job || {};
+  const status = String(job.status || "queued");
+  const running = job.finished === false;
+  const total = Number(job.total_documents) || 0;
+  const done = Number(job.documents_processed) || 0;
+
+  INDEXING_PANEL_STATUSES.forEach((name) => {
+    panel.classList.remove(`indexing-panel--${name}`);
+  });
+  panel.classList.add(`indexing-panel--${status}`);
+  panel.classList.toggle("is-running", running);
+
+  const badge = panel.querySelector("[data-indexing-badge]");
+  if (badge) badge.textContent = indexingStatusLabel(panel, status);
+
+  setIndexingBar(panel, job.percent, total > 0);
+
+  const count = panel.querySelector("[data-indexing-count]");
+  if (count) {
+    count.textContent = total
+      ? t("indexing_done", { done, total })
+      : indexingStatusLabel(panel, "preparing");
+  }
+  setIndexingStat(
+    panel, "[data-indexing-waiting]", "indexing_waiting", job.documents_pending
+  );
+  setIndexingStat(
+    panel, "[data-indexing-failed-count]", "indexing_failed_count", job.documents_failed
+  );
+  setIndexingStat(
+    panel, "[data-indexing-skipped]", "indexing_skipped_count", job.documents_skipped
+  );
+
+  const percent = panel.querySelector("[data-indexing-percent]");
+  if (percent) {
+    percent.textContent = `${Math.max(0, Math.min(100, Number(job.percent) || 0))}%`;
+    percent.classList.toggle("hidden", !total);
+  }
+
+  const current = panel.querySelector("[data-indexing-current]");
+  if (current) {
+    const name = String(job.current_document || "").trim();
+    current.textContent = running
+      ? name
+        ? t("indexing_current", { name })
+        : t("indexing_no_document")
+      : "";
+    current.classList.toggle("hidden", !running);
+  }
+
+  const failed = (payload.documents || [])
+    .filter((entry) => entry.indexing_status === "failed")
+    .map((entry) => entry.name);
+  const failedBox = panel.querySelector("[data-indexing-failed]");
+  if (failedBox) {
+    const names = failedBox.querySelector("[data-indexing-failed-names]");
+    if (names) names.textContent = failed.join(", ");
+    failedBox.classList.toggle("hidden", failed.length === 0);
+  }
+
+  const error = panel.querySelector("[data-indexing-error]");
+  if (error) {
+    error.textContent = job.error_message || "";
+    error.classList.toggle("hidden", !job.error_message);
+  }
+
+  const waiting = Number(payload.pending_documents) || 0;
+  const collectionPending = panel.querySelector("[data-indexing-collection]");
+  if (collectionPending) {
+    collectionPending.textContent = t("indexing_collection_pending", { n: waiting });
+    collectionPending.classList.toggle("hidden", waiting === 0);
+  }
+
+  // the hint of the queue stays only while the job is running (an error
+  // message written by reportIndexingFailure keeps its own text)
+  const hint = panel.querySelector("[data-indexing-hint]");
+  if (hint && !hint.classList.contains("indexing-panel__hint--error")) {
+    hint.textContent = t("indexing_queued_note");
+    hint.classList.toggle("hidden", running);
+  }
+}
+
+// The badge of a document row follows the status of its document.
+function refreshIndexingRows(documents) {
+  const rows = new Map();
+  document.querySelectorAll("tr[data-name]").forEach((row) => rows.set(row.dataset.name, row));
+  (documents || []).forEach((entry) => {
+    const row = rows.get(String(entry.name || "").toLowerCase());
+    if (!row) return;
+    const status = String(entry.indexing_status || "");
+    const labelKey = INDEXING_ROW_LABELS[status];
+    let badge = row.querySelector("[data-doc-index-badge]");
+    if (!labelKey) {
+      // Indexed (or no longer known): the document needs no badge
+      if (badge) badge.remove();
+      return;
+    }
+    if (!badge) {
+      const name = row.querySelector(".doc-name-text");
+      if (!name) return;
+      badge = document.createElement("span");
+      badge.className = "doc-state-badge doc-index-badge";
+      name.after(badge);
+    }
+    badge.setAttribute("data-doc-index-badge", status);
+    badge.classList.add("doc-index-badge", `doc-index-badge--${status}`);
+    badge.textContent = t(labelKey);
+  });
+}
+
+function reportIndexingFailure(panel) {
+  panel.classList.remove("is-running");
+  const hint = panel.querySelector("[data-indexing-hint]");
+  if (hint) {
+    hint.textContent = t("indexing_unavailable", {}, "Could not load the indexing status.");
+    hint.classList.add("indexing-panel__hint--error");
+    hint.classList.remove("hidden");
+  }
+}
+
+function initIndexingStatus() {
+  const panel = document.querySelector("[data-indexing-status]");
+  // A finished job is shown once and never polled; a running one is followed
+  // until the engine reports it as finished (or the page gives up).
+  if (!panel || !panel.classList.contains("is-running")) return;
+
+  const interval = Math.max(500, Number(panel.dataset.pollInterval) || 2000);
+  const limit = Math.max(interval, Number(panel.dataset.pollTimeout) || 1800000);
+  const query = new URLSearchParams();
+  if (panel.dataset.collection) query.set("collection_name", panel.dataset.collection);
+  if (panel.dataset.jobId) query.set("job_id", panel.dataset.jobId);
+  const url = `/collections/indexing-status?${query}`;
+  const startedAt = Date.now();
+  let failures = 0;
+  let timer = null;
+  let controller = null;
+
+  const stop = () => {
+    if (timer) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+    if (controller) controller.abort();
+  };
+  const schedule = () => {
+    if (!timer) timer = window.setTimeout(poll, interval);
+  };
+
+  async function poll() {
+    timer = null;
+    controller = new AbortController();
+    let finished = false;
+    try {
+      const response = await fetch(url, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!response.ok || !payload.status || !payload.job) throw new Error("indexing");
+      failures = 0;
+      renderIndexingPanel(panel, payload);
+      refreshIndexingRows(payload.documents);
+      finished = payload.job.finished === true;
+    } catch (error) {
+      if (error && error.name === "AbortError") return;
+      failures += 1;
+      if (failures >= MAX_INDEXING_FAILURES) {
+        reportIndexingFailure(panel);
+        stop();
+        return;
+      }
+    }
+    if (finished || Date.now() - startedAt > limit) {
+      stop();
+      return;
+    }
+    schedule();
+  }
+
+  // A job is followed only while the page is really looked at.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      return;
+    }
+    if (panel.classList.contains("is-running")) schedule();
+  });
+  window.addEventListener("pagehide", stop);
+
+  schedule();
+}
+
 /* ----------------------------------------------- small page behaviours */
 function initAutosubmit() {
   document.querySelectorAll("form[data-autosubmit]").forEach((form) => {
@@ -1765,6 +2016,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initConfirmDialogs();
   initDocList();
   initDocVisibility();
+  initIndexingStatus();
   initAutosubmit();
   initDismiss();
 });

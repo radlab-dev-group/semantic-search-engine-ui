@@ -1,0 +1,77 @@
+{#
+  Progress of one indexing request: how much is already indexed, what is being
+  indexed right now and how much is still waiting.  The engine answers with
+  the same numbers in both modes (a worker of the Celery queue and indexing
+  inside the request), so the panel looks the same whichever one runs.
+
+  Context variables:
+    indexing: fetch_indexing_status() = {job, documents, pending_documents}
+    indexing_show: render the panel also for a finished job - the page of the
+      submit which has just started it; an older finished job stays hidden
+    selected_collection: what app.js polls while the job is running
+
+  app.js ([data-indexing-status]) refreshes the panel and the badges of the
+  document rows (manage_collection.html) as long as the job is running.
+#}
+{% set job = indexing.job if indexing else none %}
+{% set waiting = (indexing.pending_documents if indexing else 0) or 0 %}
+{% set failed = [] %}
+{% for document in (indexing.documents if indexing) or [] %}
+  {% if document.indexing_status == 'failed' %}{% set _ = failed.append(document.name) %}{% endif %}
+{% endfor %}
+{% if job and (indexing_show or not job.finished or waiting) %}
+  {%- set running = not job.finished -%}
+  {#- The words of the six job statuses; data-label-* are for app.js -#}
+  {%- set labels = {
+        'queued': t('indexing.queued'),
+        'preparing': t('indexing.preparing'),
+        'indexing': t('indexing.indexing'),
+        'completed': t('indexing.completed'),
+        'partial': t('indexing.partial'),
+        'failed': t('indexing.failed'),
+      } -%}
+  <section class="indexing-panel{% if running %} is-running{% endif %} indexing-panel--{{ job.status }}" role="status" aria-live="polite" data-indexing-status
+           data-collection="{{ selected_collection }}" data-job-id="{{ job.id if job.id else '' }}"
+           data-poll-interval="{{ constants.INDEXING_POLL_INTERVAL_MS }}" data-poll-timeout="{{ constants.INDEXING_POLL_TIMEOUT_MS }}"
+           data-label-queued="{{ labels.queued }}" data-label-preparing="{{ labels.preparing }}"
+           data-label-indexing="{{ labels.indexing }}" data-label-completed="{{ labels.completed }}"
+           data-label-partial="{{ labels.partial }}" data-label-failed="{{ labels.failed }}">
+    <div class="indexing-panel__head">
+      <p class="indexing-panel__title">{{ t('indexing.title') }}</p>
+      <span class="indexing-badge indexing-badge--{{ job.status }}" data-indexing-badge>{{ labels.get(job.status, job.status) }}</span>
+    </div>
+
+    {#- Without the number of documents the share is not known yet -#}
+    <div class="indexing-progress{% if not job.total_documents %} is-indeterminate{% endif %}"
+         data-indexing-progress data-percent="{{ job.percent | int }}"
+         role="progressbar" aria-label="{{ t('indexing.title') }}"
+         aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ job.percent | int }}">
+      <span class="indexing-progress__bar" data-indexing-bar></span>
+    </div>
+
+    <p class="indexing-panel__count" data-indexing-count>{% if job.total_documents %}{{ t('indexing.documents_done', done=job.documents_processed, total=job.total_documents) }}{% else %}{{ labels.preparing }}{% endif %}</p>
+
+    <ul class="indexing-panel__stats">
+      <li class="indexing-stat indexing-stat--waiting{% if not job.documents_pending %} hidden{% endif %}" data-indexing-waiting>{{ t('indexing.documents_pending', n=job.documents_pending | int) }}</li>
+      <li class="indexing-stat indexing-stat--failed{% if not job.documents_failed %} hidden{% endif %}" data-indexing-failed-count>{{ t('indexing.documents_failed', n=job.documents_failed | int) }}</li>
+      <li class="indexing-stat indexing-stat--skipped{% if not job.documents_skipped %} hidden{% endif %}" data-indexing-skipped>{{ t('indexing.documents_skipped', n=job.documents_skipped | int) }}</li>
+      <li class="indexing-stat indexing-stat--percent{% if not job.total_documents %} hidden{% endif %}" data-indexing-percent>{{ job.percent | int }}%</li>
+    </ul>
+
+    <p class="indexing-panel__current{% if not running %} hidden{% endif %}" data-indexing-current>
+      {%- if running and job.current_document %}{{ t('indexing.current_document', name=job.current_document) }}
+      {%- elif running %}{{ t('indexing.no_document') }}{% endif -%}
+    </p>
+
+    <p class="indexing-panel__meta{% if not failed %} hidden{% endif %}" data-indexing-failed>
+      <span class="indexing-panel__meta-title">{{ t('indexing.failed_documents') }}</span>
+      <span class="mono" data-indexing-failed-names>{{ failed | join(', ') }}</span>
+    </p>
+
+    <p class="indexing-panel__note{% if not job.error_message %} hidden{% endif %}" data-indexing-error>{{ job.error_message or '' }}</p>
+
+    <p class="indexing-panel__note{% if not waiting %} hidden{% endif %}" data-indexing-collection>{{ t('indexing.collection_pending', n=waiting) }}</p>
+
+    <p class="indexing-panel__hint{% if not running %} hidden{% endif %}" data-indexing-hint>{{ t('indexing.queued_note') }}</p>
+  </section>
+{% endif %}
