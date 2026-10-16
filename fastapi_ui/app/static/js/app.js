@@ -1822,6 +1822,7 @@ const INDEXING_PANEL_STATUSES = [
 const INDEXING_ROW_LABELS = {
   pending: "indexing_doc_pending",
   indexing: "indexing_doc_indexing",
+  indexed: "indexing_doc_indexed",
   failed: "indexing_doc_failed",
   skipped: "indexing_doc_skipped",
 };
@@ -1871,6 +1872,23 @@ function recordTrackedIndexingJob(jobData) {
   }
   saveTrackedIndexingJobs(jobs);
   return jobs;
+}
+
+const INDEXING_AUTOCLOSE_KEY = "sse-indexing-autoclose";
+const INDEXING_AUTOCLOSE_DELAY_MS = 2500;
+
+function readIndexingAutoClose() {
+  try {
+    return window.localStorage.getItem(INDEXING_AUTOCLOSE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeIndexingAutoClose(on) {
+  try {
+    window.localStorage.setItem(INDEXING_AUTOCLOSE_KEY, on ? "1" : "0");
+  } catch {}
 }
 
 function dismissTrackedIndexingJob(jobId) {
@@ -2087,7 +2105,7 @@ function refreshIndexingRows(documents) {
     const labelKey = INDEXING_ROW_LABELS[status];
     let badge = row.querySelector("[data-doc-index-badge]");
     if (!labelKey) {
-      // Indexed (or no longer known): the document needs no badge
+      // No longer known: the document needs no badge
       if (badge) badge.remove();
       return;
     }
@@ -2099,7 +2117,8 @@ function refreshIndexingRows(documents) {
       name.after(badge);
     }
     badge.setAttribute("data-doc-index-badge", status);
-    badge.classList.add("doc-index-badge", `doc-index-badge--${status}`);
+    // the class of the previous status must go, otherwise its colours stay
+    badge.className = `doc-state-badge doc-index-badge doc-index-badge--${status}`;
     badge.textContent = t(labelKey);
   });
 }
@@ -2163,6 +2182,8 @@ function initIndexingStatus() {
   };
 
   const onSelectJob = (jobId, collection) => {
+    // a pending auto-close belongs to the job which is being left
+    cancelAutoClose();
     activeJobId = String(jobId);
     activeCollection = collection || "";
     panel.dataset.activeCollection = activeCollection;
@@ -2173,18 +2194,66 @@ function initIndexingStatus() {
     poll(true);
   };
 
+  const closeActiveJob = () => {
+    const remaining = dismissTrackedIndexingJob(activeJobId);
+    if (remaining.length > 0) {
+      onSelectJob(remaining[0].id, remaining[0].collection);
+    } else {
+      stop();
+      panel.hidden = true;
+    }
+  };
+
   // Close / Dismiss button
   const dismissBtn = panel.querySelector("[data-indexing-dismiss]");
   if (dismissBtn) {
     dismissBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      const remaining = dismissTrackedIndexingJob(activeJobId);
-      if (remaining.length > 0) {
-        onSelectJob(remaining[0].id, remaining[0].collection);
-      } else {
-        stop();
-        panel.hidden = true;
-      }
+      cancelAutoClose();
+      closeActiveJob();
+    });
+  }
+
+  // "Close automatically when finished": the choice is remembered in the
+  // browser; a finished job is closed after a short moment (so its final
+  // state can still be seen), finished background jobs leave the switcher.
+  const autoCloseBox = panel.querySelector("[data-indexing-autoclose]");
+  let autoCloseTimer = null;
+  const autoCloseOn = () => Boolean(autoCloseBox && autoCloseBox.checked);
+  function cancelAutoClose() {
+    if (autoCloseTimer) {
+      window.clearTimeout(autoCloseTimer);
+      autoCloseTimer = null;
+    }
+  }
+  function dropFinishedBackgroundJobs() {
+    loadTrackedIndexingJobs()
+      .filter((j) => j.finished && String(j.id) !== String(activeJobId))
+      .forEach((j) => dismissTrackedIndexingJob(j.id));
+  }
+  function maybeAutoClose(currentFinished) {
+    if (!autoCloseOn()) {
+      cancelAutoClose();
+      return;
+    }
+    dropFinishedBackgroundJobs();
+    if (!currentFinished || autoCloseTimer || panel.hidden) return;
+    autoCloseTimer = window.setTimeout(() => {
+      autoCloseTimer = null;
+      if (autoCloseOn()) closeActiveJob();
+    }, INDEXING_AUTOCLOSE_DELAY_MS);
+  }
+  const isActiveFinished = () =>
+    !panel.classList.contains("is-running") &&
+    loadTrackedIndexingJobs().some(
+      (j) => String(j.id) === String(activeJobId) && j.finished
+    );
+  if (autoCloseBox) {
+    autoCloseBox.checked = readIndexingAutoClose();
+    autoCloseBox.addEventListener("change", () => {
+      writeIndexingAutoClose(autoCloseBox.checked);
+      maybeAutoClose(isActiveFinished());
+      updateIndexingSwitcher(panel, activeJobId, onSelectJob);
     });
   }
 
@@ -2247,8 +2316,9 @@ function initIndexingStatus() {
         if (activeCollection === String(panel.dataset.collection || "")) {
           refreshIndexingRows(payload.documents);
         }
-        updateIndexingSwitcher(panel, activeJobId, onSelectJob);
         isCurrentFinished = payload.job.finished === true;
+        maybeAutoClose(isCurrentFinished);
+        updateIndexingSwitcher(panel, activeJobId, onSelectJob);
       } catch (error) {
         if (error && error.name === "AbortError") return;
         failures += 1;
@@ -2295,6 +2365,9 @@ function initIndexingStatus() {
   if (hasRunningJobs) {
     schedule();
   }
+  // a page rendered with an already finished job (e.g. right after a submit)
+  maybeAutoClose(isActiveFinished());
+  if (autoCloseOn()) updateIndexingSwitcher(panel, activeJobId, onSelectJob);
 }
 
 /* ----------------------------------------------- small page behaviours */

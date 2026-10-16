@@ -699,6 +699,9 @@ def check_indexing(client) -> None:
         and "waiting: 2" in running_page
         and 'data-doc-index-badge="indexing"' in running_page
         and 'data-doc-index-badge="pending"' in running_page
+        and 'data-doc-index-badge="indexed"' in running_page
+        and ">indexed</span>" in running_page
+        and "data-indexing-autoclose" in running_page
         and 'data-indexing-dismiss' in running_page
         and 'data-indexing-switcher' in running_page
         and 'data-indexing-tabs' in running_page,
@@ -712,6 +715,9 @@ def check_indexing(client) -> None:
         and "Indeksowany dokument: queue-3.pdf" in polish_page
         and "Zaindeksowane dokumenty: 2 z 3" in polish_page
         and "oczekuj" in polish_page
+        and ">zaindeksowany</span>" in polish_page
+        and ">w trakcie indeksowania</span>" in polish_page
+        and "Zamknij automatycznie po zakończeniu indeksowania" in polish_page
         and not UNTRANSLATED_KEY.findall(polish_page),
         str(UNTRANSLATED_KEY.findall(polish_page)) + indexing_panel(polish_page),
     )
