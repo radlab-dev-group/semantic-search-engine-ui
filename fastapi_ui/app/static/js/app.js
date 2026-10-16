@@ -872,52 +872,254 @@ function initCollectionBanner() {
   }
 }
 
-/* --------------------------------------------------------- upload summary */
-function initFileSummary() {
-  const fileInput = document.querySelector("[data-file-summary]");
-  if (!fileInput) return;
-
-  const summary = document.querySelector(fileInput.dataset.fileSummary);
-  if (!summary) return;
-
-  const render = () => {
-    const files = Array.from(fileInput.files || []);
-    if (!files.length) {
-      summary.textContent = t("no_files", {}, "No files selected yet.");
-      return;
-    }
-
-    const bytes = files.reduce((total, file) => total + file.size, 0);
-    const number = new Intl.NumberFormat(LANG, { maximumFractionDigits: 1 });
-    const size = bytes > 1048576
-      ? `${number.format(bytes / 1048576)} MB`
-      : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-    summary.textContent = t(
-      "files_selected",
-      { n: files.length, size },
-      "{n} file(s) selected · {size}"
-    );
-  };
-
-  fileInput.addEventListener("change", render);
-  render();
-}
-
 /* ------------------------------------------------------- upload dropzone */
+// Supports dragging files one by one or in batches, accumulating them in a
+// file queue using DataTransfer so previous files are not lost. Renders a list
+// of queued files with format badge, name, size and individual remove buttons.
 function initDropzone() {
   document.querySelectorAll("[data-dropzone]").forEach((zone) => {
     const input = zone.querySelector("input[type='file']");
-    const setActive = (active) => zone.classList.toggle("is-dragover", active);
-    ["dragenter", "dragover"].forEach((name) =>
-      zone.addEventListener(name, () => setActive(true))
-    );
-    ["dragleave", "drop"].forEach((name) =>
-      zone.addEventListener(name, () => setActive(false))
-    );
-    if (input) {
-      input.addEventListener("change", () =>
-        zone.classList.toggle("has-files", Boolean(input.files && input.files.length))
+    if (!input) return;
+
+    const summary = input.dataset.fileSummary
+      ? document.querySelector(input.dataset.fileSummary)
+      : null;
+    const queue = input.dataset.fileQueue
+      ? document.querySelector(input.dataset.fileQueue)
+      : null;
+    const list = input.dataset.fileList
+      ? document.querySelector(input.dataset.fileList)
+      : (queue ? queue.querySelector(".file-list") : null);
+    const queueSummary = queue
+      ? queue.querySelector(".file-queue__summary")
+      : null;
+    const clearBtn = queue
+      ? queue.querySelector("[data-file-clear]")
+      : null;
+
+    let selectedFiles = [];
+    let isSyncing = false;
+
+    const formatSize = (bytes) => {
+      const b = Number(bytes) || 0;
+      const number = new Intl.NumberFormat(LANG, { maximumFractionDigits: 1 });
+      return b > 1048576
+        ? `${number.format(b / 1048576)} MB`
+        : `${Math.max(1, Math.round(b / 1024))} KB`;
+    };
+
+    const fileExt = (name) => {
+      const dot = name.lastIndexOf(".");
+      if (dot <= 0 || dot === name.length - 1) return "FILE";
+      const ext = name.slice(dot + 1).toUpperCase();
+      return ext.length > 5 ? ext.slice(0, 5) : ext;
+    };
+
+    const syncInput = () => {
+      if (typeof DataTransfer !== "undefined") {
+        isSyncing = true;
+        try {
+          const dt = new DataTransfer();
+          selectedFiles.forEach((file) => dt.items.add(file));
+          input.files = dt.files;
+        } catch (error) {
+          console.warn("Could not sync DataTransfer to file input:", error);
+        } finally {
+          isSyncing = false;
+        }
+      }
+    };
+
+    const render = () => {
+      const count = selectedFiles.length;
+      zone.classList.toggle("has-files", count > 0);
+
+      if (!count) {
+        if (summary) {
+          summary.textContent = t("no_files", {}, "No files selected yet.");
+          summary.hidden = false;
+        }
+        if (queue) {
+          queue.hidden = true;
+        }
+        if (list) {
+          list.innerHTML = "";
+        }
+        return;
+      }
+
+      const totalBytes = selectedFiles.reduce(
+        (total, file) => total + (file.size || 0),
+        0
       );
+      const sizeText = formatSize(totalBytes);
+      const summaryText = t(
+        "files_selected",
+        { n: count, size: sizeText },
+        "{n} file(s) selected · {size}"
+      );
+
+      if (summary) {
+        summary.textContent = summaryText;
+        summary.hidden = Boolean(queue);
+      }
+
+      if (queue) {
+        queue.hidden = false;
+        if (queueSummary) {
+          queueSummary.textContent = summaryText;
+        }
+      }
+
+      if (list) {
+        list.innerHTML = "";
+        selectedFiles.forEach((file, index) => {
+          const li = document.createElement("li");
+          li.className = "file-item";
+
+          const info = document.createElement("div");
+          info.className = "file-item__info";
+
+          const badge = document.createElement("span");
+          badge.className = "file-item__badge";
+          badge.textContent = fileExt(file.name);
+
+          const name = document.createElement("span");
+          name.className = "file-item__name";
+          name.textContent = file.name;
+          name.title = file.name;
+
+          info.appendChild(badge);
+          info.appendChild(name);
+
+          const meta = document.createElement("div");
+          meta.className = "file-item__meta";
+
+          const size = document.createElement("span");
+          size.className = "file-item__size";
+          size.textContent = formatSize(file.size || 0);
+
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "file-item__remove";
+          const removeTitle = t("remove_file", {}, "Usuń plik");
+          removeBtn.title = removeTitle;
+          removeBtn.setAttribute("aria-label", `${removeTitle}: ${file.name}`);
+          removeBtn.innerHTML =
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+          removeBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            removeFile(index);
+          });
+
+          meta.appendChild(size);
+          meta.appendChild(removeBtn);
+
+          li.appendChild(info);
+          li.appendChild(meta);
+          list.appendChild(li);
+        });
+      }
+    };
+
+    const addFiles = (fileList) => {
+      const incoming = Array.from(fileList || []);
+      if (!incoming.length) return;
+
+      const seen = new Set(
+        selectedFiles.map((f) => `${f.name}:${f.size}:${f.lastModified}`)
+      );
+      let added = false;
+      for (const file of incoming) {
+        const key = `${file.name}:${file.size}:${file.lastModified}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          selectedFiles.push(file);
+          added = true;
+        }
+      }
+
+      if (added) {
+        syncInput();
+        render();
+      }
+    };
+
+    const removeFile = (index) => {
+      if (index >= 0 && index < selectedFiles.length) {
+        selectedFiles.splice(index, 1);
+        syncInput();
+        render();
+      }
+    };
+
+    const clearFiles = () => {
+      selectedFiles = [];
+      syncInput();
+      render();
+    };
+
+    input.addEventListener("change", () => {
+      if (isSyncing) return;
+      if (input.files && input.files.length) {
+        addFiles(input.files);
+      }
+    });
+
+    const form = input.closest("form");
+    if (form) {
+      form.addEventListener("reset", () => {
+        clearFiles();
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        clearFiles();
+      });
+    }
+
+    const setActive = (active) => zone.classList.toggle("is-dragover", active);
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      zone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+        setActive(true);
+      });
+      input.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+        setActive(true);
+      });
+    });
+
+    ["dragleave", "dragend"].forEach((eventName) => {
+      zone.addEventListener(eventName, (e) => {
+        if (!zone.contains(e.relatedTarget)) {
+          setActive(false);
+        }
+      });
+    });
+
+    const onDrop = (e) => {
+      e.preventDefault();
+      setActive(false);
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        addFiles(e.dataTransfer.files);
+      }
+    };
+
+    zone.addEventListener("drop", onDrop);
+    input.addEventListener("drop", onDrop);
+
+    if (input.files && input.files.length) {
+      addFiles(input.files);
+    } else {
+      render();
     }
   });
 }
@@ -1995,7 +2197,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initSliders();
   initParamsPanel();
   initCollectionBanner();
-  initFileSummary();
   initDropzone();
   initChunkPreview();
   initChunkingMode();

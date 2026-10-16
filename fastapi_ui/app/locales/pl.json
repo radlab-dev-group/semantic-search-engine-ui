@@ -317,6 +317,9 @@
     "add_files": "Dodaj pliki do kolekcji",
     "dropzone_html": "Upuść pliki tutaj lub <u>wybierz z dysku</u>",
     "no_files_selected": "Nie wybrano jeszcze plików.",
+    "queued_files": "Pliki przygotowane do wgrania",
+    "clear_all": "Wyczyść listę",
+    "remove_file": "Usuń plik",
     "indexing_options": "Opcje indeksowania dokumentów",
     "chunk_preview": "Podgląd podziału na chunki",
     "legend_chunk": "chunk",
@@ -573,6 +576,8 @@
     "answer_failed": "Nie udało się wczytać wygenerowanej odpowiedzi. Sprawdź połączenie i uruchom wyszukiwanie ponownie.",
     "working": "Przetwarzanie…",
     "no_files": "Nie wybrano jeszcze plików.",
+    "remove_file": "Usuń plik",
+    "clear_all_files": "Wyczyść listę",
     "files_selected": {
       "one": "Wybrano {n} plik · {size}",
       "few": "Wybrano {n} pliki · {size}",

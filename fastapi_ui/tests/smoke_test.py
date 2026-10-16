@@ -410,6 +410,17 @@ def check_chunking(client) -> None:
     # --- Indexing: settings of the collection vs. custom values --------- #
     page = client.get("/documents/upload?collection_name=user_col").text
     check(
+        "dropzone provides file queue and list containers with clear button",
+        'data-file-summary="#file-summary"' in page
+        and 'data-file-queue="#file-queue"' in page
+        and 'data-file-list="#file-list"' in page
+        and 'class="file-queue" id="file-queue" hidden' in page
+        and 'class="file-queue__summary" id="file-queue-summary"' in page
+        and 'class="file-queue__clear" data-file-clear' in page
+        and 'class="file-list" id="file-list"' in page,
+        "",
+    )
+    check(
         "indexing forms default to the chunking of the collection",
         page.count('name="chunking_mode" value="collection" checked') == 2
         and page.count("512 tokens · overlap 32") == 2

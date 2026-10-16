@@ -299,6 +299,9 @@
     "add_files": "Add files to collection",
     "dropzone_html": "Drop files here or <u>browse</u>",
     "no_files_selected": "No files selected yet.",
+    "queued_files": "Files queued for upload",
+    "clear_all": "Clear list",
+    "remove_file": "Remove file",
     "indexing_options": "Documents indexing options",
     "chunk_preview": "Chunking preview",
     "legend_chunk": "chunk",
@@ -543,6 +546,8 @@
     "answer_failed": "Could not load the generated answer. Check the connection and run the search again.",
     "working": "Working…",
     "no_files": "No files selected yet.",
+    "remove_file": "Remove file",
+    "clear_all_files": "Clear list",
     "files_selected": {
       "one": "{n} file selected · {size}",
       "other": "{n} files selected · {size}"
