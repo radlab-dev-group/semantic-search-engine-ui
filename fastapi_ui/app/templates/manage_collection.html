@@ -9,6 +9,9 @@
 
   {% include "partials/messages.html" %}
 
+  {#- Indexing of the newest request: bar, counters, current document -#}
+  {% include "partials/indexing_status.html" %}
+
   {% if not collections %}
     <div class="card">
       <div class="empty-state">
@@ -103,6 +106,19 @@
                           <span class="doc-path-badge">{{ doc.relative_path }}</span>
                         {% endif %}
                         <span class="doc-state-badge{% if in_search %} hidden{% endif %}" data-doc-state>{{ t('manage.disabled_badge') }}</span>
+                        {#- A document of a running/queued indexing request; "indexed"
+                            needs no badge, it is the state of every normal document -#}
+                        {% if doc.indexing_status and doc.indexing_status != 'indexed' %}
+                          <span class="doc-state-badge doc-index-badge doc-index-badge--{{ doc.indexing_status }}"
+                                data-doc-index-badge="{{ doc.indexing_status }}"
+                                title="{{ t('indexing.title') }}">
+                            {{ {'pending': t('indexing.doc_pending'),
+                                'indexing': t('indexing.doc_indexing'),
+                                'failed': t('indexing.doc_failed'),
+                                'skipped': t('indexing.doc_skipped')}
+                                 .get(doc.indexing_status, doc.indexing_status) }}
+                          </span>
+                        {% endif %}
                       </td>
                       <td class="doc-td--action">
                         <div class="doc-actions">
