@@ -698,7 +698,10 @@ def check_indexing(client) -> None:
         and "Documents indexed: 1 of 3" in running_page
         and "waiting: 2" in running_page
         and 'data-doc-index-badge="indexing"' in running_page
-        and 'data-doc-index-badge="pending"' in running_page,
+        and 'data-doc-index-badge="pending"' in running_page
+        and 'data-indexing-dismiss' in running_page
+        and 'data-indexing-switcher' in running_page
+        and 'data-indexing-tabs' in running_page,
         indexing_panel(running_page)
         + " || "
         + str(re.findall(r'data-doc-index-badge="([a-z]+)"', running_page)),

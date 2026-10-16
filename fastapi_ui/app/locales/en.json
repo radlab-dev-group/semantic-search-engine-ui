@@ -620,10 +620,17 @@
     "indexing_doc_pending": "waiting for indexing",
     "indexing_doc_indexing": "indexing",
     "indexing_doc_failed": "indexing failed",
-    "indexing_doc_skipped": "skipped"
+    "indexing_doc_skipped": "skipped",
+    "indexing_process_tab": "{collection} #{id}",
+    "indexing_dismiss": "Close indexing information",
+    "indexing_active_badge": "{percent}%",
+    "indexing_done_badge": "Completed"
   },
   "indexing": {
     "title": "Indexing progress",
+    "processes": "Indexing processes",
+    "process_collection": "Collection",
+    "dismiss_title": "Close indexing information",
     "queued": "Waiting in the queue",
     "preparing": "Preparing documents",
     "indexing": "Indexing",

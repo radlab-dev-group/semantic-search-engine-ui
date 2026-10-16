@@ -664,10 +664,17 @@
     "indexing_doc_pending": "czeka na indeksowanie",
     "indexing_doc_indexing": "indeksowany",
     "indexing_doc_failed": "błąd indeksacji",
-    "indexing_doc_skipped": "pominięty"
+    "indexing_doc_skipped": "pominięty",
+    "indexing_process_tab": "{collection} #{id}",
+    "indexing_dismiss": "Zamknij informację o indeksacji",
+    "indexing_active_badge": "{percent}%",
+    "indexing_done_badge": "Ukończono"
   },
   "indexing": {
     "title": "Postęp indeksowania",
+    "processes": "Procesy indeksowania",
+    "process_collection": "Kolekcja",
+    "dismiss_title": "Zamknij informację o indeksacji",
     "queued": "Oczekuje w kolejce",
     "preparing": "Przygotowywanie dokumentów",
     "indexing": "Indeksowanie",

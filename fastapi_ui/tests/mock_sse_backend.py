@@ -582,7 +582,8 @@ class MockHandler(BaseHTTPRequestHandler):
                     )
                 job = _latest_indexing_job(name)
             # every question moves the fake queue one step forward
-            _advance_indexing(job)
+            if job is not None:
+                _advance_indexing(job)
             return self._send(_ok(_indexing_body(job)))
         if ep == "documents":
             if query.get("with_disabled") == "true":

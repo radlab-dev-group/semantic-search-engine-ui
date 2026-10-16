@@ -1826,6 +1826,133 @@ const INDEXING_ROW_LABELS = {
   skipped: "indexing_doc_skipped",
 };
 const MAX_INDEXING_FAILURES = 3;
+const INDEXING_STORAGE_KEY = "sse-indexing-jobs";
+
+function loadTrackedIndexingJobs() {
+  try {
+    const raw = window.localStorage.getItem(INDEXING_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const now = Date.now();
+    return parsed.filter(
+      (job) => job && job.id && !job.dismissed && now - (job.timestamp || now) < 86400000
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveTrackedIndexingJobs(jobs) {
+  try {
+    window.localStorage.setItem(INDEXING_STORAGE_KEY, JSON.stringify(jobs.slice(0, 20)));
+  } catch {}
+}
+
+function recordTrackedIndexingJob(jobData) {
+  if (!jobData || !jobData.id) return loadTrackedIndexingJobs();
+  const jobs = loadTrackedIndexingJobs();
+  const existingIdx = jobs.findIndex((j) => String(j.id) === String(jobData.id));
+  const entry = {
+    id: jobData.id,
+    collection: jobData.collection || "",
+    status: jobData.status || "queued",
+    percent: Number(jobData.percent) || 0,
+    total: Number(jobData.total) || 0,
+    done: Number(jobData.done) || 0,
+    finished: Boolean(jobData.finished),
+    timestamp: jobData.timestamp || Date.now(),
+    dismissed: false,
+  };
+  if (existingIdx >= 0) {
+    jobs[existingIdx] = { ...jobs[existingIdx], ...entry };
+  } else {
+    jobs.unshift(entry);
+  }
+  saveTrackedIndexingJobs(jobs);
+  return jobs;
+}
+
+function dismissTrackedIndexingJob(jobId) {
+  const jobs = loadTrackedIndexingJobs();
+  const target = jobs.find((j) => String(j.id) === String(jobId));
+  if (target) {
+    target.dismissed = true;
+  }
+  const remaining = jobs.filter((j) => !j.dismissed);
+  saveTrackedIndexingJobs(remaining);
+  return remaining;
+}
+
+function updateIndexingSwitcher(panel, activeJobId, onSelectJob) {
+  const switcher = panel.querySelector("[data-indexing-switcher]");
+  const tabs = panel.querySelector("[data-indexing-tabs]");
+  if (!switcher || !tabs) return;
+
+  const jobs = loadTrackedIndexingJobs();
+  if (jobs.length <= 1) {
+    switcher.hidden = true;
+    tabs.innerHTML = "";
+    return;
+  }
+
+  switcher.hidden = false;
+  tabs.innerHTML = "";
+  jobs.forEach((job) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `indexing-tab${String(job.id) === String(activeJobId) ? " is-active" : ""}`;
+    btn.dataset.jobId = String(job.id);
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", String(job.id) === String(activeJobId));
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "indexing-tab__name";
+    nameSpan.textContent = job.collection || "SSE";
+
+    const idSpan = document.createElement("span");
+    idSpan.className = "indexing-tab__id";
+    idSpan.textContent = `#${job.id}`;
+
+    const badgeSpan = document.createElement("span");
+    badgeSpan.className = `indexing-tab__badge indexing-badge--${job.status || "queued"}`;
+    if (job.finished) {
+      badgeSpan.textContent = job.status === "completed"
+        ? t("indexing_done_badge", {}, "Ukończono")
+        : indexingStatusLabel(panel, job.status);
+    } else {
+      badgeSpan.textContent = `${Math.max(0, Math.min(100, Number(job.percent) || 0))}%`;
+    }
+
+    btn.appendChild(nameSpan);
+    btn.appendChild(idSpan);
+    btn.appendChild(badgeSpan);
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (typeof onSelectJob === "function") onSelectJob(job.id, job.collection);
+    });
+
+    tabs.appendChild(btn);
+  });
+}
+
+function updateIndexingCollectionLink(panel, collection) {
+  const collBox = panel.querySelector("[data-indexing-coll-link]");
+  const collAnchor = panel.querySelector("[data-indexing-coll-anchor]");
+  if (!collBox || !collAnchor) return;
+
+  const currentColl = String(panel.dataset.collection || "").trim();
+  const jobColl = String(collection || "").trim();
+
+  if (jobColl && currentColl && jobColl !== currentColl) {
+    collBox.classList.remove("hidden");
+    collAnchor.textContent = jobColl;
+    collAnchor.href = `/collections/manage?collection_name=${encodeURIComponent(jobColl)}`;
+  } else {
+    collBox.classList.add("hidden");
+  }
+}
 
 // The words of the job statuses come from the panel (data-label-*), the rest
 // of the texts from the "js" section of the locale file.
@@ -1860,6 +1987,18 @@ function renderIndexingPanel(panel, payload) {
   const running = job.finished === false;
   const total = Number(job.total_documents) || 0;
   const done = Number(job.documents_processed) || 0;
+
+  if (job.id) {
+    recordTrackedIndexingJob({
+      id: job.id,
+      collection: panel.dataset.activeCollection || panel.dataset.collection,
+      status: job.status,
+      percent: job.percent,
+      total: job.total_documents,
+      done: job.documents_processed,
+      finished: job.finished,
+    });
+  }
 
   INDEXING_PANEL_STATUSES.forEach((name) => {
     panel.classList.remove(`indexing-panel--${name}`);
@@ -1933,7 +2072,7 @@ function renderIndexingPanel(panel, payload) {
   const hint = panel.querySelector("[data-indexing-hint]");
   if (hint && !hint.classList.contains("indexing-panel__hint--error")) {
     hint.textContent = t("indexing_queued_note");
-    hint.classList.toggle("hidden", running);
+    hint.classList.toggle("hidden", !running);
   }
 }
 
@@ -1977,20 +2116,39 @@ function reportIndexingFailure(panel) {
 
 function initIndexingStatus() {
   const panel = document.querySelector("[data-indexing-status]");
-  // A finished job is shown once and never polled; a running one is followed
-  // until the engine reports it as finished (or the page gives up).
-  if (!panel || !panel.classList.contains("is-running")) return;
+  if (!panel) return;
 
   const interval = Math.max(500, Number(panel.dataset.pollInterval) || 2000);
   const limit = Math.max(interval, Number(panel.dataset.pollTimeout) || 1800000);
-  const query = new URLSearchParams();
-  if (panel.dataset.collection) query.set("collection_name", panel.dataset.collection);
-  if (panel.dataset.jobId) query.set("job_id", panel.dataset.jobId);
-  const url = `/collections/indexing-status?${query}`;
-  const startedAt = Date.now();
+
+  let activeJobId = panel.dataset.jobId || "";
+  let activeCollection = panel.dataset.collection || "";
+  panel.dataset.activeCollection = activeCollection;
+
+  // Record initial job if present
+  if (activeJobId) {
+    recordTrackedIndexingJob({
+      id: activeJobId,
+      collection: activeCollection,
+      status: panel.dataset.jobStatus || (panel.classList.contains("is-running") ? "indexing" : "completed"),
+      percent: Number(panel.dataset.jobPercent) || 0,
+      total: Number(panel.dataset.jobTotal) || 0,
+      done: Number(panel.dataset.jobDone) || 0,
+      finished: panel.dataset.jobFinished === "true" || !panel.classList.contains("is-running"),
+    });
+  } else {
+    const jobs = loadTrackedIndexingJobs();
+    if (jobs.length > 0) {
+      activeJobId = jobs[0].id;
+      activeCollection = jobs[0].collection;
+      panel.dataset.activeCollection = activeCollection;
+    }
+  }
+
   let failures = 0;
   let timer = null;
   let controller = null;
+  const startedAt = Date.now();
 
   const stop = () => {
     if (timer) {
@@ -1999,43 +2157,122 @@ function initIndexingStatus() {
     }
     if (controller) controller.abort();
   };
+
   const schedule = () => {
     if (!timer) timer = window.setTimeout(poll, interval);
   };
 
-  async function poll() {
+  const onSelectJob = (jobId, collection) => {
+    activeJobId = String(jobId);
+    activeCollection = collection || "";
+    panel.dataset.activeCollection = activeCollection;
+    updateIndexingCollectionLink(panel, activeCollection);
+    updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+    failures = 0;
+    stop();
+    poll(true);
+  };
+
+  // Close / Dismiss button
+  const dismissBtn = panel.querySelector("[data-indexing-dismiss]");
+  if (dismissBtn) {
+    dismissBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const remaining = dismissTrackedIndexingJob(activeJobId);
+      if (remaining.length > 0) {
+        onSelectJob(remaining[0].id, remaining[0].collection);
+      } else {
+        stop();
+        panel.hidden = true;
+      }
+    });
+  }
+
+  updateIndexingCollectionLink(panel, activeCollection);
+  updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+
+  async function pollBackgroundJobs() {
+    const jobs = loadTrackedIndexingJobs().filter(
+      (j) => !j.finished && String(j.id) !== String(activeJobId)
+    );
+    for (const otherJob of jobs) {
+      try {
+        const query = new URLSearchParams();
+        if (otherJob.collection) query.set("collection_name", otherJob.collection);
+        if (otherJob.id) query.set("job_id", String(otherJob.id));
+        const res = await fetch(`/collections/indexing-status?${query}`, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data && data.status && data.job) {
+          recordTrackedIndexingJob({
+            id: data.job.id,
+            collection: otherJob.collection,
+            status: data.job.status,
+            percent: data.job.percent,
+            total: data.job.total_documents,
+            done: data.job.documents_processed,
+            finished: data.job.finished,
+          });
+        }
+      } catch {}
+    }
+    updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+  }
+
+  async function poll(force) {
     timer = null;
     controller = new AbortController();
-    let finished = false;
-    try {
-      const response = await fetch(url, {
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-        signal: controller.signal,
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (response.status === 401) {
-        window.location.href = "/login";
-        return;
-      }
-      if (!response.ok || !payload.status || !payload.job) throw new Error("indexing");
-      failures = 0;
-      renderIndexingPanel(panel, payload);
-      refreshIndexingRows(payload.documents);
-      finished = payload.job.finished === true;
-    } catch (error) {
-      if (error && error.name === "AbortError") return;
-      failures += 1;
-      if (failures >= MAX_INDEXING_FAILURES) {
-        reportIndexingFailure(panel);
-        stop();
-        return;
+    let isCurrentFinished = false;
+
+    if (activeJobId || activeCollection) {
+      try {
+        const query = new URLSearchParams();
+        if (activeCollection) query.set("collection_name", activeCollection);
+        if (activeJobId) query.set("job_id", String(activeJobId));
+        const response = await fetch(`/collections/indexing-status?${query}`, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!response.ok || !payload.status || !payload.job) throw new Error("indexing");
+        failures = 0;
+        renderIndexingPanel(panel, payload);
+        if (activeCollection === String(panel.dataset.collection || "")) {
+          refreshIndexingRows(payload.documents);
+        }
+        updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+        isCurrentFinished = payload.job.finished === true;
+      } catch (error) {
+        if (error && error.name === "AbortError") return;
+        failures += 1;
+        if (failures >= MAX_INDEXING_FAILURES) {
+          reportIndexingFailure(panel);
+          stop();
+          return;
+        }
       }
     }
-    if (finished || Date.now() - startedAt > limit) {
+
+    await pollBackgroundJobs();
+
+    const anyRunning = loadTrackedIndexingJobs().some((j) => !j.finished);
+    if (!anyRunning && isCurrentFinished) {
       stop();
       return;
     }
+
+    if (Date.now() - startedAt > limit) {
+      stop();
+      return;
+    }
+
     schedule();
   }
 
@@ -2048,11 +2285,16 @@ function initIndexingStatus() {
       }
       return;
     }
-    if (panel.classList.contains("is-running")) schedule();
+    const anyRunning = loadTrackedIndexingJobs().some((j) => !j.finished) || panel.classList.contains("is-running");
+    if (anyRunning) schedule();
   });
   window.addEventListener("pagehide", stop);
 
-  schedule();
+  // If panel is running or there are active jobs in local storage, start polling
+  const hasRunningJobs = loadTrackedIndexingJobs().some((j) => !j.finished) || panel.classList.contains("is-running");
+  if (hasRunningJobs) {
+    schedule();
+  }
 }
 
 /* ----------------------------------------------- small page behaviours */

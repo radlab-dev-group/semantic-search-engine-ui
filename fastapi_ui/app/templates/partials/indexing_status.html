@@ -32,13 +32,36 @@
       } -%}
   <section class="indexing-panel{% if running %} is-running{% endif %} indexing-panel--{{ job.status }}" role="status" aria-live="polite" data-indexing-status
            data-collection="{{ selected_collection }}" data-job-id="{{ job.id if job.id else '' }}"
+           data-job-status="{{ job.status }}" data-job-finished="{{ 'true' if job.finished else 'false' }}"
+           data-job-percent="{{ job.percent | int }}" data-job-total="{{ job.total_documents | int }}"
+           data-job-done="{{ job.documents_processed | int }}"
            data-poll-interval="{{ constants.INDEXING_POLL_INTERVAL_MS }}" data-poll-timeout="{{ constants.INDEXING_POLL_TIMEOUT_MS }}"
            data-label-queued="{{ labels.queued }}" data-label-preparing="{{ labels.preparing }}"
            data-label-indexing="{{ labels.indexing }}" data-label-completed="{{ labels.completed }}"
            data-label-partial="{{ labels.partial }}" data-label-failed="{{ labels.failed }}">
     <div class="indexing-panel__head">
-      <p class="indexing-panel__title">{{ t('indexing.title') }}</p>
-      <span class="indexing-badge indexing-badge--{{ job.status }}" data-indexing-badge>{{ labels.get(job.status, job.status) }}</span>
+      <div class="indexing-panel__head-main">
+        <p class="indexing-panel__title">{{ t('indexing.title') }}</p>
+        <span class="indexing-badge indexing-badge--{{ job.status }}" data-indexing-badge>{{ labels.get(job.status, job.status) }}</span>
+      </div>
+      <button type="button" class="indexing-panel__close" data-indexing-dismiss title="{{ t('indexing.dismiss_title') }}" aria-label="{{ t('indexing.dismiss_title') }}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="indexing-switcher" data-indexing-switcher hidden>
+      <span class="indexing-switcher__label">{{ t('indexing.processes') }}</span>
+      <div class="indexing-switcher__list" data-indexing-tabs role="tablist" aria-label="{{ t('indexing.processes') }}"></div>
+    </div>
+
+    <p class="indexing-panel__coll-link hidden" data-indexing-coll-link>
+      <span class="muted">{{ t('indexing.process_collection') }}:</span>
+      <a class="mono" data-indexing-coll-anchor href="#"></a>
+    </p>
+
+    <div class="indexing-panel__summary">
+      <p class="indexing-panel__count" data-indexing-count>{% if job.total_documents %}{{ t('indexing.documents_done', done=job.documents_processed, total=job.total_documents) }}{% else %}{{ labels.preparing }}{% endif %}</p>
+      <span class="indexing-panel__percent{% if not job.total_documents %} hidden{% endif %}" data-indexing-percent>{{ job.percent | int }}%</span>
     </div>
 
     {#- Without the number of documents the share is not known yet -#}
@@ -49,13 +72,10 @@
       <span class="indexing-progress__bar" data-indexing-bar></span>
     </div>
 
-    <p class="indexing-panel__count" data-indexing-count>{% if job.total_documents %}{{ t('indexing.documents_done', done=job.documents_processed, total=job.total_documents) }}{% else %}{{ labels.preparing }}{% endif %}</p>
-
     <ul class="indexing-panel__stats">
       <li class="indexing-stat indexing-stat--waiting{% if not job.documents_pending %} hidden{% endif %}" data-indexing-waiting>{{ t('indexing.documents_pending', n=job.documents_pending | int) }}</li>
       <li class="indexing-stat indexing-stat--failed{% if not job.documents_failed %} hidden{% endif %}" data-indexing-failed-count>{{ t('indexing.documents_failed', n=job.documents_failed | int) }}</li>
       <li class="indexing-stat indexing-stat--skipped{% if not job.documents_skipped %} hidden{% endif %}" data-indexing-skipped>{{ t('indexing.documents_skipped', n=job.documents_skipped | int) }}</li>
-      <li class="indexing-stat indexing-stat--percent{% if not job.total_documents %} hidden{% endif %}" data-indexing-percent>{{ job.percent | int }}%</li>
     </ul>
 
     <p class="indexing-panel__current{% if not running %} hidden{% endif %}" data-indexing-current>
