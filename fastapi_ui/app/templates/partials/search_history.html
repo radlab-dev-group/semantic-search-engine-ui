@@ -26,16 +26,25 @@
           {% for item in history %}
             {% set current = history_current is defined and item.id == history_current %}
             <li data-history-item data-query="{{ item.query | lower }}">
-              <a class="history__item{% if current %} is-current{% endif %}" href="/search/history/{{ item.id }}"{% if current %} aria-current="true"{% endif %} title="{{ t('history.open_title') }}">
-                <span class="history__query">{{ item.query or t('history.no_query') }}</span>
-                <span class="history__meta">
-                  <span class="history__tag">{{ t.plural('history.snippets', item.snippets) }}</span>
-                  <span class="history__tag">{{ t.plural('history.documents', item.documents) }}</span>
-                  {% if item.answered %}<span class="history__tag history__tag--answer">✦ {{ t('history.answered') }}</span>{% endif %}
-                  {% if item.rate_value is not none %}<span class="history__tag history__tag--rating" title="{{ t('history.rating_title') }}">★ {{ item.rate_value }}/{{ item.rate_value_max }}</span>{% endif %}
-                  {% if current %}<span class="history__tag history__tag--current">{{ t('history.current') }}</span>{% endif %}
-                </span>
-              </a>
+              <div class="history__entry">
+                <a class="history__item{% if current %} is-current{% endif %}" href="/search/history/{{ item.id }}"{% if current %} aria-current="true"{% endif %} title="{{ t('history.open_title') }}">
+                  <span class="history__query">{{ item.query or t('history.no_query') }}</span>
+                  <span class="history__meta">
+                    <span class="history__tag">{{ t.plural('history.snippets', item.snippets) }}</span>
+                    <span class="history__tag">{{ t.plural('history.documents', item.documents) }}</span>
+                    {% if item.answered %}<span class="history__tag history__tag--answer">✦ {{ t('history.answered') }}</span>{% endif %}
+                    {% if item.rate_value is not none %}<span class="history__tag history__tag--rating" title="{{ t('history.rating_title') }}">★ {{ item.rate_value }}/{{ item.rate_value_max }}</span>{% endif %}
+                    {% if current %}<span class="history__tag history__tag--current">{{ t('history.current') }}</span>{% endif %}
+                  </span>
+                </a>
+                <button type="submit" formaction="/search/history/{{ item.id }}/delete" formmethod="post" formnovalidate
+                        class="btn btn--danger-ghost btn--sm btn--icon history__delete"
+                        data-confirm="{{ t('history.delete_confirm') }}"
+                        data-confirm-title="{{ t('history.delete_title') }}"
+                        data-confirm-ok="{{ t('history.delete') }}"
+                        data-confirm-items="{{ item.query or t('history.no_query') }}"
+                        title="{{ t('history.delete_title') }}" aria-label="{{ t('history.delete_title') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l.9 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12"/><path d="M10 11v5.5M14 11v5.5"/></svg></button>
+              </div>
             </li>
           {% endfor %}
         </ol>

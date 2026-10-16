@@ -430,6 +430,11 @@
     "filter_placeholder": "Filtruj historię…",
     "filter_label": "Filtruj historię wyszukiwań",
     "open_title": "Pokaż pytanie, wyniki i odpowiedź z tego wyszukiwania",
+    "delete": "Usuń",
+    "delete_title": "Usuń to wyszukiwanie z historii",
+    "delete_confirm": "Czy na pewno usunąć to wyszukiwanie z historii?",
+    "deleted": "Wyszukiwanie usunięto z historii.",
+    "delete_failed": "Nie udało się usunąć wyszukiwania z historii.",
     "no_query": "(bez pytania)",
     "snippets": {
       "one": "{n} fragment",

@@ -182,6 +182,11 @@ class SemanticSearchEngineAPI(BaseApiInterface):
                     "get_search_history", "api/get_search_history"
                 )
             )
+            self.delete_search_history = (
+                api_config.semantic_search_engine_endpoints.get(
+                    "delete_search_history", "api/delete_search_history"
+                )
+            )
             self.delete_collection = (
                 api_config.semantic_search_engine_endpoints.get(
                     "delete_collection", "api/delete_collection"
@@ -450,6 +455,17 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             api_function=self._engine_ep.get_search_history,
             params={"query_response_id": int(query_response_id)},
             data=None,
+        )
+        return response
+
+    def delete_search_history(self, token: str, query_response_id: int):
+        """Delete one historical search and its saved answers."""
+        response = self.general_call_post(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.delete_search_history,
+            params=None,
+            json_data={"query_response_id": int(query_response_id)},
         )
         return response
 

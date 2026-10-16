@@ -1393,6 +1393,8 @@ def search_page(request: Request):
     data = fetch_page_context(token, collection_name)
     if "error" in data:
         return render_api_error(request, data["error"])
+    t = translator(request)
+    delete_status = request.query_params.get("history_delete")
     return render_page(
         request,
         "search.html",
@@ -1400,6 +1402,8 @@ def search_page(request: Request):
         prompt=params.value("prompt", ""),
         search_params=params.for_collection(collection_name),
         history=fetch_search_history(token, collection_name),
+        success=t("history.deleted") if delete_status == "success" else None,
+        error=t("history.delete_failed") if delete_status == "error" else None,
         **data,
     )
 
@@ -1705,6 +1709,32 @@ def search_history_panel(
     return JSONResponse(
         {"status": history is not None, "count": len(history or []), "html": html}
     )
+
+
+@app.post("/search/history/{query_response_id}/delete", include_in_schema=False)
+async def delete_search_history(request: Request, query_response_id: int):
+    """Delete one history entry and return to its collection's history."""
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    form = await request.form()
+    collection_name = str(form.get("collection_name") or "")
+    try:
+        response = sse_api_engine.delete_search_history(
+            token=get_token(request), query_response_id=query_response_id
+        )
+    except Exception:  # noqa: BLE001 - keep API failures within the search flow
+        logger.exception("Cannot delete search history entry %s", query_response_id)
+        response = None
+
+    deleted = isinstance(response, dict) and response.get("status") is True
+    if deleted:
+        set_state(request, **{LAST_QUERY_RESPONSE_ID: None})
+    query = {"history_delete": "success" if deleted else "error"}
+    if collection_name:
+        query["collection_name"] = collection_name
+    return RedirectResponse(url="/search?" + urlencode(query), status_code=303)
 
 
 @app.get("/search/history/{query_response_id}", include_in_schema=False)
