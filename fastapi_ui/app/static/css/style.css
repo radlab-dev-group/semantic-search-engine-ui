@@ -3458,8 +3458,16 @@ input[type="range"]::-moz-range-thumb {
   display: none;
 }
 
+.history__entry {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
 .history__item {
   display: grid;
+  flex: 1;
+  min-width: 0;
   gap: 0.35rem;
   padding: 0.6rem 0.85rem;
   border: 1px solid var(--border);

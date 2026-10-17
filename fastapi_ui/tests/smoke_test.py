@@ -49,6 +49,9 @@ config = {
                 "generative_answer": "api/generative_answer",
                 "rate_generative_answer": "api/rate_generative_answer",
                 "upload_and_index_files": "api/upload_and_index_files",
+                "search_history": "api/search_history",
+                "get_search_history": "api/get_search_history",
+                "delete_search_history": "api/delete_search_history",
                 "delete_collection": "api/delete_collection",
                 "delete_documents": "api/delete_documents",
                 "delete_texts": "api/delete_texts",
@@ -1555,6 +1558,14 @@ def main() -> int:
             "",
         )
         check(
+            "history entries provide a confirmed delete action",
+            'formaction="/search/history/42/delete"' in history_html
+            and "formnovalidate" in history_html
+            and 'data-confirm-title="Delete this search from history"' in history_html
+            and 'data-confirm-items="Jak wygląda proces ofertowy?"' in history_html,
+            "",
+        )
+        check(
             "history panel is open when there are no results",
             re.search(r'<details class="history__box" open', history_html) is not None,
             "",
@@ -1648,6 +1659,25 @@ def main() -> int:
             broken.get("status") is False
             and "Could not fetch the search history" in broken.get("html", ""),
             str(broken)[:300],
+        )
+        deleted_history = client.post(
+            "/search/history/41/delete",
+            data={"collection_name": "user_col"},
+            follow_redirects=False,
+        )
+        delete_sent = last_request("POST", "api/delete_search_history")
+        history_after_delete = client.get(deleted_history.headers["location"])
+        check(
+            "delete history entry calls the engine and returns to its collection",
+            deleted_history.status_code == 303
+            and deleted_history.headers.get("location")
+            == "/search?history_delete=success&collection_name=user_col"
+            and delete_sent.get("body", {}).get("query_response_id") == 41
+            and delete_sent.get("auth") == "Token test-token-123"
+            and "The search was removed from history." in history_after_delete.text
+            and 'href="/search/history/41"' not in history_after_delete.text
+            and 'href="/search/history/42"' in history_after_delete.text,
+            str(delete_sent),
         )
 
         # --- JSON options endpoint + static + logout ------------------------ #

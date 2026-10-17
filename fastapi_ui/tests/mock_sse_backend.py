@@ -423,6 +423,24 @@ class MockHandler(BaseHTTPRequestHandler):
                     }
                 )
             )
+        if ep == "delete_search_history":
+            query_response_id = str(body.get("query_response_id"))
+            before = len(SEARCH_HISTORY)
+            SEARCH_HISTORY[:] = [
+                entry
+                for entry in SEARCH_HISTORY
+                if str(entry.get("query_response_id")) != query_response_id
+            ]
+            if len(SEARCH_HISTORY) == before:
+                return self._send(
+                    {
+                        "status": False,
+                        "errors": [
+                            {"code": "NOT_FOUND", "msg": "Search not found"}
+                        ],
+                    }
+                )
+            return self._send(_ok({"deleted": True}))
         if ep == "upload_and_index_files":
             refused = _refused_chunking(
                 body.get("collection_name"),
