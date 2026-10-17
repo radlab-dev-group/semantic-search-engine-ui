@@ -872,52 +872,254 @@ function initCollectionBanner() {
   }
 }
 
-/* --------------------------------------------------------- upload summary */
-function initFileSummary() {
-  const fileInput = document.querySelector("[data-file-summary]");
-  if (!fileInput) return;
-
-  const summary = document.querySelector(fileInput.dataset.fileSummary);
-  if (!summary) return;
-
-  const render = () => {
-    const files = Array.from(fileInput.files || []);
-    if (!files.length) {
-      summary.textContent = t("no_files", {}, "No files selected yet.");
-      return;
-    }
-
-    const bytes = files.reduce((total, file) => total + file.size, 0);
-    const number = new Intl.NumberFormat(LANG, { maximumFractionDigits: 1 });
-    const size = bytes > 1048576
-      ? `${number.format(bytes / 1048576)} MB`
-      : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-    summary.textContent = t(
-      "files_selected",
-      { n: files.length, size },
-      "{n} file(s) selected · {size}"
-    );
-  };
-
-  fileInput.addEventListener("change", render);
-  render();
-}
-
 /* ------------------------------------------------------- upload dropzone */
+// Supports dragging files one by one or in batches, accumulating them in a
+// file queue using DataTransfer so previous files are not lost. Renders a list
+// of queued files with format badge, name, size and individual remove buttons.
 function initDropzone() {
   document.querySelectorAll("[data-dropzone]").forEach((zone) => {
     const input = zone.querySelector("input[type='file']");
-    const setActive = (active) => zone.classList.toggle("is-dragover", active);
-    ["dragenter", "dragover"].forEach((name) =>
-      zone.addEventListener(name, () => setActive(true))
-    );
-    ["dragleave", "drop"].forEach((name) =>
-      zone.addEventListener(name, () => setActive(false))
-    );
-    if (input) {
-      input.addEventListener("change", () =>
-        zone.classList.toggle("has-files", Boolean(input.files && input.files.length))
+    if (!input) return;
+
+    const summary = input.dataset.fileSummary
+      ? document.querySelector(input.dataset.fileSummary)
+      : null;
+    const queue = input.dataset.fileQueue
+      ? document.querySelector(input.dataset.fileQueue)
+      : null;
+    const list = input.dataset.fileList
+      ? document.querySelector(input.dataset.fileList)
+      : (queue ? queue.querySelector(".file-list") : null);
+    const queueSummary = queue
+      ? queue.querySelector(".file-queue__summary")
+      : null;
+    const clearBtn = queue
+      ? queue.querySelector("[data-file-clear]")
+      : null;
+
+    let selectedFiles = [];
+    let isSyncing = false;
+
+    const formatSize = (bytes) => {
+      const b = Number(bytes) || 0;
+      const number = new Intl.NumberFormat(LANG, { maximumFractionDigits: 1 });
+      return b > 1048576
+        ? `${number.format(b / 1048576)} MB`
+        : `${Math.max(1, Math.round(b / 1024))} KB`;
+    };
+
+    const fileExt = (name) => {
+      const dot = name.lastIndexOf(".");
+      if (dot <= 0 || dot === name.length - 1) return "FILE";
+      const ext = name.slice(dot + 1).toUpperCase();
+      return ext.length > 5 ? ext.slice(0, 5) : ext;
+    };
+
+    const syncInput = () => {
+      if (typeof DataTransfer !== "undefined") {
+        isSyncing = true;
+        try {
+          const dt = new DataTransfer();
+          selectedFiles.forEach((file) => dt.items.add(file));
+          input.files = dt.files;
+        } catch (error) {
+          console.warn("Could not sync DataTransfer to file input:", error);
+        } finally {
+          isSyncing = false;
+        }
+      }
+    };
+
+    const render = () => {
+      const count = selectedFiles.length;
+      zone.classList.toggle("has-files", count > 0);
+
+      if (!count) {
+        if (summary) {
+          summary.textContent = t("no_files", {}, "No files selected yet.");
+          summary.hidden = false;
+        }
+        if (queue) {
+          queue.hidden = true;
+        }
+        if (list) {
+          list.innerHTML = "";
+        }
+        return;
+      }
+
+      const totalBytes = selectedFiles.reduce(
+        (total, file) => total + (file.size || 0),
+        0
       );
+      const sizeText = formatSize(totalBytes);
+      const summaryText = t(
+        "files_selected",
+        { n: count, size: sizeText },
+        "{n} file(s) selected · {size}"
+      );
+
+      if (summary) {
+        summary.textContent = summaryText;
+        summary.hidden = Boolean(queue);
+      }
+
+      if (queue) {
+        queue.hidden = false;
+        if (queueSummary) {
+          queueSummary.textContent = summaryText;
+        }
+      }
+
+      if (list) {
+        list.innerHTML = "";
+        selectedFiles.forEach((file, index) => {
+          const li = document.createElement("li");
+          li.className = "file-item";
+
+          const info = document.createElement("div");
+          info.className = "file-item__info";
+
+          const badge = document.createElement("span");
+          badge.className = "file-item__badge";
+          badge.textContent = fileExt(file.name);
+
+          const name = document.createElement("span");
+          name.className = "file-item__name";
+          name.textContent = file.name;
+          name.title = file.name;
+
+          info.appendChild(badge);
+          info.appendChild(name);
+
+          const meta = document.createElement("div");
+          meta.className = "file-item__meta";
+
+          const size = document.createElement("span");
+          size.className = "file-item__size";
+          size.textContent = formatSize(file.size || 0);
+
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "file-item__remove";
+          const removeTitle = t("remove_file", {}, "Usuń plik");
+          removeBtn.title = removeTitle;
+          removeBtn.setAttribute("aria-label", `${removeTitle}: ${file.name}`);
+          removeBtn.innerHTML =
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+          removeBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            removeFile(index);
+          });
+
+          meta.appendChild(size);
+          meta.appendChild(removeBtn);
+
+          li.appendChild(info);
+          li.appendChild(meta);
+          list.appendChild(li);
+        });
+      }
+    };
+
+    const addFiles = (fileList) => {
+      const incoming = Array.from(fileList || []);
+      if (!incoming.length) return;
+
+      const seen = new Set(
+        selectedFiles.map((f) => `${f.name}:${f.size}:${f.lastModified}`)
+      );
+      let added = false;
+      for (const file of incoming) {
+        const key = `${file.name}:${file.size}:${file.lastModified}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          selectedFiles.push(file);
+          added = true;
+        }
+      }
+
+      if (added) {
+        syncInput();
+        render();
+      }
+    };
+
+    const removeFile = (index) => {
+      if (index >= 0 && index < selectedFiles.length) {
+        selectedFiles.splice(index, 1);
+        syncInput();
+        render();
+      }
+    };
+
+    const clearFiles = () => {
+      selectedFiles = [];
+      syncInput();
+      render();
+    };
+
+    input.addEventListener("change", () => {
+      if (isSyncing) return;
+      if (input.files && input.files.length) {
+        addFiles(input.files);
+      }
+    });
+
+    const form = input.closest("form");
+    if (form) {
+      form.addEventListener("reset", () => {
+        clearFiles();
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        clearFiles();
+      });
+    }
+
+    const setActive = (active) => zone.classList.toggle("is-dragover", active);
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      zone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+        setActive(true);
+      });
+      input.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+        setActive(true);
+      });
+    });
+
+    ["dragleave", "dragend"].forEach((eventName) => {
+      zone.addEventListener(eventName, (e) => {
+        if (!zone.contains(e.relatedTarget)) {
+          setActive(false);
+        }
+      });
+    });
+
+    const onDrop = (e) => {
+      e.preventDefault();
+      setActive(false);
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        addFiles(e.dataTransfer.files);
+      }
+    };
+
+    zone.addEventListener("drop", onDrop);
+    input.addEventListener("drop", onDrop);
+
+    if (input.files && input.files.length) {
+      addFiles(input.files);
+    } else {
+      render();
     }
   });
 }
@@ -1602,6 +1804,572 @@ function initDocVisibility() {
   });
 }
 
+/* ------------------------------------------------- indexing progress */
+// The engine indexes a document at a time, in a Celery queue when it runs one
+// (ENV_USE_CELERY=1) or inside the upload request otherwise; both modes report
+// the same numbers. While a job is running the panel asks
+// /collections/indexing-status for the newest state: how many documents are
+// already indexed, which one is being indexed, how many are still waiting and
+// which ones failed. The badges of the document rows follow the same answer.
+const INDEXING_PANEL_STATUSES = [
+  "queued",
+  "preparing",
+  "indexing",
+  "completed",
+  "partial",
+  "failed",
+];
+const INDEXING_ROW_LABELS = {
+  pending: "indexing_doc_pending",
+  indexing: "indexing_doc_indexing",
+  indexed: "indexing_doc_indexed",
+  failed: "indexing_doc_failed",
+  skipped: "indexing_doc_skipped",
+};
+const MAX_INDEXING_FAILURES = 3;
+const INDEXING_STORAGE_KEY = "sse-indexing-jobs";
+
+function loadTrackedIndexingJobs() {
+  try {
+    const raw = window.localStorage.getItem(INDEXING_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const now = Date.now();
+    return parsed.filter(
+      (job) => job && job.id && !job.dismissed && now - (job.timestamp || now) < 86400000
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveTrackedIndexingJobs(jobs) {
+  try {
+    window.localStorage.setItem(INDEXING_STORAGE_KEY, JSON.stringify(jobs.slice(0, 20)));
+  } catch {}
+}
+
+function recordTrackedIndexingJob(jobData) {
+  if (!jobData || !jobData.id) return loadTrackedIndexingJobs();
+  const jobs = loadTrackedIndexingJobs();
+  const existingIdx = jobs.findIndex((j) => String(j.id) === String(jobData.id));
+  const entry = {
+    id: jobData.id,
+    collection: jobData.collection || "",
+    status: jobData.status || "queued",
+    percent: Number(jobData.percent) || 0,
+    total: Number(jobData.total) || 0,
+    done: Number(jobData.done) || 0,
+    finished: Boolean(jobData.finished),
+    timestamp: jobData.timestamp || Date.now(),
+    dismissed: false,
+  };
+  if (existingIdx >= 0) {
+    jobs[existingIdx] = { ...jobs[existingIdx], ...entry };
+  } else {
+    jobs.unshift(entry);
+  }
+  saveTrackedIndexingJobs(jobs);
+  return jobs;
+}
+
+const INDEXING_AUTOCLOSE_KEY = "sse-indexing-autoclose";
+const INDEXING_AUTOCLOSE_DELAY_MS = 2500;
+
+function readIndexingAutoClose() {
+  try {
+    return window.localStorage.getItem(INDEXING_AUTOCLOSE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeIndexingAutoClose(on) {
+  try {
+    window.localStorage.setItem(INDEXING_AUTOCLOSE_KEY, on ? "1" : "0");
+  } catch {}
+}
+
+function dismissTrackedIndexingJob(jobId) {
+  const jobs = loadTrackedIndexingJobs();
+  const target = jobs.find((j) => String(j.id) === String(jobId));
+  if (target) {
+    target.dismissed = true;
+  }
+  const remaining = jobs.filter((j) => !j.dismissed);
+  saveTrackedIndexingJobs(remaining);
+  return remaining;
+}
+
+function updateIndexingSwitcher(panel, activeJobId, onSelectJob) {
+  const switcher = panel.querySelector("[data-indexing-switcher]");
+  const tabs = panel.querySelector("[data-indexing-tabs]");
+  if (!switcher || !tabs) return;
+
+  const jobs = loadTrackedIndexingJobs();
+  if (jobs.length <= 1) {
+    switcher.hidden = true;
+    tabs.innerHTML = "";
+    return;
+  }
+
+  switcher.hidden = false;
+  tabs.innerHTML = "";
+  jobs.forEach((job) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `indexing-tab${String(job.id) === String(activeJobId) ? " is-active" : ""}`;
+    btn.dataset.jobId = String(job.id);
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", String(job.id) === String(activeJobId));
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "indexing-tab__name";
+    nameSpan.textContent = job.collection || "SSE";
+
+    const idSpan = document.createElement("span");
+    idSpan.className = "indexing-tab__id";
+    idSpan.textContent = `#${job.id}`;
+
+    const badgeSpan = document.createElement("span");
+    badgeSpan.className = `indexing-tab__badge indexing-badge--${job.status || "queued"}`;
+    if (job.finished) {
+      badgeSpan.textContent = job.status === "completed"
+        ? t("indexing_done_badge", {}, "Ukończono")
+        : indexingStatusLabel(panel, job.status);
+    } else {
+      badgeSpan.textContent = `${Math.max(0, Math.min(100, Number(job.percent) || 0))}%`;
+    }
+
+    btn.appendChild(nameSpan);
+    btn.appendChild(idSpan);
+    btn.appendChild(badgeSpan);
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (typeof onSelectJob === "function") onSelectJob(job.id, job.collection);
+    });
+
+    tabs.appendChild(btn);
+  });
+}
+
+function updateIndexingCollectionLink(panel, collection) {
+  const collBox = panel.querySelector("[data-indexing-coll-link]");
+  const collAnchor = panel.querySelector("[data-indexing-coll-anchor]");
+  if (!collBox || !collAnchor) return;
+
+  const currentColl = String(panel.dataset.collection || "").trim();
+  const jobColl = String(collection || "").trim();
+
+  if (jobColl && currentColl && jobColl !== currentColl) {
+    collBox.classList.remove("hidden");
+    collAnchor.textContent = jobColl;
+    collAnchor.href = `/collections/manage?collection_name=${encodeURIComponent(jobColl)}`;
+  } else {
+    collBox.classList.add("hidden");
+  }
+}
+
+// The words of the job statuses come from the panel (data-label-*), the rest
+// of the texts from the "js" section of the locale file.
+function indexingStatusLabel(panel, status) {
+  const key = `label${String(status).replace(/^./, (letter) => letter.toUpperCase())}`;
+  return panel.dataset[key] || String(status);
+}
+
+function setIndexingStat(panel, selector, key, value) {
+  const node = panel.querySelector(selector);
+  if (!node) return;
+  const count = Number(value) || 0;
+  node.textContent = t(key, { n: count });
+  node.classList.toggle("hidden", count === 0);
+}
+
+function setIndexingBar(panel, percent, known) {
+  const track = panel.querySelector("[data-indexing-progress]");
+  const bar = panel.querySelector("[data-indexing-bar]");
+  const value = Math.max(0, Math.min(100, Number(percent) || 0));
+  if (track) {
+    track.classList.toggle("is-indeterminate", !known);
+    track.dataset.percent = String(value);
+    track.setAttribute("aria-valuenow", String(value));
+  }
+  if (bar) bar.style.width = known ? `${value}%` : "";
+}
+
+function renderIndexingPanel(panel, payload) {
+  const job = payload.job || {};
+  const status = String(job.status || "queued");
+  const running = job.finished === false;
+  const total = Number(job.total_documents) || 0;
+  const done = Number(job.documents_processed) || 0;
+
+  if (job.id) {
+    recordTrackedIndexingJob({
+      id: job.id,
+      collection: panel.dataset.activeCollection || panel.dataset.collection,
+      status: job.status,
+      percent: job.percent,
+      total: job.total_documents,
+      done: job.documents_processed,
+      finished: job.finished,
+    });
+  }
+
+  INDEXING_PANEL_STATUSES.forEach((name) => {
+    panel.classList.remove(`indexing-panel--${name}`);
+  });
+  panel.classList.add(`indexing-panel--${status}`);
+  panel.classList.toggle("is-running", running);
+
+  const badge = panel.querySelector("[data-indexing-badge]");
+  if (badge) badge.textContent = indexingStatusLabel(panel, status);
+
+  setIndexingBar(panel, job.percent, total > 0);
+
+  const count = panel.querySelector("[data-indexing-count]");
+  if (count) {
+    count.textContent = total
+      ? t("indexing_done", { done, total })
+      : indexingStatusLabel(panel, "preparing");
+  }
+  setIndexingStat(
+    panel, "[data-indexing-waiting]", "indexing_waiting", job.documents_pending
+  );
+  setIndexingStat(
+    panel, "[data-indexing-failed-count]", "indexing_failed_count", job.documents_failed
+  );
+  setIndexingStat(
+    panel, "[data-indexing-skipped]", "indexing_skipped_count", job.documents_skipped
+  );
+
+  const percent = panel.querySelector("[data-indexing-percent]");
+  if (percent) {
+    percent.textContent = `${Math.max(0, Math.min(100, Number(job.percent) || 0))}%`;
+    percent.classList.toggle("hidden", !total);
+  }
+
+  const current = panel.querySelector("[data-indexing-current]");
+  if (current) {
+    const name = String(job.current_document || "").trim();
+    current.textContent = running
+      ? name
+        ? t("indexing_current", { name })
+        : t("indexing_no_document")
+      : "";
+    current.classList.toggle("hidden", !running);
+  }
+
+  const failed = (payload.documents || [])
+    .filter((entry) => entry.indexing_status === "failed")
+    .map((entry) => entry.name);
+  const failedBox = panel.querySelector("[data-indexing-failed]");
+  if (failedBox) {
+    const names = failedBox.querySelector("[data-indexing-failed-names]");
+    if (names) names.textContent = failed.join(", ");
+    failedBox.classList.toggle("hidden", failed.length === 0);
+  }
+
+  const error = panel.querySelector("[data-indexing-error]");
+  if (error) {
+    error.textContent = job.error_message || "";
+    error.classList.toggle("hidden", !job.error_message);
+  }
+
+  const waiting = Number(job.documents_pending) || 0;
+  const collectionPending = panel.querySelector("[data-indexing-collection]");
+  if (collectionPending) {
+    collectionPending.textContent = t("indexing_session_pending", { n: waiting });
+    collectionPending.classList.toggle("hidden", waiting === 0);
+  }
+
+  // the hint of the queue stays only while the job is running (an error
+  // message written by reportIndexingFailure keeps its own text)
+  const hint = panel.querySelector("[data-indexing-hint]");
+  if (hint && !hint.classList.contains("indexing-panel__hint--error")) {
+    hint.textContent = t("indexing_queued_note");
+    hint.classList.toggle("hidden", !running);
+  }
+}
+
+// The badge of a document row follows the status of its document.
+function refreshIndexingRows(documents) {
+  const rows = new Map();
+  document.querySelectorAll("tr[data-name]").forEach((row) => rows.set(row.dataset.name, row));
+  (documents || []).forEach((entry) => {
+    const row = rows.get(String(entry.name || "").toLowerCase());
+    if (!row) return;
+    const status = String(entry.indexing_status || "");
+    const labelKey = INDEXING_ROW_LABELS[status];
+    let badge = row.querySelector("[data-doc-index-badge]");
+    if (!labelKey) {
+      // No longer known: the document needs no badge
+      if (badge) badge.remove();
+      return;
+    }
+    if (!badge) {
+      const name = row.querySelector(".doc-name-text");
+      if (!name) return;
+      badge = document.createElement("span");
+      badge.className = "doc-state-badge doc-index-badge";
+      name.after(badge);
+    }
+    badge.setAttribute("data-doc-index-badge", status);
+    // the class of the previous status must go, otherwise its colours stay
+    badge.className = `doc-state-badge doc-index-badge doc-index-badge--${status}`;
+    badge.textContent = t(labelKey);
+  });
+}
+
+function reportIndexingFailure(panel) {
+  panel.classList.remove("is-running");
+  const hint = panel.querySelector("[data-indexing-hint]");
+  if (hint) {
+    hint.textContent = t("indexing_unavailable", {}, "Could not load the indexing status.");
+    hint.classList.add("indexing-panel__hint--error");
+    hint.classList.remove("hidden");
+  }
+}
+
+function initIndexingStatus() {
+  const panel = document.querySelector("[data-indexing-status]");
+  if (!panel) return;
+
+  const interval = Math.max(500, Number(panel.dataset.pollInterval) || 2000);
+  const limit = Math.max(interval, Number(panel.dataset.pollTimeout) || 1800000);
+
+  let activeJobId = panel.dataset.jobId || "";
+  let activeCollection = panel.dataset.collection || "";
+  panel.dataset.activeCollection = activeCollection;
+
+  // Record initial job if present
+  if (activeJobId) {
+    recordTrackedIndexingJob({
+      id: activeJobId,
+      collection: activeCollection,
+      status: panel.dataset.jobStatus || (panel.classList.contains("is-running") ? "indexing" : "completed"),
+      percent: Number(panel.dataset.jobPercent) || 0,
+      total: Number(panel.dataset.jobTotal) || 0,
+      done: Number(panel.dataset.jobDone) || 0,
+      finished: panel.dataset.jobFinished === "true" || !panel.classList.contains("is-running"),
+    });
+  } else {
+    const jobs = loadTrackedIndexingJobs();
+    if (jobs.length > 0) {
+      activeJobId = jobs[0].id;
+      activeCollection = jobs[0].collection;
+      panel.dataset.activeCollection = activeCollection;
+    }
+  }
+
+  let failures = 0;
+  let timer = null;
+  let controller = null;
+  const startedAt = Date.now();
+
+  const stop = () => {
+    if (timer) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+    if (controller) controller.abort();
+  };
+
+  const schedule = () => {
+    if (!timer) timer = window.setTimeout(poll, interval);
+  };
+
+  const onSelectJob = (jobId, collection) => {
+    // a pending auto-close belongs to the job which is being left
+    cancelAutoClose();
+    activeJobId = String(jobId);
+    activeCollection = collection || "";
+    panel.dataset.activeCollection = activeCollection;
+    updateIndexingCollectionLink(panel, activeCollection);
+    updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+    failures = 0;
+    stop();
+    poll(true);
+  };
+
+  const closeActiveJob = () => {
+    const remaining = dismissTrackedIndexingJob(activeJobId);
+    if (remaining.length > 0) {
+      onSelectJob(remaining[0].id, remaining[0].collection);
+    } else {
+      stop();
+      panel.hidden = true;
+    }
+  };
+
+  // Close / Dismiss button
+  const dismissBtn = panel.querySelector("[data-indexing-dismiss]");
+  if (dismissBtn) {
+    dismissBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      cancelAutoClose();
+      closeActiveJob();
+    });
+  }
+
+  // "Close automatically when finished": the choice is remembered in the
+  // browser; a finished job is closed after a short moment (so its final
+  // state can still be seen), finished background jobs leave the switcher.
+  const autoCloseBox = panel.querySelector("[data-indexing-autoclose]");
+  let autoCloseTimer = null;
+  const autoCloseOn = () => Boolean(autoCloseBox && autoCloseBox.checked);
+  function cancelAutoClose() {
+    if (autoCloseTimer) {
+      window.clearTimeout(autoCloseTimer);
+      autoCloseTimer = null;
+    }
+  }
+  function dropFinishedBackgroundJobs() {
+    loadTrackedIndexingJobs()
+      .filter((j) => j.finished && String(j.id) !== String(activeJobId))
+      .forEach((j) => dismissTrackedIndexingJob(j.id));
+  }
+  function maybeAutoClose(currentFinished) {
+    if (!autoCloseOn()) {
+      cancelAutoClose();
+      return;
+    }
+    dropFinishedBackgroundJobs();
+    if (!currentFinished || autoCloseTimer || panel.hidden) return;
+    autoCloseTimer = window.setTimeout(() => {
+      autoCloseTimer = null;
+      if (autoCloseOn()) closeActiveJob();
+    }, INDEXING_AUTOCLOSE_DELAY_MS);
+  }
+  const isActiveFinished = () =>
+    !panel.classList.contains("is-running") &&
+    loadTrackedIndexingJobs().some(
+      (j) => String(j.id) === String(activeJobId) && j.finished
+    );
+  if (autoCloseBox) {
+    autoCloseBox.checked = readIndexingAutoClose();
+    autoCloseBox.addEventListener("change", () => {
+      writeIndexingAutoClose(autoCloseBox.checked);
+      maybeAutoClose(isActiveFinished());
+      updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+    });
+  }
+
+  updateIndexingCollectionLink(panel, activeCollection);
+  updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+
+  async function pollBackgroundJobs() {
+    const jobs = loadTrackedIndexingJobs().filter(
+      (j) => !j.finished && String(j.id) !== String(activeJobId)
+    );
+    for (const otherJob of jobs) {
+      try {
+        const query = new URLSearchParams();
+        if (otherJob.collection) query.set("collection_name", otherJob.collection);
+        if (otherJob.id) query.set("job_id", String(otherJob.id));
+        const res = await fetch(`/collections/indexing-status?${query}`, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data && data.status && data.job) {
+          recordTrackedIndexingJob({
+            id: data.job.id,
+            collection: otherJob.collection,
+            status: data.job.status,
+            percent: data.job.percent,
+            total: data.job.total_documents,
+            done: data.job.documents_processed,
+            finished: data.job.finished,
+          });
+        }
+      } catch {}
+    }
+    updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+  }
+
+  async function poll(force) {
+    timer = null;
+    controller = new AbortController();
+    let isCurrentFinished = false;
+
+    if (activeJobId || activeCollection) {
+      try {
+        const query = new URLSearchParams();
+        if (activeCollection) query.set("collection_name", activeCollection);
+        if (activeJobId) query.set("job_id", String(activeJobId));
+        const response = await fetch(`/collections/indexing-status?${query}`, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!response.ok || !payload.status || !payload.job) throw new Error("indexing");
+        failures = 0;
+        renderIndexingPanel(panel, payload);
+        if (activeCollection === String(panel.dataset.collection || "")) {
+          refreshIndexingRows(payload.documents);
+        }
+        isCurrentFinished = payload.job.finished === true;
+        maybeAutoClose(isCurrentFinished);
+        updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+      } catch (error) {
+        if (error && error.name === "AbortError") return;
+        failures += 1;
+        if (failures >= MAX_INDEXING_FAILURES) {
+          reportIndexingFailure(panel);
+          stop();
+          return;
+        }
+      }
+    }
+
+    await pollBackgroundJobs();
+
+    const anyRunning = loadTrackedIndexingJobs().some((j) => !j.finished);
+    if (!anyRunning && isCurrentFinished) {
+      stop();
+      return;
+    }
+
+    if (Date.now() - startedAt > limit) {
+      stop();
+      return;
+    }
+
+    schedule();
+  }
+
+  // A job is followed only while the page is really looked at.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      return;
+    }
+    const anyRunning = loadTrackedIndexingJobs().some((j) => !j.finished) || panel.classList.contains("is-running");
+    if (anyRunning) schedule();
+  });
+  window.addEventListener("pagehide", stop);
+
+  // If panel is running or there are active jobs in local storage, start polling
+  const hasRunningJobs = loadTrackedIndexingJobs().some((j) => !j.finished) || panel.classList.contains("is-running");
+  if (hasRunningJobs) {
+    schedule();
+  }
+  // a page rendered with an already finished job (e.g. right after a submit)
+  maybeAutoClose(isActiveFinished());
+  if (autoCloseOn()) updateIndexingSwitcher(panel, activeJobId, onSelectJob);
+}
+
 /* ----------------------------------------------- small page behaviours */
 function initAutosubmit() {
   document.querySelectorAll("form[data-autosubmit]").forEach((form) => {
@@ -1744,7 +2512,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initSliders();
   initParamsPanel();
   initCollectionBanner();
-  initFileSummary();
   initDropzone();
   initChunkPreview();
   initChunkingMode();
@@ -1765,6 +2532,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initConfirmDialogs();
   initDocList();
   initDocVisibility();
+  initIndexingStatus();
   initAutosubmit();
   initDismiss();
 });

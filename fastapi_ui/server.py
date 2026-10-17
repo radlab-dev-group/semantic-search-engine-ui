@@ -428,6 +428,40 @@ def document_row(entry) -> dict | None:
     return {**entry, "name": name, "use_in_search": bool(flag)}
 
 
+def fetch_indexing_status(
+    token: str, collection_name: str = "", job_id: int | None = None
+) -> dict | None:
+    """Progress of the indexing of a collection (its newest job) or of one job.
+
+    Wraps ``GET api/indexing_status``. ``None`` when the question cannot be
+    answered - an engine without the endpoint, a failing call, a collection
+    without indexing - so a page is rendered without the progress panel.
+    """
+    if not collection_name and job_id is None:
+        return None
+    try:
+        response = sse_api_engine.indexing_status(
+            token=token, collection_name=collection_name, job_id=job_id
+        )
+    except Exception as error:  # the panel must not break the page
+        logger.warning("Cannot fetch the indexing status: %s", error)
+        return None
+    if not isinstance(response, dict) or response.get("status") is False:
+        return None
+    body = response.get("body")
+    if not isinstance(body, dict):
+        return None
+    return {
+        "job": body.get("job") if isinstance(body.get("job"), dict) else None,
+        "documents": [
+            document
+            for document in body.get("documents") or []
+            if isinstance(document, dict)
+        ],
+        "pending_documents": int(body.get("pending_documents") or 0),
+    }
+
+
 def fetch_manage_collection_context(token: str, collection_name: str = "") -> dict:
     """All data required to render the collection management page."""
     data = fetch_collection_rows(token)
@@ -441,6 +475,7 @@ def fetch_manage_collection_context(token: str, collection_name: str = "") -> di
             "active_coll_info": None,
             "documents": [],
             "categories": [],
+            "indexing": None,
         }
 
     valid_names = [c["name"] for c in collections]
@@ -452,6 +487,10 @@ def fetch_manage_collection_context(token: str, collection_name: str = "") -> di
     active_coll_info = next(
         (c for c in collections if c["name"] == selected_collection), None
     )
+
+    # The progress is read before the documents: the badges of the rows and the
+    # panel of the page then describe the same moment of the indexing.
+    indexing = fetch_indexing_status(token, selected_collection)
 
     documents: list = []
     docs_result = sse_api_engine.list_documents_from_collection(
@@ -476,6 +515,8 @@ def fetch_manage_collection_context(token: str, collection_name: str = "") -> di
         "documents": documents,
         "disabled_count": sum(1 for doc in documents if not doc["use_in_search"]),
         "categories": categories,
+        # ``None`` when the engine has no api/indexing_status
+        "indexing": indexing,
     }
 
 
@@ -1091,13 +1132,22 @@ def manage_add_text_submit(
 
     body = result.get("body") or {}
     indexed_chunks = body.get("indexed_chunks", 1)
+    # "async": true - the engine only queued the text, a worker indexes it
+    queued = bool(body.get("async"))
 
     return render_kb_page(
         request,
         "upload_documents.html",
         collection_name,
         add_method="text",
-        success=t("manage.add_text_success", chunks=indexed_chunks),
+        success=(
+            t("manage.add_text_queued")
+            if queued
+            else t("manage.add_text_success", chunks=indexed_chunks)
+        ),
+        # The panel of the job just submitted is shown also when it has already
+        # finished (indexing in the request ends before this line is reached)
+        indexing_show=True,
     )
 
 
@@ -1363,14 +1413,22 @@ def upload_documents_submit(request: Request, form: FormData = Depends(parsed_fo
             )
         return page(error=t("upload.error_upload"))
 
+    body = (
+        upload_response.get("body")
+        if isinstance(upload_response.get("body"), dict)
+        else {}
+    )
     return page(
-        success=t("upload.success"),
+        # "async": true - the files are stored, a worker indexes them now
+        success=t("upload.queued") if body.get("async") else t("upload.success"),
         uploaded={
             "collection_name": collection_name,
             "files": len(uploaded_files),
             # None = the texts were split as the collection declares
             "chunking": parse_chunking(indexing_options),
         },
+        # see manage_add_text_submit: the panel of the submitted job is shown
+        indexing_show=True,
     )
 
 
@@ -1815,6 +1873,35 @@ def api_options(request: Request, collection_name: str = ""):
 
     filters = fetch_collection_filters(get_token(request), collection_name)
     return JSONResponse({"status": True, "body": filters})
+
+
+@app.get("/collections/indexing-status", include_in_schema=False)
+def indexing_status_json(
+    request: Request, collection_name: str = "", job_id: str = ""
+):
+    """JSON of the indexing progress panel (app.js polls it).
+
+    ``collection_name`` reports the newest indexing request of the collection,
+    ``job_id`` one request exactly (the id the upload answered with). The
+    answer is the body of ``GET api/indexing_status``: the job with its
+    counters and current document, its documents with their statuses, and how
+    many documents of the collection are still waiting.
+    """
+    redirect = require_login(request)
+    if redirect is not None:
+        return JSONResponse({"status": False, "login": True}, status_code=401)
+
+    status = fetch_indexing_status(
+        get_token(request),
+        str(collection_name or "").strip(),
+        as_int(job_id),
+    )
+    if status is None:
+        return JSONResponse(
+            {"status": False, "error": "indexing_status_unavailable"},
+            status_code=502,
+        )
+    return JSONResponse({"status": True, **status})
 
 
 @app.get("/healthz", include_in_schema=False)

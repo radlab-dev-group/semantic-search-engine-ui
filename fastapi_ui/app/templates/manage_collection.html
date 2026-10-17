@@ -9,6 +9,9 @@
 
   {% include "partials/messages.html" %}
 
+  {#- Indexing of the newest request: bar, counters, current document -#}
+  {% include "partials/indexing_status.html" %}
+
   {% if not collections %}
     <div class="card">
       <div class="empty-state">
@@ -91,6 +94,13 @@
                   </tr>
                 </thead>
                 <tbody>
+                  {#- The documents already indexed by the job shown in the panel -#}
+                  {% set job_indexed = [] %}
+                  {% if indexing and indexing.job and (indexing_show or not indexing.job.finished or indexing.pending_documents) %}
+                    {% for entry in indexing.documents or [] %}
+                      {% if entry.indexing_status == 'indexed' %}{% set _ = job_indexed.append((entry.name or '') | lower) %}{% endif %}
+                    {% endfor %}
+                  {% endif %}
                   {% for doc in documents %}
                     {% set in_search = doc.use_in_search %}
                     <tr class="doc-row{% if not in_search %} is-disabled{% endif %}" data-name="{{ doc.name | lower }}">
@@ -103,6 +113,23 @@
                           <span class="doc-path-badge">{{ doc.relative_path }}</span>
                         {% endif %}
                         <span class="doc-state-badge{% if in_search %} hidden{% endif %}" data-doc-state>{{ t('manage.disabled_badge') }}</span>
+                        {#- A document of a running/queued indexing request; "indexed"
+                            is the state of every normal document, so it is shown
+                            only for the documents of the job of the panel -#}
+                        {% set index_state = doc.indexing_status if doc.indexing_status != 'indexed'
+                             else ('indexed' if (doc.name | lower) in job_indexed else '') %}
+                        {% if index_state %}
+                          <span class="doc-state-badge doc-index-badge doc-index-badge--{{ index_state }}"
+                                data-doc-index-badge="{{ index_state }}"
+                                title="{{ t('indexing.title') }}">
+                            {{- {'pending': t('indexing.doc_pending'),
+                                'indexing': t('indexing.doc_indexing'),
+                                'indexed': t('indexing.doc_indexed'),
+                                'failed': t('indexing.doc_failed'),
+                                'skipped': t('indexing.doc_skipped')}
+                                 .get(index_state, index_state) -}}
+                          </span>
+                        {% endif %}
                       </td>
                       <td class="doc-td--action">
                         <div class="doc-actions">

@@ -44,6 +44,11 @@
       </div>
     {% endif %}
 
+    {#- Progress of the indexing: the queue of the engine (Celery) answers with
+        "async": true and a worker does the rest, so the submitter can follow
+        the job here without reloading the page -#}
+    {% include "partials/indexing_status.html" %}
+
     {% if not collections or collections | length == 0 %}
       <div class="empty-state">
         <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
@@ -73,12 +78,19 @@
               <label for="files">{{ t('upload.add_files') }} <span class="muted">(pdf, docx, txt, html, md, zip)</span></label>
               <div class="dropzone" data-dropzone>
                 <input type="file" id="files" name="files[]" accept=".pdf,.docx,.txt,.html,.md,.zip" multiple required
-                       data-file-summary="#file-summary">
+                       data-file-summary="#file-summary" data-file-queue="#file-queue" data-file-list="#file-list">
                 <span class="dropzone__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
                 <span class="dropzone__title">{{ t('upload.dropzone_html') }}</span>
                 <span class="dropzone__formats" aria-hidden="true"><i>PDF</i><i>DOCX</i><i>TXT</i><i>HTML</i><i>MD</i><i>ZIP</i></span>
               </div>
               <p class="muted file-summary" id="file-summary">{{ t('upload.no_files_selected') }}</p>
+              <div class="file-queue" id="file-queue" hidden>
+                <div class="file-queue__header">
+                  <span class="file-queue__summary" id="file-queue-summary"></span>
+                  <button type="button" class="file-queue__clear" data-file-clear>{{ t('upload.clear_all') }}</button>
+                </div>
+                <ul class="file-list" id="file-list" role="list"></ul>
+              </div>
             </div>
 
             <div class="card card--subtle">
