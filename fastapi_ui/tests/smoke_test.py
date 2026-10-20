@@ -45,6 +45,7 @@ config = {
                 "rerankers": "api/rerankers",
                 "categories": "api/categories",
                 "documents": "api/documents",
+                "document_content": "api/document_content",
                 "search_with_options": "api/search_with_options",
                 "generative_answer": "api/generative_answer",
                 "rate_generative_answer": "api/rate_generative_answer",
@@ -1061,6 +1062,161 @@ def main() -> int:
             "",
         )
 
+        # --- Preview of a whole document (window of its own) --------------- #
+        preview_href = "/collections/documents/preview"
+        row_query = "collection_name=user_col&amp;document_name={}"
+        row_link = f"{preview_href}?{row_query.format('b.pdf')}"
+        download_link = f"{preview_href}?{row_query.format('a.pdf')}&amp;download=1"
+        preview_links = re.findall(
+            r'<a class="[^"]*doc-preview-btn"[^>]*href="([^"]+)"', manage_page
+        )
+        check(
+            "every document row offers a preview in a new window",
+            len(preview_links) == 3
+            and preview_links[0] == row_link
+            and manage_page.count('target="_blank" rel="noopener"') >= 3
+            and ">Preview<" in manage_page,
+            str(preview_links),
+        )
+
+        preview = client.get(
+            "/collections/documents/preview",
+            params={"collection_name": "user_col", "document_name": "a.pdf"},
+        )
+        asked = last_request("GET", "api/document_content")
+        check(
+            "preview pulls the whole content of the document from the engine",
+            preview.status_code == 200
+            and asked.get("query", {})
+            == {"collection_name": "user_col", "document_name": "a.pdf"}
+            and asked.get("auth") == "Token test-token-123",
+            str(asked.get("query")),
+        )
+        check(
+            "preview window shows the document page by page",
+            "Oferta — strona 1" in preview.text
+            and "Załączniki." in preview.text
+            and preview.text.count("doc-preview__page-number") == 2,
+            "",
+        )
+        check(
+            "preview window offers the document as a .txt file",
+            f'href="{download_link}"' in preview.text,
+            "",
+        )
+
+        notice = re.search(
+            r'class="doc-preview__notice">(.*?)</p>', preview.text, re.DOTALL
+        )
+        check(
+            "the page window of the engine is announced in the preview",
+            notice is not None
+            and "2" in notice.group(1)
+            and "3" in notice.group(1)
+            and 'class="badge__value">3<' in preview.text,
+            str(notice and notice.group(1)),
+        )
+        check(
+            "the pages of the engine win over its stitched content",
+            server.document_preview_body(
+                {
+                    "status": True,
+                    "body": {
+                        "content": "raz\n\ndwa",
+                        "pages": [
+                            {"page": 1, "content": "raz"},
+                            {"page": 2, "content": "dwa"},
+                        ],
+                    },
+                }
+            )
+            == ([{"page": 1, "text": "raz"}, {"page": 2, "text": "dwa"}], "raz\n\ndwa"),
+            "",
+        )
+        check(
+            "the page window of an answer is read from its own fields",
+            server.document_preview_window(
+                {"status": True, "body": {"total_pages": 3, "truncated": True}}
+            )
+            == {"total_pages": 3, "partial": True}
+            and server.document_preview_window(
+                {"status": True, "body": {"total_pages": 2, "truncated": False}}
+            )
+            == {"total_pages": 2, "partial": False}
+            and server.document_preview_window({"status": True, "body": {}})
+            == {"total_pages": 0, "partial": False},
+            "",
+        )
+
+        single_page = client.get(
+            "/collections/documents/preview",
+            params={"collection_name": "user_col", "document_name": "b.pdf"},
+        ).text
+        check(
+            "a document returned as one text is shown without page marks",
+            "Cała treść dokumentu B." in single_page
+            and "Drugi akapit." in single_page
+            and "doc-preview__page-number" not in single_page,
+            "",
+        )
+        check(
+            "a document served in full is not announced as a window",
+            "doc-preview__notice" not in single_page,
+            "",
+        )
+
+        download = client.get(
+            "/collections/documents/preview",
+            params={
+                "collection_name": "user_col",
+                "document_name": "a.pdf",
+                "download": "1",
+            },
+        )
+        check(
+            "the download is the plain text of the document",
+            download.headers["content-type"].startswith("text/plain")
+            and "attachment" in download.headers["content-disposition"]
+            and "filename*=UTF-8''a.txt" in download.headers["content-disposition"]
+            and "Opis procesu ofertowego." in download.text
+            and "Załączniki." in download.text,
+            str(download.headers),
+        )
+
+        empty_preview = client.get(
+            "/collections/documents/preview",
+            params={"collection_name": "user_col", "document_name": "old.pdf"},
+        ).text
+        check(
+            "a document without any text says so instead of an empty page",
+            "This document has no content to show" in empty_preview,
+            "",
+        )
+
+        broken_preview = client.get(
+            "/collections/documents/preview",
+            params={"collection_name": "user_col", "document_name": "missing.pdf"},
+        ).text
+        check(
+            "an engine without the content of a document is reported in the window",
+            "The engine did not return the content of this document" in broken_preview,
+            "",
+        )
+
+        original_limit = server.constants.DOCUMENT_PREVIEW_MAX_CHARS
+        server.constants.DOCUMENT_PREVIEW_MAX_CHARS = 20
+        long_preview = client.get(
+            "/collections/documents/preview",
+            params={"collection_name": "user_col", "document_name": "a.pdf"},
+        ).text
+        server.constants.DOCUMENT_PREVIEW_MAX_CHARS = original_limit
+        check(
+            "a long document is cut in the window with a hint to the download",
+            "The first 20 characters of the document are shown" in long_preview
+            and "Załączniki." not in long_preview,
+            "",
+        )
+
         response = client.post(
             "/collections/manage/visibility",
             data={
@@ -2033,6 +2189,17 @@ def main() -> int:
         response = client.get("/search", follow_redirects=False)
         check(
             "after logout -> login",
+            response.status_code == 303 and "/login" in response.headers["location"],
+            str(response.headers),
+        )
+
+        response = client.get(
+            "/collections/documents/preview",
+            params={"collection_name": "user_col", "document_name": "a.pdf"},
+            follow_redirects=False,
+        )
+        check(
+            "the document preview asks for a login first",
             response.status_code == 303 and "/login" in response.headers["location"],
             str(response.headers),
         )
