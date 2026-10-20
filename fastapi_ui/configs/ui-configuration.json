@@ -17,6 +17,7 @@
         "rerankers": "api/rerankers",
         "categories": "api/categories",
         "documents": "api/documents",
+        "document_content": "api/document_content",
         "search_with_options": "api/search_with_options",
         "generative_answer": "api/generative_answer",
         "rate_generative_answer": "api/rate_generative_answer",

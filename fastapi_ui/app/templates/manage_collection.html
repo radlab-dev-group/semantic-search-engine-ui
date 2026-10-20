@@ -133,6 +133,15 @@
                       </td>
                       <td class="doc-td--action">
                         <div class="doc-actions">
+                        {#- The whole document, as the engine indexed it, in a
+                            window of its own (GET api/document_content) -#}
+                        <a class="btn btn--ghost btn--xs btn--icon doc-preview-btn"
+                           href="/collections/documents/preview?collection_name={{ selected_collection | urlencode }}&amp;document_name={{ doc.name | urlencode }}"
+                           target="_blank" rel="noopener"
+                           title="{{ t('manage.preview_doc_title', name=doc.name) }}"
+                           aria-label="{{ t('manage.preview_doc_title', name=doc.name) }}">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.9"/></svg><span class="doc-preview-btn__label">{{ t('manage.preview_doc_btn') }}</span>
+                        </a>
                         <button type="submit" class="doc-switch" role="switch" data-doc-toggle
                                 aria-checked="{{ 'true' if in_search else 'false' }}"
                                 formaction="/collections/manage/visibility?use_in_search={{ '0' if in_search else '1' }}"
