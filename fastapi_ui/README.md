@@ -154,10 +154,26 @@ silnik może zwrócić w `body`:
 
 | Kształt `body` | Co widać w oknie |
 | --- | --- |
-| `{"content": "…"}` (także `text` / `text_str` / `page_content`) | cały tekst w jednym bloku |
 | `{"pages": [{"page": 1, "content": "…"}, …]}` | treść strona po stronie z numerem strony |
+| `{"content": "…"}` (także `text` / `text_str` / `page_content`) | cały tekst w jednym bloku |
 | `{"texts": [...]}` / `{"chunks": [...]}` | chunki scalone w jednym tekście (wg `text_number` / `id`) |
 | `status: false` (brak endpointu, dokument nieznany) | komunikat o braku treści, bez pustej strony |
+
+Silnik odpowiada jednym `content` **i** tym samym tekstem w `pages[]` — numery
+stron wygrywają, więc okno ich nie wyrzuca. Pola okna (`total_pages`,
+`truncated`) mówią, czy doczytano tylko część dokumentu: licznik pokazuje
+wszystkie strony, a pod nagłówkiem pojawia się informacja, ile z nich
+zaprezentowano.
+
+Tekst w oknie jest **przygotowany do czytania** (`preview_text`): podwójne i
+dłuższe serie spacji w środku linii stają się jedną spacją, linia nie ma
+spacji na końcu, po kolei zostaje co najwyżej jedna pusta linia, a wcięcie
+większe niż 8 znaków jest przycinane do 8. Indeksowany PDF rozsuwa słowa
+setkami spacji i zostawia całe strony pustki, a okno ma czytać dokument, nie
+odtwarzać układu jego źródła; łamane są wyrazy, nie układ strony (CSS
+`overflow-wrap: anywhere`, inaczej tekst o niepodzielnym TOKEN-ie albo o
+setkach spacji rozpychał okno w poziomie). `Pobierz jako .txt` oddaje tekst
+silnika bez tych zmian.
 
 ## Uwagi implementacyjne
 
