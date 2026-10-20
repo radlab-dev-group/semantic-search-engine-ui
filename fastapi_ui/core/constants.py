@@ -47,3 +47,8 @@ ACCEPTED_FILE_EXTENSIONS = [".pdf", ".docx", ".txt", ".html", ".md", ".zip"]
 # indexing in its queue either way).
 INDEXING_POLL_INTERVAL_MS = 2000
 INDEXING_POLL_TIMEOUT_MS = 30 * 60 * 1000
+
+# Preview of a whole document (GET api/document_content): the window shows at
+# most this many characters, so that a huge document does not freeze the
+# browser. The .txt download always carries the whole content instead.
+DOCUMENT_PREVIEW_MAX_CHARS = 200_000
