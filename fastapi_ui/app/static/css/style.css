@@ -6311,14 +6311,25 @@ input[type="range"]::-moz-range-thumb {
   margin-inline-start: 0.3rem;
 }
 
+/* A file name is one word and the header has no room for every one of them. */
 .doc-preview__title {
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
-/* The text of the document is what the engine indexed: shown verbatim, with
-   the line breaks of the source, in a scrollable block. */
+/* The text of the document, with the line breaks of the source, in a block
+   which scrolls on its own (the whitespace of the layout is already gone, see
+   `preview_text` in `server.py`).
+
+   `overflow-wrap: anywhere` and not `break-word`: `anywhere` also shrinks the
+   *intrinsic* width of the text, so a block of it can never be wider than the
+   page.  A link, a hash or a base64 picture is one word which no one can
+   break, and a document indexed from a PDF still has lines a hundred
+   characters wide; with `break-word` the text asked for its full width and
+   stretched the whole window sideways. */
 .doc-preview__text {
   margin: 0;
+  min-width: 0;
+  max-width: 100%;
   padding: var(--space-4) var(--space-5);
   max-height: 60vh;
   overflow: auto;
@@ -6326,15 +6337,23 @@ input[type="range"]::-moz-range-thumb {
   font-size: 0.86rem;
   line-height: 1.65;
   white-space: pre-wrap;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  tab-size: 4;
   background: var(--bg-inset);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
 
+/* A grid sizes its column to the widest of its items, so the pages of the
+   document need the same room to shrink as the text in them. */
 .doc-preview__pages {
   display: grid;
   gap: var(--space-4);
+  min-width: 0;
+}
+
+.doc-preview__page {
+  min-width: 0;
 }
 
 .doc-preview__page-number {

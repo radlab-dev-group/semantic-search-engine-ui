@@ -548,6 +548,30 @@ DOCUMENT_PIECE_NUMBER_KEYS = (
 )
 
 
+# The whitespace an indexed document brings with it: a PDF sets the words of a
+# line apart with a run of spaces and leaves whole empty lines between the
+# blocks of its page.  A preview window reads a document, it does not
+# reproduce the layout of its source, so the preview makes one space of a run
+# of them, shows at most one empty line in a row and caps an indentation no
+# author meant.  The words and the line breaks stay where the engine has them,
+# and the .txt download carries the text of the engine as it is.
+PREVIEW_INNER_SPACE = re.compile(r"(?<=\S)[ \t]{2,}(?=\S)")
+PREVIEW_TRAILING_SPACE = re.compile(r"[ \t]+$", re.MULTILINE)
+PREVIEW_EMPTY_LINES = re.compile(r"\n{3,}")
+PREVIEW_INDENT = re.compile(r"^[ \t]{9,}", re.MULTILINE)
+PREVIEW_INDENT_LIMIT = " " * 8
+PREVIEW_TEXT_TAIL = re.compile(r"\s+$")
+
+
+def preview_text(text: str) -> str:
+    """Text of a document as the preview window shows it."""
+    text = PREVIEW_INNER_SPACE.sub(" ", text)
+    text = PREVIEW_TRAILING_SPACE.sub("", text)
+    text = PREVIEW_EMPTY_LINES.sub("\n\n", text)
+    text = PREVIEW_INDENT.sub(PREVIEW_INDENT_LIMIT, text)
+    return PREVIEW_TEXT_TAIL.sub("", text)
+
+
 def document_piece_text(piece) -> str | None:
     """Text of one page / chunk of the engine response, ``None`` when the
     entry carries none."""
@@ -1279,10 +1303,20 @@ def document_preview_page(request: Request):
             },
         )
 
+    # the window reads the document, the download above hands out the text of
+    # the engine as it is
+    shown = preview_text(text)
     limit = constants.DOCUMENT_PREVIEW_MAX_CHARS
-    truncated = len(text) > limit
+    truncated = len(shown) > limit
     # the pages are only rendered for a document shown in full
-    pages = [] if truncated else preview.get("pages") or []
+    pages = (
+        []
+        if truncated
+        else [
+            {"page": page["page"], "text": preview_text(page["text"])}
+            for page in preview.get("pages") or []
+        ]
+    )
     total_pages = preview.get("total_pages") or 0
     return render_page(
         request,
@@ -1297,9 +1331,9 @@ def document_preview_page(request: Request):
         and total_pages > len(pages),
         total_pages=total_pages,
         pages_count=total_pages or len(pages),
-        content=text[:limit],
-        characters=len(text),
-        characters_text=format_count(len(text)),
+        content=shown[:limit],
+        characters=len(shown),
+        characters_text=format_count(len(shown)),
         truncated=truncated,
         limit_text=format_count(limit),
         error=preview.get("error"),
