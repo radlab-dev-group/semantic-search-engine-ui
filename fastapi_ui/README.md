@@ -41,6 +41,7 @@ Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-conf
 | `GET/POST /login`, `GET /logout` | Logowanie użytkownika (token Django `Authorization: Token ...`) i wylogowanie |
 | `GET /collections`, `POST /collections/new`, `POST /collections/delete` | **Baza wiedzy → Kolekcje**: lista kolekcji (`GET api/collections`, z chunkingiem z `metadata_json`), tworzenie nowej kolekcji (`api/embedders` / `api/rerankers` z `models_info`, `api/filter_options` → `chunking_defaults`, opcjonalne `chunking` + `strict_chunking` w `POST api/new_collection`) oraz usuwanie kolekcji (`POST api/delete_collection`) |
 | `GET /collections/manage`, `POST /collections/manage/delete-*` | **Baza wiedzy → Dokumenty**: lista dokumentów kolekcji, usuwanie dokumentów (`api/delete_documents`), usuwanie chunków tekstu (`api/delete_texts`), włączanie/wyłączanie dokumentów w wyszukiwaniu (`POST /collections/manage/visibility` → `api/set_documents_use_in_search`) oraz usuwanie kolekcji |
+| `GET /collections/documents/preview` | **Baza wiedzy → Dokumenty → Podgląd**: cała treść jednego dokumentu w osobnym oknie (`GET api/document_content`); `?download=1` zwraca ten tekst jako plik `.txt` |
 | `GET/POST /documents/upload`, `POST /collections/manage/add-text` | **Baza wiedzy → Dodaj treść**: upload plików (`pdf/docx/txt/html/md/zip`) z opcjami indeksowania albo wklejenie surowego tekstu (`api/add_and_index_texts`); klucze chunkingu w `indexing_options` są opcjonalne (domyślnie ustawienia kolekcji), błędy `000005_DATA` / `000006_DATA` wracają na formularz |
 | `GET /collections/indexing-status` | **Baza wiedzy → Indeksacja**: JSON z postępem indeksacji (`api/indexing_status`) — liczniki najnowszego zadania kolekcji (albo zadania o danym `job_id`), dokumenty z ich statusami i ile dokumentów wciąż czeka; czyta go panel postępu i `app.js` |
 | `GET/POST /search`, `POST /search/generate`, `POST /search/rate` | **Wyszukiwanie**: wyszukiwanie semantyczne/hybrydowe, odpowiedź generatywna (doczytywana asynchronicznie po wynikach) oraz ocenianie (gwiazdki i komentarz) |
@@ -138,6 +139,26 @@ Format odpowiedzi backendu (radlab-semantic-search-engine):
 
 Kody błędów są renderowane na dedykowanej stronie `error.html` z czytelnym podsumowaniem problemu i ewentualnymi szczegółami z odpowiedzi silnika.
 
+### Treść jednego dokumentu (`GET api/document_content`)
+
+Podgląd dokumentu pyta silnik o całą jego treść:
+
+```
+GET {host}/api/document_content?collection_name=…&document_name=…
+```
+
+Ścieżkę endpointu ustawia `document_content` w `configs/ui-configuration.json`
+(domyślnie `api/document_content`), więc wdrożenie z `/api/v1/` albo z inną
+nazwą nie wymaga zmian w kodzie. Interfejs przyjmuje każdy z kształtów, jakie
+silnik może zwrócić w `body`:
+
+| Kształt `body` | Co widać w oknie |
+| --- | --- |
+| `{"content": "…"}` (także `text` / `text_str` / `page_content`) | cały tekst w jednym bloku |
+| `{"pages": [{"page": 1, "content": "…"}, …]}` | treść strona po stronie z numerem strony |
+| `{"texts": [...]}` / `{"chunks": [...]}` | chunki scalone w jednym tekście (wg `text_number` / `id`) |
+| `status: false` (brak endpointu, dokument nieznany) | komunikat o braku treści, bez pustej strony |
+
 ## Uwagi implementacyjne
 
 - **Extractive QA**: pozostaje opcją w formularzu; faktyczne wykonanie ekstrakcji realizowane jest po stronie silnika.
@@ -193,6 +214,14 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
     Lista pobiera dokumenty z `GET api/documents?with_disabled=true`; silnik bez
     tego parametru zwraca tylko włączone dokumenty, więc wyłączonych nie
     będzie widać.
+    Każdy wiersz ma też link **„Podgląd”** (`GET /collections/documents/preview`,
+    `target="_blank"`): w nowym oknie pokazuje **całą treść dokumentu**
+    zaciągniętą z `GET api/document_content` — wiersz po wierszu, strona po
+    stronie (silnik zwraca jeden tekst, strony albo chunki, patrz niżej). Okno
+    ma przycisk pobrania `Pobierz jako .txt` i wraca na zakładkę Dokumenty;
+    dokument bez tekstu i odmowa silnika mają osobne komunikaty, a bardzo długi
+    tekst jest w oknie przycinany (`DOCUMENT_PREVIEW_MAX_CHARS`) — pobrany plik
+    ma zawsze całą treść.
   - **Dodaj treść**: przełącznik „Wgraj pliki” (drag & drop + podgląd
     chunkowania pokazujący stosunek `overlap` do rozmiaru chunka) /
     „Wklej tekst”. Oba formularze (`partials/indexing_options.html`) mają
@@ -316,13 +345,16 @@ nieprzetłumaczonych kluczy na stronach), wylogowanie. Osobna funkcja
 `check_indexing` przechodzi indeksację: zadanie w kolejce (atrapa silnika
 przesuwa kolekcję o jeden dokument na każde pytanie o status), trasę JSON
 `/collections/indexing-status`, plakietki stanów na liście dokumentów i
-zachowanie stron, gdy silnik nie ma `api/indexing_status`. Nie wymaga
-prawdziwego backendu ani bazy wektorów.
+zachowanie stron, gdy silnik nie ma `api/indexing_status`. Osobny blok sprawdza
+podgląd całego dokumentu: link w wierszu listy, treść z
+`api/document_content` (tekst i strony), pobranie `.txt`, dokument bez treści,
+odmowę silnika i przycięcie długich tekstów. Nie wymaga prawdziwego backendu
+ani bazy wektorów.
 
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py     # 169 checków, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py     # 181 checków, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów
@@ -346,6 +378,7 @@ fastapi_ui/
 ├── app/
 │   ├── locales/           # en.json, pl.json — teksty interfejsu
 │   ├── templates/         # Jinja2: base, home, login, error, collections,
+│   │                      #        manage_collection, document_preview,
 │   │                      #        upload_documents, search
 │   │   └── partials/      # search_params.html, table.html, messages.html, stepper.html, kb_header.html
 │   └── static/
