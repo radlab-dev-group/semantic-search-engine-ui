@@ -1164,6 +1164,35 @@ def main() -> int:
             "doc-preview__notice" not in single_page,
             "",
         )
+        check(
+            "the window reads the layout whitespace of the source as text",
+            "Cała treść dokumentu B." in single_page
+            and "Drugi akapit." in single_page
+            and "Cała  treść" not in single_page,
+            "",
+        )
+        check(
+            "the .txt download keeps the text of the engine as it is",
+            "Cała  treść   dokumentu   B."
+            in client.get(
+                "/collections/documents/preview",
+                params={
+                    "collection_name": "user_col",
+                    "document_name": "b.pdf",
+                    "download": "1",
+                },
+            ).text,
+            "",
+        )
+        check(
+            "the preview collapses the whitespace a document brings with it",
+            server.preview_text("Alfa    beta\n\n\n   \ngamma   ")
+            == "Alfa beta\n\ngamma"
+            and server.preview_text("    code\n            deepest")
+            == "    code\n        deepest"
+            and server.preview_text("zwykły\ntekst") == "zwykły\ntekst",
+            "",
+        )
 
         download = client.get(
             "/collections/documents/preview",

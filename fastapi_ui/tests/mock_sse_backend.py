@@ -439,7 +439,11 @@ DOCUMENT_CONTENT = {
             {"page": 3, "content": "Oferta — strona 3\n\nPodsumowanie."},
         ],
     },
-    "b.pdf": {"content": "Cała treść dokumentu B.\n\nDrugi akapit."},
+    # the layout whitespace an indexed PDF leaves behind: the window reads it
+    # as text, the .txt download keeps it as the engine has it
+    "b.pdf": {
+        "content": "Cała  treść   dokumentu   B.\n\n\n    \n\nDrugi   akapit.   "
+    },
     "old.pdf": {"content": ""},
 }
 
