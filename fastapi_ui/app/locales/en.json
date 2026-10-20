@@ -277,6 +277,26 @@
       "other": "Excluded {n} documents from the search"
     },
     "visibility_error": "Could not change the use of the document in the search.",
+    "preview_doc_btn": "Preview",
+    "preview_doc_title": "Preview of the whole document: {name}",
+    "preview_eyebrow": "Document preview",
+    "preview_window_title": "SSE - preview: {name}",
+    "preview_chars": {
+      "one": "character",
+      "other": "characters"
+    },
+    "preview_pages": {
+      "one": "page",
+      "other": "pages"
+    },
+    "preview_page": "Page {n}",
+    "preview_download": "Download as .txt",
+    "preview_back": "Back to the documents",
+    "preview_close": "Close window",
+    "preview_empty": "This document has no content to show — the engine returned an empty text.",
+    "preview_error": "The engine did not return the content of this document (GET api/document_content). It may still be waiting for indexing, or the engine does not offer a preview of whole documents.",
+    "preview_truncated": "The first {n} characters of the document are shown — download the .txt file to read all of it.",
+    "preview_partial": "The engine read the first {shown} of {total} pages of the document — download the .txt file to read all of it.",
     "add_text_queued": "The text was queued for indexing — see the progress in the Documents tab."
   },
   "upload": {

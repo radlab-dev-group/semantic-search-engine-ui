@@ -6028,7 +6028,7 @@ input[type="range"]::-moz-range-thumb {
 
 .doc-th--action,
 .doc-td--action {
-  width: 120px;
+  width: 170px;
   text-align: right;
 }
 
@@ -6257,6 +6257,11 @@ input[type="range"]::-moz-range-thumb {
     width: auto;
   }
 
+  /* the preview link keeps its icon and aria-label only */
+  .doc-preview-btn__label {
+    display: none;
+  }
+
   .doc-th--action {
     white-space: normal;
     font-size: 0.72rem;
@@ -6294,6 +6299,57 @@ input[type="range"]::-moz-range-thumb {
 
 .danger-eyebrow {
   color: #fb7185 !important;
+}
+
+/* --------------------------------------------------------------------------
+   18.5.1 Preview of a whole document (documents tab -> window of its own)
+   -------------------------------------------------------------------------- */
+
+/* The label of the link fits next to the icon; on a narrow screen the row
+   keeps just the eye and its accessible name. */
+.doc-preview-btn__label {
+  margin-inline-start: 0.3rem;
+}
+
+.doc-preview__title {
+  word-break: break-all;
+}
+
+/* The text of the document is what the engine indexed: shown verbatim, with
+   the line breaks of the source, in a scrollable block. */
+.doc-preview__text {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  max-height: 60vh;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.doc-preview__pages {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.doc-preview__page-number {
+  margin: 0 0 var(--space-2);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.doc-preview__notice {
+  margin: 0 0 var(--space-3);
+  font-size: 0.82rem;
+  color: var(--warning-fg);
 }
 
 /* --------------------------------------------------------------------------
