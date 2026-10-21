@@ -19,12 +19,12 @@
       </div>
       {% if not error %}
         <div class="badge-row">
-          <span class="badge badge--brand">
+          <span class="badge badge--brand badge--stat">
             <span class="badge__value">{{ characters_text }}</span>
             {{ t.plural('manage.preview_chars', characters) }}
           </span>
           {% if pages_count %}
-            <span class="badge badge--muted">
+            <span class="badge badge--muted badge--stat">
               <span class="badge__value">{{ pages_count }}</span>
               {{ t.plural('manage.preview_pages', pages_count) }}
             </span>

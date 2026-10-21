@@ -15,7 +15,7 @@
       {% if pending %}
         <span class="badge badge--live"><span class="spinner" aria-hidden="true"></span>{{ t('search.answer_generating') }} <span class="badge__value" data-gen-timer>0 s</span></span>
       {% elif answer and qa_gen_results_time %}
-        <span class="badge">{{ t('search.badge_gen_time') }} <span class="badge__value">{{ qa_gen_results_time }}</span></span>
+        <span class="badge badge--stat">{{ t('search.badge_gen_time') }} <span class="badge__value">{{ qa_gen_results_time }}</span></span>
       {% endif %}
     </div>
   </div>

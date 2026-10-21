@@ -1537,6 +1537,25 @@ label.opt--primary:has(input:checked) .opt__icon {
   color: inherit;
 }
 
+/* A number with the word it counts ("8 280 znaków", "60 stron").
+
+   Two things go wrong with a centred row here: the mono digits and the
+   interface text do not share their ascent, so centring the two boxes leaves
+   the number floating above the word; and a badge shrunk by a long title
+   stacks the word under the number.  One baseline, no shrinking and tabular
+   digits make the pair read as a single value. */
+.badge--stat {
+  align-items: baseline;
+  flex: none;
+  gap: 0.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge--stat .badge__value {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
 .eyebrow-pill {
   display: inline-flex;
   align-items: center;

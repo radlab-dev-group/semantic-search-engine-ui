@@ -41,11 +41,11 @@
             {% endif %}
           </div>
           <div class="badge-row">
-            <span class="badge badge--brand">
+            <span class="badge badge--brand badge--stat">
               <span class="badge__value">{{ documents | length }}</span>
               {{ t.plural('manage.doc_list_count_word', documents | length) }}
             </span>
-            <span class="badge badge--muted{% if not disabled_count %} hidden{% endif %}" data-doc-disabled-badge>
+            <span class="badge badge--muted badge--stat{% if not disabled_count %} hidden{% endif %}" data-doc-disabled-badge>
               <span class="badge__value" data-doc-disabled-count>{{ disabled_count or 0 }}</span>
               {{ t('manage.disabled_word') }}
             </span>

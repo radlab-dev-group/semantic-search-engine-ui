@@ -15,10 +15,10 @@
       </div>
       <div class="badge-row">
         {% if history_view %}
-          <span class="badge badge--brand" title="{{ t('history.viewing_title') }}">{{ t('history.badge') }} <span class="badge__value">#{{ history_current }}</span></span>
+          <span class="badge badge--brand badge--stat" title="{{ t('history.viewing_title') }}">{{ t('history.badge') }} <span class="badge__value">#{{ history_current }}</span></span>
         {% endif %}
-        <span class="badge">{{ t('search.badge_documents') }} <span class="badge__value">{{ stats | length }}</span></span>
-        <span class="badge">{{ t('search.badge_snippets') }} <span class="badge__value">{{ detailed | length }}</span></span>
+        <span class="badge badge--stat">{{ t('search.badge_documents') }} <span class="badge__value">{{ stats | length }}</span></span>
+        <span class="badge badge--stat">{{ t('search.badge_snippets') }} <span class="badge__value">{{ detailed | length }}</span></span>
       </div>
     </div>
 
