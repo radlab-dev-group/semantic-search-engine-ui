@@ -12,6 +12,8 @@ The backend API contract:
 - filter_options:     GET  {host}/api/filter_options (incl. chunking_defaults)
 - categories:         GET  {host}/api/categories?collection_name=...
 - documents:          GET  {host}/api/documents?collection_name=...
+- document_content:   GET  {host}/api/document_content
+                          ?collection_name=...&document_name=...
 - indexing_status:    GET  {host}/api/indexing_status?collection_name=...|job_id=...
 - search_with_options:POST {host}/api/search_with_options
 - generative_answer:  POST {host}/api/generative_answer
@@ -161,6 +163,9 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             )
             self.list_documents_from_collection = (
                 api_config.semantic_search_engine_endpoints["documents"]
+            )
+            self.document_content = api_config.semantic_search_engine_endpoints.get(
+                "document_content", "api/document_content"
             )
             self.search_with_options = api_config.semantic_search_engine_endpoints[
                 "search_with_options"
@@ -374,6 +379,25 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             api_call_url=self._api_host,
             api_function=self._engine_ep.list_documents_from_collection,
             params=params,
+            data=None,
+        )
+        return response
+
+    def document_content(self, token: str, collection_name: str, document_name: str):
+        """Whole text of one document of a collection (the preview of a row of
+        the documents tab).
+
+        ``GET api/document_content``; an engine without the endpoint answers
+        with an error, which the preview page shows instead of the text.
+        """
+        response = self.general_call_get(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.document_content,
+            params={
+                "collection_name": collection_name,
+                "document_name": document_name,
+            },
             data=None,
         )
         return response

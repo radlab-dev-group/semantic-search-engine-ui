@@ -6,6 +6,7 @@ Application routes:
     /login, /logout    -> User authentication (Django token)
     /collections       -> Knowledge base: collections management
     /collections/manage-> Knowledge base: document and chunk management
+    /collections/documents/preview -> Whole content of one document (new window)
     /documents/upload  -> Knowledge base: document upload and text indexing
     /search            -> Semantic & hybrid search, generative QA, and rating
     /search/history    -> Search history per collection
@@ -22,7 +23,7 @@ import logging
 import os
 import re
 import uuid
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import pandas as pd
 from fastapi import Depends, FastAPI, Request
@@ -32,7 +33,11 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 from starlette.datastructures import FormData
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import (
+    HTMLResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
 
 from core import constants, i18n
 from core.api import SemanticSearchEngineAPI
@@ -315,6 +320,14 @@ def proper_collection_name(orig_col_name: str, username_str: str) -> str:
     return f"{prefix}_{name}"
 
 
+def format_count(value) -> str:
+    """Count with a space as the thousands separator ("12 000")."""
+    try:
+        return f"{int(value):,}".replace(",", " ")
+    except (TypeError, ValueError):
+        return str(value)
+
+
 def format_generation_time(seconds) -> str | None:
     if seconds is None:
         return None
@@ -518,6 +531,193 @@ def fetch_manage_collection_context(token: str, collection_name: str = "") -> di
         # ``None`` when the engine has no api/indexing_status
         "indexing": indexing,
     }
+
+
+# --------------------------------------------------------------------------- #
+# Preview of a whole document: the engine may return it as one text or as the
+# pieces it is built of (its pages, or the text chunks of the index).
+# --------------------------------------------------------------------------- #
+DOCUMENT_TEXT_KEYS = ("content", "text", "text_str", "page_content", "document_content")
+DOCUMENT_PIECE_LIST_KEYS = ("pages", "texts", "chunks")
+DOCUMENT_PIECE_NUMBER_KEYS = (
+    "page",
+    "page_number",
+    "text_number",
+    "chunk_number",
+    "id",
+)
+
+
+# The whitespace an indexed document brings with it: a PDF sets the words of a
+# line apart with a run of spaces and leaves whole empty lines between the
+# blocks of its page.  A preview window reads a document, it does not
+# reproduce the layout of its source, so the preview makes one space of a run
+# of them, shows at most one empty line in a row and caps an indentation no
+# author meant.  The words and the line breaks stay where the engine has them,
+# and the .txt download carries the text of the engine as it is.
+PREVIEW_INNER_SPACE = re.compile(r"(?<=\S)[ \t]{2,}(?=\S)")
+PREVIEW_TRAILING_SPACE = re.compile(r"[ \t]+$", re.MULTILINE)
+PREVIEW_EMPTY_LINES = re.compile(r"\n{3,}")
+PREVIEW_INDENT = re.compile(r"^[ \t]{9,}", re.MULTILINE)
+PREVIEW_INDENT_LIMIT = " " * 8
+PREVIEW_TEXT_TAIL = re.compile(r"\s+$")
+
+
+def preview_text(text: str) -> str:
+    """Text of a document as the preview window shows it."""
+    text = PREVIEW_INNER_SPACE.sub(" ", text)
+    text = PREVIEW_TRAILING_SPACE.sub("", text)
+    text = PREVIEW_EMPTY_LINES.sub("\n\n", text)
+    text = PREVIEW_INDENT.sub(PREVIEW_INDENT_LIMIT, text)
+    return PREVIEW_TEXT_TAIL.sub("", text)
+
+
+def document_piece_text(piece) -> str | None:
+    """Text of one page / chunk of the engine response, ``None`` when the
+    entry carries none."""
+    if isinstance(piece, str):
+        return piece
+    if not isinstance(piece, dict):
+        return None
+    for key in DOCUMENT_TEXT_KEYS:
+        value = piece.get(key)
+        if isinstance(value, str):
+            return value
+    return None
+
+
+def document_preview_pages(pieces) -> list:
+    """Pages / chunks of the response as ``[{page, text}]`` in their own order.
+
+    The chunks keep the number the engine gives them, so the stitched text of a
+    document reads the same way as the document itself.
+    """
+    rows: list = []
+    for position, piece in enumerate(pieces or [], start=1):
+        text = document_piece_text(piece)
+        if text is None:
+            continue
+        number = position
+        if isinstance(piece, dict):
+            for key in DOCUMENT_PIECE_NUMBER_KEYS:
+                if piece.get(key) is not None:
+                    number = piece[key]
+                    break
+        try:
+            number = int(number)
+        except (TypeError, ValueError):
+            number = position
+        rows.append({"page": number, "text": text})
+    return rows
+
+
+def document_preview_body(result) -> tuple[list, str]:
+    """``(pages, whole text)`` of a ``GET api/document_content`` response.
+
+    The engine answers with the stitched ``content`` and the very same text
+    page by page (``pages[]``); the pages win, so that the window can number
+    them and the text reads identically in both.  The other shapes an engine
+    may answer with are still accepted: a text field of ``body``, the list of
+    its pages or of its text chunks, or a text as ``body`` itself.
+    """
+    body = result.get("body") if isinstance(result, dict) else None
+    if isinstance(body, str):
+        return [], body
+    if not isinstance(body, dict):
+        return [], ""
+    candidates = [body]
+    if isinstance(body.get("document"), dict):
+        candidates.append(body["document"])
+    for key in DOCUMENT_PIECE_LIST_KEYS:
+        for entry in candidates:
+            value = entry.get(key)
+            if isinstance(value, list):
+                pages = document_preview_pages(value)
+                if pages:
+                    return pages, "\n\n".join(page["text"] for page in pages)
+    for entry in candidates:
+        for key in DOCUMENT_TEXT_KEYS:
+            value = entry.get(key)
+            if isinstance(value, str) and value.strip():
+                return [], value
+    return [], ""
+
+
+def document_preview_window(result) -> dict:
+    """Page window of a ``GET api/document_content`` answer.
+
+    The engine reads a document in a window of pages and says what is left:
+    ``total_pages`` how many pages the document has and ``truncated`` that the
+    answer is only a part of it (``next_page`` says where the next part
+    starts).  The caller compares the window with the pages it was able to
+    show, so a complete answer never warns about a missing rest.
+    """
+    body = result.get("body") if isinstance(result, dict) else None
+    if not isinstance(body, dict):
+        return {"total_pages": 0, "partial": False}
+    entry = body.get("document") if isinstance(body.get("document"), dict) else body
+    total_pages = entry.get("total_pages")
+    try:
+        total_pages = int(total_pages)
+    except (TypeError, ValueError):
+        total_pages = 0
+    return {
+        "total_pages": total_pages if total_pages > 0 else 0,
+        "partial": bool(entry.get("truncated")),
+    }
+
+
+def fetch_document_preview(
+    token: str, collection_name: str, document_name: str
+) -> dict:
+    """Whole text of one document of a collection (the preview of a row).
+
+    ``error`` is ``"engine"`` when the engine refused or has no
+    ``api/document_content``, and ``"empty"`` when it answered without any text,
+    so the window explains what happened instead of showing a blank page.
+    """
+    try:
+        result = sse_api_engine.document_content(
+            token=token,
+            collection_name=collection_name,
+            document_name=document_name,
+        )
+    except Exception as error:  # the preview must not break the window
+        logger.warning("Cannot fetch the content of %s: %s", document_name, error)
+        return {"error": "engine"}
+    if not isinstance(result, dict) or not result.get("status"):
+        logger.warning("The engine refused the content of %s", document_name)
+        return {"error": "engine"}
+
+    pages, text = document_preview_body(result)
+    if not text.strip():
+        return {
+            "error": "empty",
+            "pages": [],
+            "text": "",
+            "total_pages": 0,
+            "partial": False,
+        }
+
+    body = result.get("body")
+    entry = body.get("document") if isinstance(body, dict) else None
+    entry = entry if isinstance(entry, dict) else (body or {})
+    relative_path = entry.get("relative_path")
+    window = document_preview_window(result)
+    return {
+        "pages": pages,
+        "text": text,
+        "relative_path": relative_path if isinstance(relative_path, str) else "",
+        "total_pages": window["total_pages"],
+        "partial": window["partial"],
+    }
+
+
+def preview_filename(document_name: str) -> str:
+    """Name of the .txt file downloaded from the preview window."""
+    stem = os.path.splitext(os.path.basename(document_name))[0]
+    stem = re.sub(r"[^\w.\-]+", "_", stem, flags=re.UNICODE).strip("._")
+    return f"{stem or 'document'}.txt"
 
 
 def fetch_generative_models(token: str) -> list:
@@ -1070,6 +1270,74 @@ def manage_collection_page(request: Request):
         request,
         "manage_collection.html",
         request.query_params.get("collection_name", ""),
+    )
+
+
+@app.get("/collections/documents/preview", include_in_schema=False)
+def document_preview_page(request: Request):
+    """The whole text of one document, opened in a new window from a row of the
+    documents tab; ``?download=1`` answers with the text as a .txt file.
+
+    The content always comes from the engine (``GET api/document_content``), so
+    the preview shows the document as it was indexed, not the upload form.
+    """
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    token = get_token(request)
+    collection_name = request.query_params.get("collection_name", "").strip()
+    document_name = request.query_params.get("document_name", "").strip()
+    if not collection_name or not document_name:
+        return RedirectResponse(url="/collections/manage", status_code=303)
+
+    preview = fetch_document_preview(token, collection_name, document_name)
+    text = preview.get("text") or ""
+
+    if request.query_params.get("download") == "1":
+        filename = preview_filename(document_name)
+        return PlainTextResponse(
+            text,
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+            },
+        )
+
+    # the window reads the document, the download above hands out the text of
+    # the engine as it is
+    shown = preview_text(text)
+    limit = constants.DOCUMENT_PREVIEW_MAX_CHARS
+    truncated = len(shown) > limit
+    # the pages are only rendered for a document shown in full
+    pages = (
+        []
+        if truncated
+        else [
+            {"page": page["page"], "text": preview_text(page["text"])}
+            for page in preview.get("pages") or []
+        ]
+    )
+    total_pages = preview.get("total_pages") or 0
+    return render_page(
+        request,
+        "document_preview.html",
+        collection_name=collection_name,
+        document_name=document_name,
+        relative_path=preview.get("relative_path", ""),
+        pages=pages,
+        # the engine served a window of pages of a longer document
+        partial_window=bool(preview.get("partial"))
+        and bool(pages)
+        and total_pages > len(pages),
+        total_pages=total_pages,
+        pages_count=total_pages or len(pages),
+        content=shown[:limit],
+        characters=len(shown),
+        characters_text=format_count(len(shown)),
+        truncated=truncated,
+        limit_text=format_count(limit),
+        error=preview.get("error"),
+        manage_url=f"/collections/manage?collection_name={quote(collection_name)}",
     )
 
 

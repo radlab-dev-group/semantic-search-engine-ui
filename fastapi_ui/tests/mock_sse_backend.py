@@ -418,6 +418,80 @@ def _collection_documents(collection_name):
     return {**DOCUMENTS_IN_SEARCH, **(INDEXED_DOCUMENTS.get(collection_name) or {})}
 
 
+# GET document_content: the whole text of one document (the preview of a row
+# of the documents tab), in the shape of the engine: the stitched "content" and
+# the same text page by page ("pages[]"), with the window of pages the answer
+# covers ("from_page", "total_pages", "truncated", "next_page").  A document
+# without any page is answered with a single text, an empty one with an empty
+# text.
+PREVIEW_PAGE_WINDOW = 2
+DOCUMENT_CONTENT = {
+    "a.pdf": {
+        "document_id": 11,
+        "relative_path": "/2025/oferty",
+        "category": "oferty",
+        "use_in_search": True,
+        "chunk_type": "clear_texts",
+        "chunk_types": ["clear_texts", "raw_text"],
+        "pages": [
+            {"page": 1, "content": "Oferta — strona 1\n\nOpis procesu ofertowego."},
+            {"page": 2, "content": "Oferta — strona 2\n\nZałączniki."},
+            {"page": 3, "content": "Oferta — strona 3\n\nPodsumowanie."},
+        ],
+    },
+    # the layout whitespace an indexed PDF leaves behind: the window reads it
+    # as text, the .txt download keeps it as the engine has it
+    "b.pdf": {
+        "content": "Cała  treść   dokumentu   B.\n\n\n    \n\nDrugi   akapit.   "
+    },
+    "old.pdf": {"content": ""},
+}
+
+
+def _document_content_body(name, query):
+    """Body of ``GET document_content`` for one document of the collection.
+
+    The pages of a document are served in a window, as the engine does:
+    ``from_page`` where to start, ``max_pages`` how many at most, and
+    :data:`PREVIEW_PAGE_WINDOW` by default — the rest of the document is then
+    announced with ``truncated`` and ``next_page``.
+    """
+    entry = dict(DOCUMENT_CONTENT.get(name) or {"content": ""})
+    entry.setdefault("document_name", name)
+    pages = entry.get("pages")
+    if not isinstance(pages, list):
+        return entry
+
+    try:
+        first = int(query.get("from_page") or 1)
+    except ValueError:
+        first = 1
+    try:
+        window = int(query.get("max_pages") or PREVIEW_PAGE_WINDOW)
+    except ValueError:
+        window = PREVIEW_PAGE_WINDOW
+    served = [page for page in pages if int(page.get("page") or 0) >= first][:window]
+    left = [
+        page
+        for page in pages
+        if int(page.get("page") or 0) > int(served[-1].get("page") or 0)
+    ]
+    content = "\n\n".join(page["content"] for page in served)
+    entry.update(
+        {
+            "pages": served,
+            "content": content,
+            "characters": len(content),
+            "chunks": len(served),
+            "from_page": first,
+            "total_pages": len(pages),
+            "truncated": bool(left),
+            "next_page": left[0]["page"] if left else None,
+        }
+    )
+    return entry
+
+
 def _indexing_body(job):
     payload = _indexing_payload(job) if job else None
     return {
@@ -585,6 +659,21 @@ class MockHandler(BaseHTTPRequestHandler):
             if job is not None:
                 _advance_indexing(job)
             return self._send(_ok(_indexing_body(job)))
+        if ep == "document_content":
+            name = query.get("document_name")
+            if name not in _collection_documents(query.get("collection_name")):
+                return self._send(
+                    {
+                        "status": False,
+                        "errors": [
+                            {
+                                "error_code": "000021_DATA",
+                                "message": "Document not found!",
+                            }
+                        ],
+                    }
+                )
+            return self._send(_ok(_document_content_body(name, query)))
         if ep == "documents":
             if query.get("with_disabled") == "true":
                 return self._send(

@@ -2388,6 +2388,23 @@ function initDismiss() {
   });
 }
 
+/* ------------------------------------------------ preview of a document */
+// "Podgląd" opens the whole document in a window of its own; its close button
+// asks the browser to close it. A window the user opened by hand (typed URL,
+// bookmark) cannot be closed by a script, so the documents tab is shown there.
+function initCloseWindow() {
+  document.querySelectorAll("[data-close-window]").forEach((button) => {
+    button.addEventListener("click", () => {
+      window.close();
+      window.setTimeout(() => {
+        if (!window.closed) {
+          window.location.assign(button.dataset.closeFallback || "/collections/manage");
+        }
+      }, 200);
+    });
+  });
+}
+
 /* -------------------------------------------- generative answer (async) */
 // The search page is rendered as soon as the results are known; the answer
 // card ([data-generate]) then asks /search/generate for the model answer and
@@ -2535,6 +2552,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initIndexingStatus();
   initAutosubmit();
   initDismiss();
+  initCloseWindow();
 });
 
 /* ------------------------- refresh category/document filters on demand */

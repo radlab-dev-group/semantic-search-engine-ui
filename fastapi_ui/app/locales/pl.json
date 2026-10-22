@@ -293,6 +293,30 @@
       "other": "Wyłączono {n} dokumentu z wyszukiwania"
     },
     "visibility_error": "Nie udało się zmienić użycia dokumentu w wyszukiwaniu.",
+    "preview_doc_btn": "Podgląd",
+    "preview_doc_title": "Podgląd całego dokumentu: {name}",
+    "preview_eyebrow": "Podgląd dokumentu",
+    "preview_window_title": "SSE - podgląd: {name}",
+    "preview_chars": {
+      "one": "znak",
+      "few": "znaki",
+      "many": "znaków",
+      "other": "znaku"
+    },
+    "preview_pages": {
+      "one": "strona",
+      "few": "strony",
+      "many": "stron",
+      "other": "strony"
+    },
+    "preview_page": "Strona {n}",
+    "preview_download": "Pobierz jako .txt",
+    "preview_back": "Wróć do dokumentów",
+    "preview_close": "Zamknij okno",
+    "preview_empty": "Ten dokument nie ma treści do wyświetlenia — silnik zwrócił pusty tekst.",
+    "preview_error": "Silnik nie zwrócił treści tego dokumentu (GET api/document_content). Dokument może wciąż czekać na indeksowanie, albo silnik nie udostępnia podglądu całych dokumentów.",
+    "preview_truncated": "Pokazano pierwsze {n} znaków dokumentu — pobierz plik .txt, żeby przeczytać całą treść.",
+    "preview_partial": "Silnik odczytał pierwsze {shown} z {total} stron dokumentu — pobierz plik .txt, żeby przeczytać całą treść.",
     "add_text_queued": "Tekst został dodany do kolejki indeksowania — postęp zobaczysz w zakładce Dokumenty."
   },
   "upload": {

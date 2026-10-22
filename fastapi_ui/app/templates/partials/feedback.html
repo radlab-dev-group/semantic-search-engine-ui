@@ -9,7 +9,7 @@
         <p class="muted">{{ t('history.rated', value=rated_value, max=constants.MAX_VAL_RATING_GENERATIVE_ANSWER) }}</p>
       {% endif %}
     </div>
-    <span class="badge">{{ t('search.badge_response') }} <span class="badge__value">{{ last_response_id }}</span></span>
+    <span class="badge badge--stat">{{ t('search.badge_response') }} <span class="badge__value">{{ last_response_id }}</span></span>
   </div>
 
   <form method="post" action="/search/rate">

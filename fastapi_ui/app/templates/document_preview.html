@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ t('manage.preview_window_title', name=document_name) }}{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+  {% set preview_query = 'collection_name=' ~ (collection_name | urlencode) ~ '&document_name=' ~ (document_name | urlencode) %}
+  {% set download_url = '/collections/documents/preview?' ~ preview_query ~ '&download=1' %}
+
+  <section class="card doc-preview">
+    <div class="card__header">
+      <div>
+        <p class="card__eyebrow">{{ t('manage.preview_eyebrow') }}</p>
+        <h1 class="doc-preview__title">{{ document_name }}</h1>
+        <p class="subtitle">
+          {{ collection_name }}
+          {% if relative_path and relative_path != '/' %}
+            <span class="doc-path-badge">{{ relative_path }}</span>
+          {% endif %}
+        </p>
+      </div>
+      {% if not error %}
+        <div class="badge-row">
+          <span class="badge badge--brand badge--stat">
+            <span class="badge__value">{{ characters_text }}</span>
+            {{ t.plural('manage.preview_chars', characters) }}
+          </span>
+          {% if pages_count %}
+            <span class="badge badge--muted badge--stat">
+              <span class="badge__value">{{ pages_count }}</span>
+              {{ t.plural('manage.preview_pages', pages_count) }}
+            </span>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    {% if error == 'engine' %}
+      <div class="alert alert-error" role="alert">
+        <div class="alert__content">{{ t('manage.preview_error') }}</div>
+      </div>
+    {% elif error == 'empty' %}
+      <div class="alert alert-warning" role="status">
+        <div class="alert__content">{{ t('manage.preview_empty') }}</div>
+      </div>
+    {% endif %}
+
+    {% if truncated %}
+      <p class="doc-preview__notice">{{ t('manage.preview_truncated', n=limit_text) }}</p>
+    {% elif partial_window %}
+      <p class="doc-preview__notice">
+        {{ t('manage.preview_partial', shown=pages | length, total=pages_count) }}
+      </p>
+    {% endif %}
+
+    {% if pages %}
+      <div class="doc-preview__pages">
+        {% for page in pages %}
+          <article class="doc-preview__page">
+            <p class="doc-preview__page-number">{{ t('manage.preview_page', n=page.page) }}</p>
+            <pre class="doc-preview__text">{{ page.text }}</pre>
+          </article>
+        {% endfor %}
+      </div>
+    {% elif not error %}
+      <pre class="doc-preview__text">{{ content }}</pre>
+    {% endif %}
+
+    <div class="btn-row">
+      {% if not error %}
+        <a class="btn btn-primary btn--sm" href="{{ download_url }}">{{ t('manage.preview_download') }}</a>
+      {% endif %}
+      <a class="btn btn--sm" href="{{ manage_url }}">{{ t('manage.preview_back') }}</a>
+      <button type="button" class="btn btn--ghost btn--sm" data-close-window data-close-fallback="{{ manage_url }}">{{ t('manage.preview_close') }}</button>
+    </div>
+  </section>
+{% endblock %}
