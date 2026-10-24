@@ -1671,6 +1671,46 @@ function initConfirmDialogs() {
   });
 }
 
+/* ------------------------------------ knowledge base: collection filter */
+// Filter of the collection cards. The typed words are matched against
+// [data-search] of every card, which holds the lowercased display name and
+// the technical name of the collection; cards outside the window keep their
+// state, nothing is fetched from the engine.
+function initCollectionFilter() {
+  document.querySelectorAll("[data-collection-grid]").forEach((grid) => {
+    const card = grid.closest(".card") || document;
+    const input = card.querySelector("[data-collection-filter]");
+    if (!input) return;
+    const items = Array.from(grid.querySelectorAll("[data-collection-card]"));
+    const noMatch = card.querySelector("[data-collection-nomatch]");
+    const counter = card.querySelector("[data-collection-shown]");
+
+    const apply = () => {
+      const words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+      let visible = 0;
+      items.forEach((item) => {
+        const haystack = item.dataset.search || "";
+        const match = words.every((word) => haystack.includes(word));
+        item.classList.toggle("hidden", !match);
+        if (match) visible += 1;
+      });
+      if (noMatch) noMatch.classList.toggle("hidden", visible > 0);
+      if (counter) {
+        // the counter only accompanies an active filter
+        counter.hidden = words.length === 0;
+        counter.textContent = words.length
+          ? t("collections_shown", { n: visible, total: items.length }, "{n} of {total}")
+          : "";
+      }
+    };
+
+    input.addEventListener("input", apply);
+    // clearing with the ✕ of the search field does not always fire "input"
+    input.addEventListener("search", apply);
+    apply();
+  });
+}
+
 /* ------------------------------------------- knowledge base: documents */
 function initDocList() {
   document.querySelectorAll("[data-doc-list]").forEach((form) => {
@@ -2529,6 +2569,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initSliders();
   initParamsPanel();
   initCollectionBanner();
+  initCollectionFilter();
   initDropzone();
   initChunkPreview();
   initChunkingMode();

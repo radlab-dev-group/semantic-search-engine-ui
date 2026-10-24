@@ -901,6 +901,15 @@ def main() -> int:
             "",
         )
         check(
+            "collections list can be filtered by name",
+            'data-collection-filter' in response.text
+            and 'data-collection-grid' in response.text
+            and 'data-collection-card data-search="moje dokumenty user_col"' in response.text
+            and 'data-collection-nomatch' in response.text
+            and 'type="search" placeholder="' in response.text,
+            "",
+        )
+        check(
             "one navigation entry for the knowledge base",
             ">Knowledge base</a>" in response.text
             and ">New collection</a>" not in response.text

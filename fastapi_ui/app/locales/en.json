@@ -133,6 +133,9 @@
       "other": "collections"
     },
     "add_new": "+ Add new collection",
+    "filter_placeholder": "Filter collections by name…",
+    "filter_label": "Filter collections by name",
+    "filter_nomatch": "No collection name matches the filter.",
     "no_description": "No description",
     "created_on": "Created {date}",
     "delete": "Delete",
@@ -616,6 +619,10 @@
     "docs_selected": {
       "one": "{n} selected",
       "other": "{n} selected"
+    },
+    "collections_shown": {
+      "one": "{n} of {total} collection",
+      "other": "{n} of {total} collections"
     },
     "visibility_failed": "Could not change the document — try again.",
     "model_vector": "vector {n}",

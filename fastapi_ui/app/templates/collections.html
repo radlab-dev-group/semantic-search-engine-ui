@@ -23,9 +23,19 @@
     {% include "partials/messages.html" %}
 
     {% if collections %}
-      <ul class="collection-grid">
+      {#- Filtering by name (like the document list): the input, the cards and
+          the "nothing found" note are wired up in app.js (initCollectionFilter) -#}
+      {% if collections | length > 1 %}
+        <div class="collection-toolbar">
+          <div class="doc-search-box">
+            <input type="search" placeholder="{{ t('collections.filter_placeholder') }}" data-collection-filter aria-label="{{ t('collections.filter_label') }}">
+          </div>
+          <span class="collection-toolbar__count muted" data-collection-shown hidden></span>
+        </div>
+      {% endif %}
+      <ul class="collection-grid" data-collection-grid>
         {% for coll in collections %}
-          <li class="collection">
+          <li class="collection" data-collection-card data-search="{{ (coll.display_name ~ ' ' ~ coll.name) | lower }}">
             <div class="collection__head">
               <span class="collection__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg></span>
               <div class="collection__title">
@@ -84,6 +94,7 @@
           </li>
         {% endfor %}
       </ul>
+      <p class="collection-nomatch muted hidden" data-collection-nomatch>{{ t('collections.filter_nomatch') }}</p>
     {% else %}
       <div class="empty-state">
         <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/><path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3 1.3 0 2.5-.13 3.5-.35"/></svg></span>

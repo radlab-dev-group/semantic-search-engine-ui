@@ -204,7 +204,12 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   - **Kolekcje** jako karty (nazwa, opis, data, zadeklarowany podział na
     chunki z `metadata_json` — „512 tokenów · zakładka 32” plus odznaka
     `strict`, albo „podział niezadeklarowany” gdy `metadata_json` jest `null`;
-    akcje Dokumenty / Dodaj treść / Szukaj, usuwanie ikoną kosza).
+    akcje Dokumenty / Dodaj treść / Szukaj, usuwanie ikoną kosza). Nad kartami
+    jest filtr po nazwie (jak filtr dokumentów): pole `type=search`
+    wszystkie wpisane słowa z `data-search` karty, czyli małą nazwą
+    wyświetlaną i techniczną kolekcji; licznik „{n} z {total}” pojawia się
+    tylko przy aktywnym filtrze, a przy braku trafień widać komunikat
+    (`initCollectionFilter` w `app.js`, nic nie jest odpytywany silnik).
   - **Nowa kolekcja**: oprócz modeli i typu indeksu karta „Podział na chunki”
     (`max_tokens_in_chunk`, `number_of_overlap_tokens`, przełącznik
     `strict_chunking`). Oba parametry to suwaki (jak przy indeksowaniu)

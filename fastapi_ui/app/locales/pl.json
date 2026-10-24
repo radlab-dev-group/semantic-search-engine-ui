@@ -135,6 +135,9 @@
       "other": "kolekcji"
     },
     "add_new": "+ Dodaj nową kolekcję",
+    "filter_placeholder": "Filtruj kolekcje po nazwie…",
+    "filter_label": "Filtruj kolekcje po nazwie",
+    "filter_nomatch": "Żadna nazwa kolekcji nie pasuje do filtra.",
     "no_description": "Brak opisu",
     "created_on": "Utworzono {date}",
     "delete": "Usuń",
@@ -664,6 +667,12 @@
       "few": "zaznaczono {n}",
       "many": "zaznaczono {n}",
       "other": "zaznaczono {n}"
+    },
+    "collections_shown": {
+      "one": "{n} z {total} kolekcji",
+      "few": "{n} z {total} kolekcji",
+      "many": "{n} z {total} kolekcji",
+      "other": "{n} z {total} kolekcji"
     },
     "visibility_failed": "Nie udało się zmienić dokumentu — spróbuj ponownie.",
     "model_vector": "wektor {n}",
