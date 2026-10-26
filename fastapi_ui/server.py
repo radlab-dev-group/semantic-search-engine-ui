@@ -417,6 +417,29 @@ def fetch_collection_rows(token: str) -> dict:
     return {"collections": rows}
 
 
+def collection_indexing(token: str, collection_name: str) -> dict | None:
+    """The running job of a collection as the bar of its card.
+
+    ``None`` when the engine has no ``api/indexing_status``, the call fails,
+    the collection has never been indexed or its newest job has finished -
+    the card then shows no bar.  A running job answers with its ``job_id``
+    and the numbers ``app.js`` watches (``percent`` and ``finished``) so it
+    can reload the page only when something changed.
+    """
+    status = fetch_indexing_status(token, collection_name)
+    if not status:
+        return None
+    job = status.get("job")
+    if not isinstance(job, dict) or job.get("finished"):
+        return None
+    return {
+        "job_id": as_int(job.get("id")),
+        "status": str(job.get("status") or "indexing"),
+        "percent": as_int(job.get("percent")) or 0,
+        "finished": bool(job.get("finished")),
+    }
+
+
 def fetch_collection_filters(token: str, collection_name: str) -> dict:
     """Categories and documents of a single collection (sidebar filters)."""
     categories: list = []
@@ -1128,6 +1151,11 @@ def render_collections_page(request: Request, **context) -> HTMLResponse:
     data = fetch_collection_rows(token)
     if "error" in data:
         return render_api_error(request, data["error"])
+
+    # The bar of the card: one status question per collection, so a running
+    # job is visible from the list (the details stay on the documents page)
+    for row in data["collections"]:
+        row["indexing"] = collection_indexing(token, row["name"])
 
     remembered = kb_collection_name(request)
     names = [row["name"] for row in data["collections"]]

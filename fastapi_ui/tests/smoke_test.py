@@ -921,6 +921,17 @@ def main() -> int:
             "",
         )
         check(
+            "collections list marks the collection which is being indexed",
+            '<div class="collection__indexing" data-collection-indexing'
+            in response.text
+            and 'data-collection="user_live"' in response.text
+            and ">Indexing…<" in response.text
+            and "data-poll-interval=" in response.text
+            # the other cards stay quiet
+            and response.text.count("data-collection-indexing") == 1,
+            "",
+        )
+        check(
             "collections list pages the cards with arrows",
             "data-collection-pager" in response.text
             and "data-collection-page-prev" in response.text

@@ -3064,7 +3064,44 @@ input[type="range"]::-moz-range-thumb {
   text-align: center;
 }
 
-/* arrows under the cards: a page of COLLECTIONS_PER_PAGE at a time (app.js) */
+/* A job still running for the collection: a quiet bar under the card */
+.collection__indexing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border);
+}
+
+.collection__indexing-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--brand-500);
+  white-space: nowrap;
+}
+
+.collection__indexing-bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+}
+
+.collection__indexing-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 35%;
+  border-radius: inherit;
+  background: var(--gradient-vector);
+  animation: indeterminate 1.4s var(--ease) infinite;
+}
+
+/* Arrows under the cards: a page of COLLECTIONS_PER_PAGE at a time (app.js) */
 .collection-pager {
   display: flex;
   align-items: center;

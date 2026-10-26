@@ -140,6 +140,8 @@
     "filter_nomatch": "Żadna nazwa kolekcji nie pasuje do filtra.",
     "page_prev": "Poprzednie kolekcje",
     "page_next": "Następne kolekcje",
+    "indexing": "Indeksowanie…",
+    "indexing_title": "Do tej kolekcji wciąż trafiają teksty — otwórz ją, aby zobaczyć szczegóły",
     "no_description": "Brak opisu",
     "created_on": "Utworzono {date}",
     "delete": "Usuń",

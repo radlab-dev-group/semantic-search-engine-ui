@@ -203,6 +203,18 @@ COLLECTIONS = [
         "active_document_count": 5,
         "metadata_json": None,
     },
+    # indexed the whole time (see FROZEN_INDEXING_JOB below): the card of this
+    # collection carries the bar of a job which is still running
+    {
+        "id": 9,
+        "name": "user_live",
+        "display_name": "Indeksowanie w toku",
+        "description": "Kolekcja z zadaniem indeksacji w kolejce",
+        "created_on": "2026-10-22T11:00:00+02:00",
+        "document_count": 30,
+        "active_document_count": 12,
+        "metadata_json": None,
+    },
 ]
 
 # GET filter_options: what the engine uses for an undeclared collection
@@ -405,7 +417,9 @@ def _advance_indexing(job):
     """One step of the queue per status question: queued -> preparing (the
     worker stores the documents of the upload) -> indexing one document at a
     time -> partial, because one document of the queue is broken."""
-    if job["status"] in INDEXING_FINISHED:
+    if job["status"] in INDEXING_FINISHED or job.get("frozen"):
+        # "frozen" jobs stay in the state they were created with, so a client
+        # which asks often sees the same running job as the page it came from
         return job
     job["steps"] += 1
     documents = job["documents"]
@@ -549,6 +563,29 @@ def _indexing_body(job):
         "documents": _indexing_document_rows(job) if job else [],
         "pending_documents": payload["documents_pending"] if payload else 0,
     }
+
+
+# A worker of the queue is still reading the texts of one collection: the job
+# never advances, so the collections list always shows its bar and the pages
+# of the other collections stay exactly as they were.  The documents of the
+# job are not added to the collection - a worker which has not stored them
+# yet has nothing to show for them.
+FROZEN_INDEXING_JOB = {
+    "id": 900,
+    "kind": "files",
+    "collection_name": "user_live",
+    "status": "indexing",
+    "total_documents": 30,
+    "documents_indexed": 12,
+    "documents_failed": 0,
+    "documents_skipped": 0,
+    "current_document": "nota-13.pdf",
+    "error_message": None,
+    "steps": 1,
+    "frozen": True,
+    "documents": [],
+}
+INDEXING_JOBS[FROZEN_INDEXING_JOB["id"]] = dict(FROZEN_INDEXING_JOB)
 
 
 class MockHandler(BaseHTTPRequestHandler):

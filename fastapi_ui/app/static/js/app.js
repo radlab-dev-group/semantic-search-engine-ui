@@ -1739,6 +1739,109 @@ function initCollectionFilter() {
   });
 }
 
+/* --------------------------- knowledge base: indexing bar of a card */
+// A card of a collection which is still being indexed carries a bar which
+// only says that the engine is working; the details are on the documents
+// page.  The bar itself is moved by CSS, so the polling is here for one
+// thing only: to notice that a job has ended.  The page is reloaded once,
+// and only when an answer differs from the one the cards were rendered
+// with, so a list which keeps answering the same never reloads.
+const COLLECTIONS_INDEXING_FAILURES = 3;
+
+function initCollectionIndexing() {
+  const bars = Array.from(document.querySelectorAll("[data-collection-indexing]"));
+  if (!bars.length) return;
+
+  const interval = Math.max(500, Number(bars[0].dataset.pollInterval) || 2000);
+  // what the card was rendered with: "status:percent" of its newest job
+  const seen = new Map(bars.map((bar) => [
+    bar.dataset.collection,
+    `${bar.dataset.status}:${bar.dataset.percent}`,
+  ]));
+  let failures = 0;
+  let timer = null;
+  let controller = null;
+  let reloading = false;
+
+  const stop = () => {
+    if (timer) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+    if (controller) controller.abort();
+  };
+
+  const schedule = () => {
+    if (!timer && !reloading) timer = window.setTimeout(poll, interval);
+  };
+
+  const question = async (bar, signal) => {
+    const query = new URLSearchParams({ collection_name: bar.dataset.collection });
+    const response = await fetch(`/collections/indexing-status?${query}`, {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+      signal,
+    });
+    if (response.status === 401) throw new Error("login");
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.status) throw new Error("indexing");
+    return payload.job;
+  };
+
+  async function poll() {
+    timer = null;
+    // an invisible tab does not have to ask about the progress
+    if (document.hidden || reloading) return;
+    controller = new AbortController();
+    let stillRunning = false;
+    let changed = false;
+    for (const bar of bars) {
+      let job;
+      try {
+        job = await question(bar, controller.signal);
+        failures = 0;
+      } catch (error) {
+        if (error && error.name === "AbortError") return;
+        if (error && error.message === "login") {
+          stop();
+          window.location.href = "/login";
+          return;
+        }
+        failures += 1;
+        // an engine without the endpoint, or a network which went away:
+        // the cards stay as they are and the asking stops
+        if (failures >= COLLECTIONS_INDEXING_FAILURES) {
+          stop();
+          return;
+        }
+        stillRunning = true;
+        continue;
+      }
+      const finished = !job || job.finished === true;
+      if (!finished) stillRunning = true;
+      const signature = finished ? "finished" : `${job.status}:${job.percent}`;
+      const previous = seen.get(bar.dataset.collection);
+      if (previous !== undefined && previous !== signature) changed = true;
+      seen.set(bar.dataset.collection, signature);
+    }
+    // the counters and the bar of the page only match the engine again after
+    // a reload, which is what a finished job is worth
+    if (changed && !stillRunning) {
+      reloading = true;
+      stop();
+      window.location.reload();
+      return;
+    }
+    if (stillRunning) schedule();
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stop();
+    else schedule();
+  });
+  schedule();
+}
+
 /* ------------------------------------------- knowledge base: documents */
 function initDocList() {
   document.querySelectorAll("[data-doc-list]").forEach((form) => {
@@ -2598,6 +2701,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initParamsPanel();
   initCollectionBanner();
   initCollectionFilter();
+  initCollectionIndexing();
   initDropzone();
   initChunkPreview();
   initChunkingMode();

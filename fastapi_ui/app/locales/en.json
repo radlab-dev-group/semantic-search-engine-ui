@@ -138,6 +138,8 @@
     "filter_nomatch": "No collection name matches the filter.",
     "page_prev": "Previous collections",
     "page_next": "Next collections",
+    "indexing": "Indexing…",
+    "indexing_title": "Texts of this collection are still being indexed — open it for the details",
     "no_description": "No description",
     "created_on": "Created {date}",
     "delete": "Delete",

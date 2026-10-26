@@ -104,6 +104,22 @@
                 </a>
               </span>
             </div>
+            {#- A job of this collection is still running: a bar which only
+                says "indexing" (its details are on the documents page).
+                app.js ([data-collection-indexing]) refreshes the cards as
+                long as at least one of them runs. -#}
+            {% if coll.indexing %}
+              <div class="collection__indexing" data-collection-indexing
+                   data-collection="{{ coll.name }}"
+                   data-job-id="{{ coll.indexing.job_id if coll.indexing.job_id is not none else '' }}"
+                   data-status="{{ coll.indexing.status }}"
+                   data-percent="{{ coll.indexing.percent }}"
+                   data-poll-interval="{{ constants.INDEXING_POLL_INTERVAL_MS }}"
+                   role="status" aria-live="polite">
+                <span class="collection__indexing-label">{{ t('collections.indexing') }}</span>
+                <span class="collection__indexing-bar" aria-hidden="true"><span></span></span>
+              </div>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

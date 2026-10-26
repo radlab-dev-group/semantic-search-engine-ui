@@ -113,6 +113,20 @@ widać na stronach *Dodaj treść* i *Dokumenty*:
 Dokumenty na liście dostają plakietkę stanu (`pending` / `indexing` /
 `failed` / `skipped`); zaindeksowany dokument nie potrzebuje plakietki.
 
+**Pasek na liście kolekcji** (`collections.html`, `initCollectionIndexing` w
+`app.js`): karta kolekcji, której najnowsze zadanie indeksacji wciąż trwa
+(`job.finished == false` z `GET api/indexing_status`), dostaje pod spodem
+poruszający się pasek z napisem „Indeksowanie…”. Pasek nie musi oddawać
+realnego postępu — jest animacją CSS (`indeterminate`); liczniki i szczegóły
+zadania widać po wejściu w kolekcję. `app.js` odpytuje
+`GET /collections/indexing-status?collection_name=…` co
+`INDEXING_POLL_INTERVAL_MS` (2 s), pauzuje, gdy karta jest niewidoczna
+(`visibilitychange`), przerywa po trzech kolejnych błędach (silnik bez
+endpointu nie może zapętlzić strony) i **przeładowuje listę tylko wtedy, gdy
+któraś odpowiedź różni się od tej, z której karty zostały wyrenderowane**
+(`status:percent` na kartę) — lista, na której nic się nie zmieniło, ładuje
+się ponownie nigdy.
+
 Dopóki zadanie jest w toku, `app.js` (`initIndexingStatus`) odpytuje
 `GET /collections/indexing-status?collection_name=…&job_id=…` co
 `constants.INDEXING_POLL_INTERVAL_MS` (2 s): aktualizuje panel i plakietki
@@ -385,7 +399,7 @@ ani bazy wektorów.
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py     # 194 checki, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py     # 195 checków, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów
