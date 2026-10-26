@@ -1724,10 +1724,10 @@ function initCollectionFilter() {
     };
 
     const step = (offset) => {
+      // the window moves without touching the scroll position: the arrows of
+      // the pager stay exactly where the reader left them
       page += offset;
       apply(false);
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      grid.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     };
 
     if (previous) previous.addEventListener("click", () => step(-1));
