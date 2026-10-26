@@ -3706,6 +3706,12 @@ input[type="range"]::-moz-range-thumb {
   overflow-wrap: anywhere;
 }
 
+.history__date {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
 .history__meta {
   display: flex;
   flex-wrap: wrap;

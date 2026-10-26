@@ -63,7 +63,8 @@ Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-conf
   oceny, zapisana ocena jest zaznaczona). Panel „Historia wyszukiwań” pod
   polem pytania pokazuje wyszukiwania użytkownika tylko w wybranej kolekcji
   (silnik: `GET api/search_history?collection_name=…`, maks. 50, od
-  najnowszych); po zmianie kolekcji w panelu bocznym jest odświeżany przez
+  najnowszych), każdy wpis z datą i godziną wyszukiwania (`created_on`
+  silnika, „RRRR-MM-DD GG:MM”; silnik bez tego pola nie pokazuje daty); po zmianie kolekcji w panelu bocznym jest odświeżany przez
   `GET /search/history?collection_name=…` (JSON z fragmentem HTML). Szczegóły
   wpisu pobiera `GET api/get_search_history?query_response_id=…`. Gdy plik
   konfiguracyjny nie zawiera tych endpointów, używane są domyślne ścieżki.
@@ -384,7 +385,7 @@ ani bazy wektorów.
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py     # 193 checki, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py     # 194 checki, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów

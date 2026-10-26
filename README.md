@@ -56,7 +56,9 @@ file keeps working.
   - Hybrid search (RRF) combining vector search and full-text keyword retrieval.
   - Result reranking with dedicated reranker models.
   - Generative QA: asynchronous answer generation based on retrieved passages, with multi-star rating and user feedback.
-  - Search history per collection with pre-filled filters and parameters.
+  - Search history per collection with pre-filled filters and parameters; every entry
+    shows when the search was made (`created_on` of the engine, `YYYY-MM-DD HH:MM`;
+    an engine without the field shows no date).
 - **Modern UI & UX**:
   - Lightweight, responsive design without external CDN dependencies (works fully offline).
   - Dark / Light / Auto theme support.

@@ -2057,6 +2057,15 @@ def main() -> int:
             "",
         )
         check(
+            "history entries show the date of the search",
+            '<span class="history__date"' in history_html
+            and "2026-10-24 15:04" in history_html
+            and "2026-10-25 09:15" in history_html
+            # an entry of an engine without created_on shows no date at all
+            and history_html.count('class="history__date"') == 2,
+            "",
+        )
+        check(
             "history entries show results, answer and rating",
             "Jak wygląda proces ofertowy?" in history_html
             and "2 passages" in history_html

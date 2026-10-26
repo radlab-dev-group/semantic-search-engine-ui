@@ -450,6 +450,7 @@
     "filter_placeholder": "Filter the history…",
     "filter_label": "Filter the search history",
     "open_title": "Show the question, the results and the answer of this search",
+    "created_title": "Date and time of the search",
     "delete": "Delete",
     "delete_title": "Delete this search from history",
     "delete_confirm": "Are you sure you want to delete this search from history?",

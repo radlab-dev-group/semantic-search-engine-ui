@@ -478,6 +478,7 @@
     "filter_placeholder": "Filtruj historię…",
     "filter_label": "Filtruj historię wyszukiwań",
     "open_title": "Pokaż pytanie, wyniki i odpowiedź z tego wyszukiwania",
+    "created_title": "Data i godzina wyszukiwania",
     "delete": "Usuń",
     "delete_title": "Usuń to wyszukiwanie z historii",
     "delete_confirm": "Czy na pewno usunąć to wyszukiwanie z historii?",

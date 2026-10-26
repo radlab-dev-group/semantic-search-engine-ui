@@ -357,6 +357,23 @@ def format_created_on(value) -> str:
         return text
 
 
+def format_created_on_time(value) -> str:
+    """Engine timestamp as ``YYYY-MM-DD HH:MM``, or an empty string.
+
+    The history of the searches happens during a day, so the time of day is
+    what tells two searches apart; the same ``Z`` suffix of the engine is
+    normalised as in :func:`format_created_on`.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    iso = text[:-1] + "+00:00" if text.endswith(("Z", "z")) else text
+    try:
+        return datetime.datetime.fromisoformat(iso).strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        return text
+
+
 def collection_row(entry) -> dict | None:
     """One entry of ``collections`` as a table row.
 
@@ -935,6 +952,9 @@ def history_row(entry) -> dict | None:
     return {
         "id": entry["query_response_id"],
         "query": str(entry.get("query") or entry.get("query_str") or "").strip(),
+        # when the search was made; an engine which does not know the field
+        # yet leaves it empty and the panel shows no date
+        "created_on": format_created_on_time(entry.get("created_on")),
         "collection_name": entry.get("collection_name"),
         "documents": _size(stats),
         "snippets": _size(detailed),
