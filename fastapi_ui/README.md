@@ -279,6 +279,13 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
     = 60 tokenów zakładki, a powrót do „Ustawienia kolekcji” przywraca
     wartości kolekcji). Przy kolekcji `strict` wybór własnych wartości od
     razu ostrzega, że silnik odpowie `CHUNKING_MISMATCH`.
+    Formularz plików ma dodatkowo przełącznik **„Usuń plik z dysku po
+    zindeksowaniu”** (domyślnie włączony) — opcja silnika
+    `delete_files_after_indexing`: plik wgranego dokumentu znika z dysku
+    silnika, gdy jego wektory są już zapisane, a dokument, który się nie
+    zindeksował, pliku nie traci (to on jest potrzebny do ponowienia).
+    Formularz wklejanego tekstu przełącznika nie ma — te teksty nigdy nie
+    były plikami na tym dysku.
   - **Błędy chunkingu silnika** (`errors[].error_code`, HTTP 200):
     `000005_DATA` (CHUNKING_TOO_LONG) wraca na formularz z podświetlonym
     polem/suwakiem rozmiaru chunka i komunikatem silnika (w języku UI, parametr
@@ -400,7 +407,7 @@ ani bazy wektorów.
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py     # 195 checków, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py     # 198 checków, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów

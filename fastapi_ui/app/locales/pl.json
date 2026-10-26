@@ -376,6 +376,7 @@
     "check_lang": "Sprawdź język indeksowanych plików (zapis do bazy danych)",
     "proper_pages": "Przygotuj właściwe strony (scal pojedyncze teksty z tej samej strony)",
     "merge_pages": "Scal cały dokument w jedną stronę i przetwórz go",
+    "delete_files": "Usuń plik z dysku po zindeksowaniu (błędne dokumenty zachowują plik)",
     "start": "Rozpocznij indeksowanie",
     "starting": "Wgrywanie i indeksowanie…",
     "error_no_files": "Brak plików do wgrania!",

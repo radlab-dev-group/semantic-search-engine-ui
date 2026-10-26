@@ -1430,6 +1430,7 @@ def main() -> int:
                 "check_text_lang": False,
                 "prepare_proper_pages": True,
                 "merge_document_pages": False,
+                "delete_files_after_indexing": False,
                 "max_tokens_in_chunk": 300,
                 "number_of_overlap_tokens": 30,
             },
@@ -1443,6 +1444,12 @@ def main() -> int:
             and add_page.count('name="merge_document_pages"') == 2
             and 'id="text_use_text_denoiser"' in add_page
             and "clear_text_before_indexing" not in add_page,
+            "",
+        )
+        check(
+            "only the file form asks about the files on the disk of the engine",
+            'name="delete_files_after_indexing"' in add_page
+            and 'id="text_delete_files_after_indexing"' not in add_page,
             "",
         )
 
@@ -1522,8 +1529,15 @@ def main() -> int:
                     "check_text_lang",
                     "prepare_proper_pages",
                     "merge_document_pages",
+                    "delete_files_after_indexing",
                 ]
             ),
+            "",
+        )
+        check(
+            "the files of the disk are kept by default, asked for by a checkbox",
+            'name="delete_files_after_indexing" checked'
+            in client.get("/documents/upload").text,
             "",
         )
 
@@ -1534,6 +1548,7 @@ def main() -> int:
                 "clear_text": "on",
                 "check_text_lang": "on",
                 "prepare_proper_pages": "on",
+                "delete_files_after_indexing": "on",
                 "max_tokens_in_chunk": "300",
                 "number_of_overlap_tokens": "30",
             },
@@ -1557,6 +1572,11 @@ def main() -> int:
             "upload sent indexing options",
             "max_tokens_in_chunk" in sent.get("raw_text", "")
             and '"max_tokens_in_chunk": 300' in sent.get("raw_text", ""),
+            str(sent.get("body")),
+        )
+        check(
+            "upload sends the removal of the files it was asked for",
+            '"delete_files_after_indexing": true' in sent.get("raw_text", ""),
             str(sent.get("body")),
         )
         check(

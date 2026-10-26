@@ -350,6 +350,7 @@
     "check_lang": "Check language of indexed files (store to database)",
     "proper_pages": "Prepare proper pages (merge single texts from same page)",
     "merge_pages": "Merge whole document to single page and process it",
+    "delete_files": "Delete the file from the disk once indexed (failed documents keep theirs)",
     "start": "Start indexing",
     "starting": "Uploading and indexing…",
     "error_no_files": "There are no files to upload!",

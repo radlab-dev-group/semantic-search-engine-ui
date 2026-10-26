@@ -290,6 +290,12 @@ def parse_indexing_options(form: FormData) -> dict:
         "check_text_lang": form.get("check_text_lang") is not None,
         "prepare_proper_pages": form.get("prepare_proper_pages") is not None,
         "merge_document_pages": form.get("merge_document_pages") is not None,
+        # The file of an uploaded document disappears from the disk of the
+        # engine once its embeddings are stored (a document which fails
+        # indexing keeps its file).  The form of the pasted texts has no such
+        # switch: those texts were never files here.
+        "delete_files_after_indexing": form.get("delete_files_after_indexing")
+        is not None,
     }
     if form.get("chunking_mode") == "collection":
         return options
