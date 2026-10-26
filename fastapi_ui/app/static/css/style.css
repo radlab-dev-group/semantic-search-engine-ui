@@ -6973,12 +6973,38 @@ input[type="range"]::-moz-range-thumb {
 /* --------------------------------------------------------------------------
    18.6 Chunking: collection cards, new collection form, indexing options
    -------------------------------------------------------------------------- */
-/* Collection card: date and the declared chunking stacked in the footer */
+/* Collection card: date, counters and chunking, one line under another */
 .collection__meta {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+/* Counters of GET collections: all the documents, the active ones aside */
+.collection__docs {
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem var(--space-4);
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.collection__docs svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--brand-500);
+}
+
+.collection__doc-active {
+  color: var(--text-faint);
+}
+
+.collection__doc-active::before {
+  content: "·";
+  margin-right: 0.4rem;
 }
 
 .collection__chunking {

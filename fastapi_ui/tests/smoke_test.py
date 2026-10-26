@@ -155,6 +155,12 @@ def check_i18n(client) -> None:
     client.cookies.set("sse_lang", "pl")
     pages = {url: client.get(url).text for url in ["/home", "/collections", "/collections/manage", "/documents/upload", "/search"]}
     check(
+        "polish collection counters use the plural forms",
+        "128 dokumentów" in pages["/collections"]
+        and "120 aktywnych" in pages["/collections"],
+        "",
+    )
+    check(
         "polish interface",
         '<html lang="pl"' in pages["/search"]
         and ">Baza wiedzy</a>" in pages["/search"]
@@ -892,6 +898,15 @@ def main() -> int:
             "collections list shows description and creation date",
             "Kolekcja użytkownika" in response.text
             and "2026-09-30" in response.text,
+            "",
+        )
+        check(
+            "collections list counts the documents and the active ones",
+            'class="collection__docs"' in response.text
+            and ">128 documents<" in response.text
+            and ">120 active<" in response.text
+            # the card of a collection whose engine sends no counters stays quiet
+            and ">0 documents<" not in response.text.split("user_queue")[1][:2000],
             "",
         )
         check(

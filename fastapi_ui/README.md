@@ -201,8 +201,12 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   z zakładkami Kolekcje / Dokumenty / Dodaj treść i przełącznikiem kolekcji;
   wybrana kolekcja jest zapamiętywana w stanie sesji (`kb_collection`), więc
   przechodzenie między zakładkami jej nie gubi.
-  - **Kolekcje** jako karty (nazwa, opis, data, zadeklarowany podział na
-    chunki z `metadata_json` — „512 tokenów · zakładka 32” plus odznaka
+  - **Kolekcje** jako karty (nazwa, opis, data, a pod nią liczniki z
+    `GET api/collections` w osobnym wierszu: wszystkie dokumenty i osobno te
+    biorące udział w wyszukiwaniu — „128 dokumentów · 120 aktywnych”, przy
+    czym karta kolekcji z silnika starszego niż 0.1.5 (brak pól) nie pokazuje
+    niczego zamiast zera; dalej zadeklarowany podział na chunki z
+    `metadata_json` — „512 tokenów · zakładka 32” plus odznaka
     `strict`, albo „podział niezadeklarowany” gdy `metadata_json` jest `null`;
     akcje Dokumenty / Dodaj treść / Szukaj, usuwanie ikoną kosza). Nad kartami
     jest filtr po nazwie (jak filtr dokumentów): pole `type=search`
@@ -375,7 +379,7 @@ ani bazy wektorów.
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py     # 181 checków, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py     # 191 checków, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów

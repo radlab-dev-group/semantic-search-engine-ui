@@ -62,6 +62,19 @@
                     {{ t('collections.created_on', date=coll.created_on) }}
                   {% else %}<span class="muted">—</span>{% endif %}
                 </span>
+                {#- Counters of GET collections, in a line of their own under
+                    the date: every document of the collection and, apart from
+                    them, the ones which take part in the search. The engine
+                    sends both from 0.1.5 on; without them the card is quiet. -#}
+                {% if coll.document_count is not none %}
+                  <span class="collection__docs">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+                    <span class="collection__doc-value" title="{{ t('collections.documents_title', total=coll.document_count) }}">{{ t.plural('collections.document_count', coll.document_count) }}</span>
+                    {% if coll.active_document_count is not none %}
+                      <span class="collection__doc-active" title="{{ t('collections.active_documents_title', active=coll.active_document_count, total=coll.document_count) }}">{{ t.plural('collections.active_document_count', coll.active_document_count) }}</span>
+                    {% endif %}
+                  </span>
+                {% endif %}
                 {#- Chunking of the collection (metadata_json of the engine):
                     null means that nothing was declared yet -#}
                 <span class="collection__chunking{% if not coll.chunking %} is-undeclared{% endif %}" title="{{ t('collections.chunking_title') }}">

@@ -180,6 +180,20 @@
     "created": "Kolekcja została utworzona. Dodaj dokumenty, aby zacząć wyszukiwać.",
     "documents": "Dokumenty",
     "deleted_note": "Usunięto wszystkie jej dokumenty, fragmenty tekstu i wektory.",
+    "documents_title": "Dokumenty tej kolekcji: {total} łącznie, także wyłączone z wyszukiwania",
+    "document_count": {
+      "one": "{n} dokument",
+      "few": "{n} dokumenty",
+      "many": "{n} dokumentów",
+      "other": "{n} dokumentów"
+    },
+    "active_document_count": {
+      "one": "{n} aktywny",
+      "few": "{n} aktywne",
+      "many": "{n} aktywnych",
+      "other": "{n} aktywnych"
+    },
+    "active_documents_title": "{active} z {total} dokumentów bierze udział w wyszukiwaniu",
     "chunking_title": "Podział tekstów kolekcji na chunki",
     "chunking_summary": "{chunk} tokenów · zakładka {overlap}",
     "chunking_undeclared": "podział niezadeklarowany",

@@ -119,6 +119,8 @@ COLLECTIONS = [
         "display_name": "Moje dokumenty",
         "description": "Kolekcja użytkownika",
         "created_on": "2026-09-30T11:20:33.123456+02:00",
+        "document_count": 128,
+        "active_document_count": 120,
         "metadata_json": {
             "chunking": {"max_tokens_in_chunk": 512, "number_of_overlap_tokens": 32},
             "strict_chunking": False,
@@ -130,6 +132,8 @@ COLLECTIONS = [
         "display_name": "",
         "description": "",
         "created_on": None,
+        "document_count": 0,
+        "active_document_count": 0,
         "metadata_json": None,
     },
     {
@@ -138,6 +142,8 @@ COLLECTIONS = [
         "display_name": "Sztywny podział",
         "description": "Kolekcja z wymuszonym podziałem",
         "created_on": "2026-10-01T08:00:00Z",
+        "document_count": 3,
+        "active_document_count": 3,
         "metadata_json": {
             "chunking": {"max_tokens_in_chunk": 256, "number_of_overlap_tokens": 0},
             "strict_chunking": True,

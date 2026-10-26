@@ -178,6 +178,16 @@
     "created": "Collection has been created. Add documents to start searching.",
     "documents": "Documents",
     "deleted_note": "All its documents, text chunks and vectors were removed.",
+    "documents_title": "Documents of this collection: {total} in total, the ones excluded from the search included",
+    "document_count": {
+      "one": "{n} document",
+      "other": "{n} documents"
+    },
+    "active_document_count": {
+      "one": "{n} active",
+      "other": "{n} active"
+    },
+    "active_documents_title": "{active} of {total} documents take part in the search",
     "chunking_title": "How the texts of the collection are split into chunks",
     "chunking_summary": "{chunk} tokens · overlap {overlap}",
     "chunking_undeclared": "chunking not declared",

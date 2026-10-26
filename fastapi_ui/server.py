@@ -375,6 +375,10 @@ def collection_row(entry) -> dict | None:
         "display_name": str(entry.get("display_name") or "").strip() or name,
         "description": str(entry.get("description") or "").strip(),
         "created_on": format_created_on(entry.get("created_on")),
+        # counters of GET collections: None = an engine which does not send
+        # them yet (before 0.1.5), the card then shows nothing instead of a 0
+        "document_count": as_int(entry.get("document_count")),
+        "active_document_count": as_int(entry.get("active_document_count")),
         # chunking: None = no declaration yet (metadata_json is null)
         **collection_chunking(entry.get("metadata_json")),
     }
