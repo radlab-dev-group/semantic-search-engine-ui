@@ -214,6 +214,11 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
     wyświetlaną i techniczną kolekcji; licznik „{n} z {total}” pojawia się
     tylko przy aktywnym filtrze, a przy braku trafień widać komunikat
     (`initCollectionFilter` w `app.js`, nic nie jest odpytywany silnik).
+    Kart widać po sześć (`COLLECTIONS_PER_PAGE` w `app.js`), a pod siatką
+    pojawiają się strzałki i wpis „strona X z Y” — sterunek chowa się, gdy
+    wszystkie karty mieszczą się na jednej stronie (również po przefiltrowaniu),
+    a filtrowanie wraca na pierwszą stronę. Wszystkie karty są w HTML od
+    serwera, więc bez JS lista zostaje kompletna, tylko bez okienkowania.
   - **Nowa kolekcja**: oprócz modeli i typu indeksu karta „Podział na chunki”
     (`max_tokens_in_chunk`, `number_of_overlap_tokens`, przełącznik
     `strict_chunking`). Oba parametry to suwaki (jak przy indeksowaniu)
@@ -379,7 +384,7 @@ ani bazy wektorów.
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py     # 191 checków, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py     # 193 checki, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów
