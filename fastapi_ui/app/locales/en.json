@@ -136,6 +136,8 @@
     "filter_placeholder": "Filter collections by name…",
     "filter_label": "Filter collections by name",
     "filter_nomatch": "No collection name matches the filter.",
+    "page_prev": "Previous collections",
+    "page_next": "Next collections",
     "no_description": "No description",
     "created_on": "Created {date}",
     "delete": "Delete",
@@ -662,7 +664,8 @@
     "indexing_process_tab": "{collection} #{id}",
     "indexing_dismiss": "Close indexing information",
     "indexing_active_badge": "{percent}%",
-    "indexing_done_badge": "Completed"
+    "indexing_done_badge": "Completed",
+    "collections_page": "page {page} of {total}"
   },
   "indexing": {
     "title": "Indexing progress",

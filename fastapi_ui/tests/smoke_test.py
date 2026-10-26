@@ -20,6 +20,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR))
 
 from tests.mock_sse_backend import (  # noqa: E402
+    COLLECTIONS,
     DOCUMENTS_IN_SEARCH,
     REQUEST_LOG,
     start_mock_backend,
@@ -894,6 +895,15 @@ def main() -> int:
             and "Moje dokumenty" in response.text,
             str(response.status_code),
         )
+        def collection_card(html, name) -> str:
+            """The HTML of one collection card, found by the link of its button."""
+            chunks = [
+                chunk
+                for chunk in html.split('<li class="collection"')
+                if f"/search?collection_name={name}" in chunk
+            ]
+            return chunks[0] if chunks else ""
+
         check(
             "collections list shows description and creation date",
             "Kolekcja użytkownika" in response.text
@@ -906,8 +916,26 @@ def main() -> int:
             and ">128 documents<" in response.text
             and ">120 active<" in response.text
             # the card of a collection whose engine sends no counters stays quiet
-            and ">0 documents<" not in response.text.split("user_queue")[1][:2000],
+            and 'class="collection__docs"'
+            not in collection_card(response.text, "user_queue"),
             "",
+        )
+        check(
+            "collections list pages the cards with arrows",
+            "data-collection-pager" in response.text
+            and "data-collection-page-prev" in response.text
+            and "data-collection-page-next" in response.text
+            # hidden until app.js finds more cards than one page holds
+            and "data-collection-pager hidden" in response.text
+            and 'aria-label="Previous collections"' in response.text
+            and 'aria-label="Next collections"' in response.text,
+            "",
+        )
+        check(
+            "every collection is in the page, the window is client side",
+            response.text.count("data-collection-card") == len(COLLECTIONS),
+            f'cards: {response.text.count("data-collection-card")}'
+            f', engine: {len(COLLECTIONS)}',
         )
         check(
             "collections list links to upload and search of a collection",

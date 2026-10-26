@@ -3064,6 +3064,23 @@ input[type="range"]::-moz-range-thumb {
   text-align: center;
 }
 
+/* arrows under the cards: a page of COLLECTIONS_PER_PAGE at a time (app.js) */
+.collection-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.collection-pager__label {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  min-width: 9ch;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .collection {
   position: relative;
   display: flex;

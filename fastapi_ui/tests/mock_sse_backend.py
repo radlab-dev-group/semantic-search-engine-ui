@@ -159,6 +159,48 @@ COLLECTIONS = [
         "created_on": "2026-10-16T09:30:00+02:00",
         "metadata_json": None,
     },
+    # More collections than one page of the list (COLLECTIONS_PER_PAGE = 6 in
+    # app.js): the list shows a page at a time and the arrows appear below it
+    {
+        "id": 5,
+        "name": "user_notes",
+        "display_name": "Notatki",
+        "description": "Notatki ze spotkań",
+        "created_on": "2026-10-18T10:15:00+02:00",
+        "document_count": 41,
+        "active_document_count": 41,
+        "metadata_json": None,
+    },
+    {
+        "id": 6,
+        "name": "user_invoices",
+        "display_name": "Faktury",
+        "description": "Faktury kosztowe",
+        "created_on": "2026-10-19T12:00:00+02:00",
+        "document_count": 214,
+        "active_document_count": 200,
+        "metadata_json": None,
+    },
+    {
+        "id": 7,
+        "name": "user_manuals",
+        "display_name": "Instrukcje",
+        "description": "Dokumentacja sprzętu",
+        "created_on": "2026-10-20T08:45:00+02:00",
+        "document_count": 12,
+        "active_document_count": 12,
+        "metadata_json": None,
+    },
+    {
+        "id": 8,
+        "name": "user_contracts",
+        "display_name": "Umowy",
+        "description": "Umowy z dostawcami",
+        "created_on": "2026-10-21T15:30:00+02:00",
+        "document_count": 7,
+        "active_document_count": 5,
+        "metadata_json": None,
+    },
 ]
 
 # GET filter_options: what the engine uses for an undeclared collection

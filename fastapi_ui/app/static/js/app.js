@@ -1672,10 +1672,14 @@ function initConfirmDialogs() {
 }
 
 /* ------------------------------------ knowledge base: collection filter */
-// Filter of the collection cards. The typed words are matched against
-// [data-search] of every card, which holds the lowercased display name and
-// the technical name of the collection; cards outside the window keep their
-// state, nothing is fetched from the engine.
+// Filter and window of the collection cards. The typed words are matched
+// against [data-search] of every card, which holds the lowercased display
+// name and the technical name of the collection, and the cards which match
+// are shown COLLECTIONS_PER_PAGE at a time. Both ends stay in the DOM: the
+// page only hides what is outside the filter or the window, and nothing is
+// fetched from the engine.
+const COLLECTIONS_PER_PAGE = 6;
+
 function initCollectionFilter() {
   document.querySelectorAll("[data-collection-grid]").forEach((grid) => {
     const card = grid.closest(".card") || document;
@@ -1684,30 +1688,54 @@ function initCollectionFilter() {
     const items = Array.from(grid.querySelectorAll("[data-collection-card]"));
     const noMatch = card.querySelector("[data-collection-nomatch]");
     const counter = card.querySelector("[data-collection-shown]");
+    const pager = card.querySelector("[data-collection-pager]");
+    const previous = card.querySelector("[data-collection-page-prev]");
+    const following = card.querySelector("[data-collection-page-next]");
+    const label = card.querySelector("[data-collection-page-label]");
+    const perPage = Number(grid.dataset.collectionPageSize) || COLLECTIONS_PER_PAGE;
+    let page = 0;
 
-    const apply = () => {
+    const apply = (resetPage) => {
       const words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
-      let visible = 0;
-      items.forEach((item) => {
-        const haystack = item.dataset.search || "";
-        const match = words.every((word) => haystack.includes(word));
-        item.classList.toggle("hidden", !match);
-        if (match) visible += 1;
-      });
-      if (noMatch) noMatch.classList.toggle("hidden", visible > 0);
+      const matches = items.filter((item) =>
+        words.every((word) => (item.dataset.search || "").includes(word))
+      );
+      const pages = Math.max(1, Math.ceil(matches.length / perPage));
+      if (resetPage) page = 0;
+      if (page > pages - 1) page = pages - 1;
+      const first = page * perPage;
+      const shown = new Set(matches.slice(first, first + perPage));
+      items.forEach((item) => item.classList.toggle("hidden", !shown.has(item)));
+      if (noMatch) noMatch.classList.toggle("hidden", matches.length > 0);
       if (counter) {
         // the counter only accompanies an active filter
         counter.hidden = words.length === 0;
         counter.textContent = words.length
-          ? t("collections_shown", { n: visible, total: items.length }, "{n} of {total}")
+          ? t("collections_shown", { n: matches.length, total: items.length }, "{n} of {total}")
           : "";
+      }
+      if (pager) {
+        // the arrows appear only when the cards do not fit on one page
+        pager.hidden = matches.length <= perPage;
+        if (previous) previous.disabled = page === 0;
+        if (following) following.disabled = page >= pages - 1;
+        if (label) label.textContent = t("collections_page", { page: page + 1, total: pages }, "Page {page} of {total}");
       }
     };
 
-    input.addEventListener("input", apply);
+    const step = (offset) => {
+      page += offset;
+      apply(false);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      grid.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    };
+
+    if (previous) previous.addEventListener("click", () => step(-1));
+    if (following) following.addEventListener("click", () => step(1));
+    input.addEventListener("input", () => apply(true));
     // clearing with the ✕ of the search field does not always fire "input"
-    input.addEventListener("search", apply);
-    apply();
+    input.addEventListener("search", () => apply(true));
+    apply(true);
   });
 }
 
