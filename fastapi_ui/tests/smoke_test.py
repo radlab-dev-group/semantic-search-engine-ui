@@ -20,6 +20,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR))
 
 from tests.mock_sse_backend import (  # noqa: E402
+    COLLECTIONS,
     DOCUMENTS_IN_SEARCH,
     REQUEST_LOG,
     start_mock_backend,
@@ -154,6 +155,12 @@ def check_i18n(client) -> None:
 
     client.cookies.set("sse_lang", "pl")
     pages = {url: client.get(url).text for url in ["/home", "/collections", "/collections/manage", "/documents/upload", "/search"]}
+    check(
+        "polish collection counters use the plural forms",
+        "128 dokumentów" in pages["/collections"]
+        and "120 aktywnych" in pages["/collections"],
+        "",
+    )
     check(
         "polish interface",
         '<html lang="pl"' in pages["/search"]
@@ -888,6 +895,15 @@ def main() -> int:
             and "Moje dokumenty" in response.text,
             str(response.status_code),
         )
+        def collection_card(html, name) -> str:
+            """The HTML of one collection card, found by the link of its button."""
+            chunks = [
+                chunk
+                for chunk in html.split('<li class="collection"')
+                if f"/search?collection_name={name}" in chunk
+            ]
+            return chunks[0] if chunks else ""
+
         check(
             "collections list shows description and creation date",
             "Kolekcja użytkownika" in response.text
@@ -895,9 +911,56 @@ def main() -> int:
             "",
         )
         check(
+            "collections list counts the documents and the active ones",
+            'class="collection__docs"' in response.text
+            and ">128 documents<" in response.text
+            and ">120 active<" in response.text
+            # the card of a collection whose engine sends no counters stays quiet
+            and 'class="collection__docs"'
+            not in collection_card(response.text, "user_queue"),
+            "",
+        )
+        check(
+            "collections list marks the collection which is being indexed",
+            '<div class="collection__indexing" data-collection-indexing'
+            in response.text
+            and 'data-collection="user_live"' in response.text
+            and ">Indexing…<" in response.text
+            and "data-poll-interval=" in response.text
+            # the other cards stay quiet
+            and response.text.count("data-collection-indexing") == 1,
+            "",
+        )
+        check(
+            "collections list pages the cards with arrows",
+            "data-collection-pager" in response.text
+            and "data-collection-page-prev" in response.text
+            and "data-collection-page-next" in response.text
+            # hidden until app.js finds more cards than one page holds
+            and "data-collection-pager hidden" in response.text
+            and 'aria-label="Previous collections"' in response.text
+            and 'aria-label="Next collections"' in response.text,
+            "",
+        )
+        check(
+            "every collection is in the page, the window is client side",
+            response.text.count("data-collection-card") == len(COLLECTIONS),
+            f'cards: {response.text.count("data-collection-card")}'
+            f', engine: {len(COLLECTIONS)}',
+        )
+        check(
             "collections list links to upload and search of a collection",
             'href="/documents/upload?collection_name=user_col"' in response.text
             and 'href="/search?collection_name=user_col"' in response.text,
+            "",
+        )
+        check(
+            "collections list can be filtered by name",
+            'data-collection-filter' in response.text
+            and 'data-collection-grid' in response.text
+            and 'data-collection-card data-search="moje dokumenty user_col"' in response.text
+            and 'data-collection-nomatch' in response.text
+            and 'type="search" placeholder="' in response.text,
             "",
         )
         check(
@@ -1367,6 +1430,7 @@ def main() -> int:
                 "check_text_lang": False,
                 "prepare_proper_pages": True,
                 "merge_document_pages": False,
+                "delete_files_after_indexing": False,
                 "max_tokens_in_chunk": 300,
                 "number_of_overlap_tokens": 30,
             },
@@ -1380,6 +1444,12 @@ def main() -> int:
             and add_page.count('name="merge_document_pages"') == 2
             and 'id="text_use_text_denoiser"' in add_page
             and "clear_text_before_indexing" not in add_page,
+            "",
+        )
+        check(
+            "only the file form asks about the files on the disk of the engine",
+            'name="delete_files_after_indexing"' in add_page
+            and 'id="text_delete_files_after_indexing"' not in add_page,
             "",
         )
 
@@ -1459,8 +1529,15 @@ def main() -> int:
                     "check_text_lang",
                     "prepare_proper_pages",
                     "merge_document_pages",
+                    "delete_files_after_indexing",
                 ]
             ),
+            "",
+        )
+        check(
+            "the files of the disk are kept by default, asked for by a checkbox",
+            'name="delete_files_after_indexing" checked'
+            in client.get("/documents/upload").text,
             "",
         )
 
@@ -1471,6 +1548,7 @@ def main() -> int:
                 "clear_text": "on",
                 "check_text_lang": "on",
                 "prepare_proper_pages": "on",
+                "delete_files_after_indexing": "on",
                 "max_tokens_in_chunk": "300",
                 "number_of_overlap_tokens": "30",
             },
@@ -1494,6 +1572,11 @@ def main() -> int:
             "upload sent indexing options",
             "max_tokens_in_chunk" in sent.get("raw_text", "")
             and '"max_tokens_in_chunk": 300' in sent.get("raw_text", ""),
+            str(sent.get("body")),
+        )
+        check(
+            "upload sends the removal of the files it was asked for",
+            '"delete_files_after_indexing": true' in sent.get("raw_text", ""),
             str(sent.get("body")),
         )
         check(
@@ -2002,6 +2085,15 @@ def main() -> int:
             and "Pytanie z innej kolekcji" not in history_html
             and history_html.index("/search/history/42")
             < history_html.index("/search/history/41"),
+            "",
+        )
+        check(
+            "history entries show the date of the search",
+            '<span class="history__date"' in history_html
+            and "2026-10-24 15:04" in history_html
+            and "2026-10-25 09:15" in history_html
+            # an entry of an engine without created_on shows no date at all
+            and history_html.count('class="history__date"') == 2,
             "",
         )
         check(

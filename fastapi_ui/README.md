@@ -63,7 +63,8 @@ Konfiguracja hostów/endpointów backendu znajduje się w pliku `configs/ui-conf
   oceny, zapisana ocena jest zaznaczona). Panel „Historia wyszukiwań” pod
   polem pytania pokazuje wyszukiwania użytkownika tylko w wybranej kolekcji
   (silnik: `GET api/search_history?collection_name=…`, maks. 50, od
-  najnowszych); po zmianie kolekcji w panelu bocznym jest odświeżany przez
+  najnowszych), każdy wpis z datą i godziną wyszukiwania (`created_on`
+  silnika, „RRRR-MM-DD GG:MM”; silnik bez tego pola nie pokazuje daty); po zmianie kolekcji w panelu bocznym jest odświeżany przez
   `GET /search/history?collection_name=…` (JSON z fragmentem HTML). Szczegóły
   wpisu pobiera `GET api/get_search_history?query_response_id=…`. Gdy plik
   konfiguracyjny nie zawiera tych endpointów, używane są domyślne ścieżki.
@@ -111,6 +112,20 @@ widać na stronach *Dodaj treść* i *Dokumenty*:
 
 Dokumenty na liście dostają plakietkę stanu (`pending` / `indexing` /
 `failed` / `skipped`); zaindeksowany dokument nie potrzebuje plakietki.
+
+**Pasek na liście kolekcji** (`collections.html`, `initCollectionIndexing` w
+`app.js`): karta kolekcji, której najnowsze zadanie indeksacji wciąż trwa
+(`job.finished == false` z `GET api/indexing_status`), dostaje pod spodem
+poruszający się pasek z napisem „Indeksowanie…”. Pasek nie musi oddawać
+realnego postępu — jest animacją CSS (`indeterminate`); liczniki i szczegóły
+zadania widać po wejściu w kolekcję. `app.js` odpytuje
+`GET /collections/indexing-status?collection_name=…` co
+`INDEXING_POLL_INTERVAL_MS` (2 s), pauzuje, gdy karta jest niewidoczna
+(`visibilitychange`), przerywa po trzech kolejnych błędach (silnik bez
+endpointu nie może zapętlzić strony) i **przeładowuje listę tylko wtedy, gdy
+któraś odpowiedź różni się od tej, z której karty zostały wyrenderowane**
+(`status:percent` na kartę) — lista, na której nic się nie zmieniło, ładuje
+się ponownie nigdy.
 
 Dopóki zadanie jest w toku, `app.js` (`initIndexingStatus`) odpytuje
 `GET /collections/indexing-status?collection_name=…&job_id=…` co
@@ -201,10 +216,25 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
   z zakładkami Kolekcje / Dokumenty / Dodaj treść i przełącznikiem kolekcji;
   wybrana kolekcja jest zapamiętywana w stanie sesji (`kb_collection`), więc
   przechodzenie między zakładkami jej nie gubi.
-  - **Kolekcje** jako karty (nazwa, opis, data, zadeklarowany podział na
-    chunki z `metadata_json` — „512 tokenów · zakładka 32” plus odznaka
+  - **Kolekcje** jako karty (nazwa, opis, data, a pod nią liczniki z
+    `GET api/collections` w osobnym wierszu: wszystkie dokumenty i osobno te
+    biorące udział w wyszukiwaniu — „128 dokumentów · 120 aktywnych”, przy
+    czym karta kolekcji z silnika starszego niż 0.1.5 (brak pól) nie pokazuje
+    niczego zamiast zera; dalej zadeklarowany podział na chunki z
+    `metadata_json` — „512 tokenów · zakładka 32” plus odznaka
     `strict`, albo „podział niezadeklarowany” gdy `metadata_json` jest `null`;
-    akcje Dokumenty / Dodaj treść / Szukaj, usuwanie ikoną kosza).
+    akcje Dokumenty / Dodaj treść / Szukaj, usuwanie ikoną kosza). Nad kartami
+    jest filtr po nazwie (jak filtr dokumentów): pole `type=search`
+    wszystkie wpisane słowa z `data-search` karty, czyli małą nazwą
+    wyświetlaną i techniczną kolekcji; licznik „{n} z {total}” pojawia się
+    tylko przy aktywnym filtrze, a przy braku trafień widać komunikat
+    (`initCollectionFilter` w `app.js`, nic nie jest odpytywany silnik).
+    Kart widać po sześć (`COLLECTIONS_PER_PAGE` w `app.js`), a pod siatką
+    pojawiają się strzałki i wpis „strona X z Y” — sterunek chowa się, gdy
+    wszystkie karty mieszczą się na jednej stronie (również po przefiltrowaniu),
+    a filtrowanie wraca na pierwszą stronę. Zmiana strony nic nie przewija:
+    karta zostaje dokładnie tam, gdzie ją zostawiono. Wszystkie karty są w HTML od
+    serwera, więc bez JS lista zostaje kompletna, tylko bez okienkowania.
   - **Nowa kolekcja**: oprócz modeli i typu indeksu karta „Podział na chunki”
     (`max_tokens_in_chunk`, `number_of_overlap_tokens`, przełącznik
     `strict_chunking`). Oba parametry to suwaki (jak przy indeksowaniu)
@@ -249,6 +279,13 @@ podobieństwa teal → fiolet → magenta, używany m.in. w paskach `score`.
     = 60 tokenów zakładki, a powrót do „Ustawienia kolekcji” przywraca
     wartości kolekcji). Przy kolekcji `strict` wybór własnych wartości od
     razu ostrzega, że silnik odpowie `CHUNKING_MISMATCH`.
+    Formularz plików ma dodatkowo przełącznik **„Usuń plik z dysku po
+    zindeksowaniu”** (domyślnie włączony) — opcja silnika
+    `delete_files_after_indexing`: plik wgranego dokumentu znika z dysku
+    silnika, gdy jego wektory są już zapisane, a dokument, który się nie
+    zindeksował, pliku nie traci (to on jest potrzebny do ponowienia).
+    Formularz wklejanego tekstu przełącznika nie ma — te teksty nigdy nie
+    były plikami na tym dysku.
   - **Błędy chunkingu silnika** (`errors[].error_code`, HTTP 200):
     `000005_DATA` (CHUNKING_TOO_LONG) wraca na formularz z podświetlonym
     polem/suwakiem rozmiaru chunka i komunikatem silnika (w języku UI, parametr
@@ -370,7 +407,7 @@ ani bazy wektorów.
 ```bash
 cd fastapi_ui
 .venv/bin/pip install httpx            # zależność testowa
-.venv/bin/python tests/smoke_test.py     # 181 checków, wyjście != 0 przy porażce
+.venv/bin/python tests/smoke_test.py     # 198 checków, wyjście != 0 przy porażce
 ```
 
 ## Struktura katalogów

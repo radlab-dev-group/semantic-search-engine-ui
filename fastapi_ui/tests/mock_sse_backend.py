@@ -57,6 +57,7 @@ SEARCH_HISTORY = [
         "query_response_id": 42,
         "query": "Jak wygląda proces ofertowy?",
         "query_str": "Jak wygląda proces ofertowy?",
+        "created_on": "2026-10-24T15:04:05.123456Z",
         "collection_id": 1,
         "collection_name": "user_col",
         "query_options": {"max_results": 8},
@@ -90,6 +91,7 @@ SEARCH_HISTORY = [
         "query_id": 11,
         "query_response_id": 41,
         "query": "Wyniki pomiarów <b>2025</b>",
+        "created_on": "2026-10-25T09:15:00+02:00",
         "collection_id": 1,
         "collection_name": "user_col",
         "query_options": {},
@@ -119,6 +121,8 @@ COLLECTIONS = [
         "display_name": "Moje dokumenty",
         "description": "Kolekcja użytkownika",
         "created_on": "2026-09-30T11:20:33.123456+02:00",
+        "document_count": 128,
+        "active_document_count": 120,
         "metadata_json": {
             "chunking": {"max_tokens_in_chunk": 512, "number_of_overlap_tokens": 32},
             "strict_chunking": False,
@@ -130,6 +134,8 @@ COLLECTIONS = [
         "display_name": "",
         "description": "",
         "created_on": None,
+        "document_count": 0,
+        "active_document_count": 0,
         "metadata_json": None,
     },
     {
@@ -138,6 +144,8 @@ COLLECTIONS = [
         "display_name": "Sztywny podział",
         "description": "Kolekcja z wymuszonym podziałem",
         "created_on": "2026-10-01T08:00:00Z",
+        "document_count": 3,
+        "active_document_count": 3,
         "metadata_json": {
             "chunking": {"max_tokens_in_chunk": 256, "number_of_overlap_tokens": 0},
             "strict_chunking": True,
@@ -151,6 +159,60 @@ COLLECTIONS = [
         "display_name": "Indeksowanie w kolejce",
         "description": "Kolekcja indeksowana przez workera Celery",
         "created_on": "2026-10-16T09:30:00+02:00",
+        "metadata_json": None,
+    },
+    # More collections than one page of the list (COLLECTIONS_PER_PAGE = 6 in
+    # app.js): the list shows a page at a time and the arrows appear below it
+    {
+        "id": 5,
+        "name": "user_notes",
+        "display_name": "Notatki",
+        "description": "Notatki ze spotkań",
+        "created_on": "2026-10-18T10:15:00+02:00",
+        "document_count": 41,
+        "active_document_count": 41,
+        "metadata_json": None,
+    },
+    {
+        "id": 6,
+        "name": "user_invoices",
+        "display_name": "Faktury",
+        "description": "Faktury kosztowe",
+        "created_on": "2026-10-19T12:00:00+02:00",
+        "document_count": 214,
+        "active_document_count": 200,
+        "metadata_json": None,
+    },
+    {
+        "id": 7,
+        "name": "user_manuals",
+        "display_name": "Instrukcje",
+        "description": "Dokumentacja sprzętu",
+        "created_on": "2026-10-20T08:45:00+02:00",
+        "document_count": 12,
+        "active_document_count": 12,
+        "metadata_json": None,
+    },
+    {
+        "id": 8,
+        "name": "user_contracts",
+        "display_name": "Umowy",
+        "description": "Umowy z dostawcami",
+        "created_on": "2026-10-21T15:30:00+02:00",
+        "document_count": 7,
+        "active_document_count": 5,
+        "metadata_json": None,
+    },
+    # indexed the whole time (see FROZEN_INDEXING_JOB below): the card of this
+    # collection carries the bar of a job which is still running
+    {
+        "id": 9,
+        "name": "user_live",
+        "display_name": "Indeksowanie w toku",
+        "description": "Kolekcja z zadaniem indeksacji w kolejce",
+        "created_on": "2026-10-22T11:00:00+02:00",
+        "document_count": 30,
+        "active_document_count": 12,
         "metadata_json": None,
     },
 ]
@@ -355,7 +417,9 @@ def _advance_indexing(job):
     """One step of the queue per status question: queued -> preparing (the
     worker stores the documents of the upload) -> indexing one document at a
     time -> partial, because one document of the queue is broken."""
-    if job["status"] in INDEXING_FINISHED:
+    if job["status"] in INDEXING_FINISHED or job.get("frozen"):
+        # "frozen" jobs stay in the state they were created with, so a client
+        # which asks often sees the same running job as the page it came from
         return job
     job["steps"] += 1
     documents = job["documents"]
@@ -499,6 +563,29 @@ def _indexing_body(job):
         "documents": _indexing_document_rows(job) if job else [],
         "pending_documents": payload["documents_pending"] if payload else 0,
     }
+
+
+# A worker of the queue is still reading the texts of one collection: the job
+# never advances, so the collections list always shows its bar and the pages
+# of the other collections stay exactly as they were.  The documents of the
+# job are not added to the collection - a worker which has not stored them
+# yet has nothing to show for them.
+FROZEN_INDEXING_JOB = {
+    "id": 900,
+    "kind": "files",
+    "collection_name": "user_live",
+    "status": "indexing",
+    "total_documents": 30,
+    "documents_indexed": 12,
+    "documents_failed": 0,
+    "documents_skipped": 0,
+    "current_document": "nota-13.pdf",
+    "error_message": None,
+    "steps": 1,
+    "frozen": True,
+    "documents": [],
+}
+INDEXING_JOBS[FROZEN_INDEXING_JOB["id"]] = dict(FROZEN_INDEXING_JOB)
 
 
 class MockHandler(BaseHTTPRequestHandler):

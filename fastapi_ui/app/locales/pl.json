@@ -135,6 +135,13 @@
       "other": "kolekcji"
     },
     "add_new": "+ Dodaj nową kolekcję",
+    "filter_placeholder": "Filtruj kolekcje po nazwie…",
+    "filter_label": "Filtruj kolekcje po nazwie",
+    "filter_nomatch": "Żadna nazwa kolekcji nie pasuje do filtra.",
+    "page_prev": "Poprzednie kolekcje",
+    "page_next": "Następne kolekcje",
+    "indexing": "Indeksowanie…",
+    "indexing_title": "Do tej kolekcji wciąż trafiają teksty — otwórz ją, aby zobaczyć szczegóły",
     "no_description": "Brak opisu",
     "created_on": "Utworzono {date}",
     "delete": "Usuń",
@@ -177,6 +184,20 @@
     "created": "Kolekcja została utworzona. Dodaj dokumenty, aby zacząć wyszukiwać.",
     "documents": "Dokumenty",
     "deleted_note": "Usunięto wszystkie jej dokumenty, fragmenty tekstu i wektory.",
+    "documents_title": "Dokumenty tej kolekcji: {total} łącznie, także wyłączone z wyszukiwania",
+    "document_count": {
+      "one": "{n} dokument",
+      "few": "{n} dokumenty",
+      "many": "{n} dokumentów",
+      "other": "{n} dokumentów"
+    },
+    "active_document_count": {
+      "one": "{n} aktywny",
+      "few": "{n} aktywne",
+      "many": "{n} aktywnych",
+      "other": "{n} aktywnych"
+    },
+    "active_documents_title": "{active} z {total} dokumentów bierze udział w wyszukiwaniu",
     "chunking_title": "Podział tekstów kolekcji na chunki",
     "chunking_summary": "{chunk} tokenów · zakładka {overlap}",
     "chunking_undeclared": "podział niezadeklarowany",
@@ -355,6 +376,7 @@
     "check_lang": "Sprawdź język indeksowanych plików (zapis do bazy danych)",
     "proper_pages": "Przygotuj właściwe strony (scal pojedyncze teksty z tej samej strony)",
     "merge_pages": "Scal cały dokument w jedną stronę i przetwórz go",
+    "delete_files": "Usuń plik z dysku po zindeksowaniu (błędne dokumenty zachowują plik)",
     "start": "Rozpocznij indeksowanie",
     "starting": "Wgrywanie i indeksowanie…",
     "error_no_files": "Brak plików do wgrania!",
@@ -459,6 +481,7 @@
     "filter_placeholder": "Filtruj historię…",
     "filter_label": "Filtruj historię wyszukiwań",
     "open_title": "Pokaż pytanie, wyniki i odpowiedź z tego wyszukiwania",
+    "created_title": "Data i godzina wyszukiwania",
     "delete": "Usuń",
     "delete_title": "Usuń to wyszukiwanie z historii",
     "delete_confirm": "Czy na pewno usunąć to wyszukiwanie z historii?",
@@ -665,6 +688,12 @@
       "many": "zaznaczono {n}",
       "other": "zaznaczono {n}"
     },
+    "collections_shown": {
+      "one": "{n} z {total} kolekcji",
+      "few": "{n} z {total} kolekcji",
+      "many": "{n} z {total} kolekcji",
+      "other": "{n} z {total} kolekcji"
+    },
     "visibility_failed": "Nie udało się zmienić dokumentu — spróbuj ponownie.",
     "model_vector": "wektor {n}",
     "model_max_length": "maks. wejście {n} tokenów",
@@ -693,7 +722,8 @@
     "indexing_process_tab": "{collection} #{id}",
     "indexing_dismiss": "Zamknij informację o indeksacji",
     "indexing_active_badge": "{percent}%",
-    "indexing_done_badge": "Ukończono"
+    "indexing_done_badge": "Ukończono",
+    "collections_page": "strona {page} z {total}"
   },
   "indexing": {
     "title": "Postęp indeksowania",

@@ -23,9 +23,19 @@
     {% include "partials/messages.html" %}
 
     {% if collections %}
-      <ul class="collection-grid">
+      {#- Filtering by name (like the document list): the input, the cards and
+          the "nothing found" note are wired up in app.js (initCollectionFilter) -#}
+      {% if collections | length > 1 %}
+        <div class="collection-toolbar">
+          <div class="doc-search-box">
+            <input type="search" placeholder="{{ t('collections.filter_placeholder') }}" data-collection-filter aria-label="{{ t('collections.filter_label') }}">
+          </div>
+          <span class="collection-toolbar__count muted" data-collection-shown hidden></span>
+        </div>
+      {% endif %}
+      <ul class="collection-grid" data-collection-grid>
         {% for coll in collections %}
-          <li class="collection">
+          <li class="collection" data-collection-card data-search="{{ (coll.display_name ~ ' ' ~ coll.name) | lower }}">
             <div class="collection__head">
               <span class="collection__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg></span>
               <div class="collection__title">
@@ -52,6 +62,19 @@
                     {{ t('collections.created_on', date=coll.created_on) }}
                   {% else %}<span class="muted">—</span>{% endif %}
                 </span>
+                {#- Counters of GET collections, in a line of their own under
+                    the date: every document of the collection and, apart from
+                    them, the ones which take part in the search. The engine
+                    sends both from 0.1.5 on; without them the card is quiet. -#}
+                {% if coll.document_count is not none %}
+                  <span class="collection__docs">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+                    <span class="collection__doc-value" title="{{ t('collections.documents_title', total=coll.document_count) }}">{{ t.plural('collections.document_count', coll.document_count) }}</span>
+                    {% if coll.active_document_count is not none %}
+                      <span class="collection__doc-active" title="{{ t('collections.active_documents_title', active=coll.active_document_count, total=coll.document_count) }}">{{ t.plural('collections.active_document_count', coll.active_document_count) }}</span>
+                    {% endif %}
+                  </span>
+                {% endif %}
                 {#- Chunking of the collection (metadata_json of the engine):
                     null means that nothing was declared yet -#}
                 <span class="collection__chunking{% if not coll.chunking %} is-undeclared{% endif %}" title="{{ t('collections.chunking_title') }}">
@@ -81,9 +104,40 @@
                 </a>
               </span>
             </div>
+            {#- A job of this collection is still running: a bar which only
+                says "indexing" (its details are on the documents page).
+                app.js ([data-collection-indexing]) refreshes the cards as
+                long as at least one of them runs. -#}
+            {% if coll.indexing %}
+              <div class="collection__indexing" data-collection-indexing
+                   data-collection="{{ coll.name }}"
+                   data-job-id="{{ coll.indexing.job_id if coll.indexing.job_id is not none else '' }}"
+                   data-status="{{ coll.indexing.status }}"
+                   data-percent="{{ coll.indexing.percent }}"
+                   data-poll-interval="{{ constants.INDEXING_POLL_INTERVAL_MS }}"
+                   role="status" aria-live="polite">
+                <span class="collection__indexing-label">{{ t('collections.indexing') }}</span>
+                <span class="collection__indexing-bar" aria-hidden="true"><span></span></span>
+              </div>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>
+      <p class="collection-nomatch muted hidden" data-collection-nomatch>{{ t('collections.filter_nomatch') }}</p>
+      {#- Window of the cards: hidden until app.js finds more of them than on
+          one page (initCollectionFilter), so without JS every card stays
+          visible and the arrows are not in the way -#}
+      <div class="collection-pager" data-collection-pager hidden>
+        <button type="button" class="btn btn--ghost btn--sm btn--icon"
+                data-collection-page-prev aria-label="{{ t('collections.page_prev') }}" title="{{ t('collections.page_prev') }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14.5 5.5-6 6.5 6 6.5"/></svg>
+        </button>
+        <span class="collection-pager__label muted" data-collection-page-label aria-live="polite"></span>
+        <button type="button" class="btn btn--ghost btn--sm btn--icon"
+                data-collection-page-next aria-label="{{ t('collections.page_next') }}" title="{{ t('collections.page_next') }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5.5 6 6.5-6 6.5"/></svg>
+        </button>
+      </div>
     {% else %}
       <div class="empty-state">
         <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/><path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3 1.3 0 2.5-.13 3.5-.35"/></svg></span>

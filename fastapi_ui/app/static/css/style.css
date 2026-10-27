@@ -3039,6 +3039,85 @@ input[type="range"]::-moz-range-thumb {
   list-style: none;
 }
 
+/* filter above the cards, same box as the filter of the document list */
+.collection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.collection-toolbar__count {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.collection-toolbar__count:empty {
+  display: none;
+}
+
+.collection-nomatch {
+  margin: 0;
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+/* A job still running for the collection: a quiet bar under the card */
+.collection__indexing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border);
+}
+
+.collection__indexing-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--brand-500);
+  white-space: nowrap;
+}
+
+.collection__indexing-bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+}
+
+.collection__indexing-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 35%;
+  border-radius: inherit;
+  background: var(--gradient-vector);
+  animation: indeterminate 1.4s var(--ease) infinite;
+}
+
+/* Arrows under the cards: a page of COLLECTIONS_PER_PAGE at a time (app.js) */
+.collection-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.collection-pager__label {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  min-width: 9ch;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .collection {
   position: relative;
   display: flex;
@@ -3662,6 +3741,12 @@ input[type="range"]::-moz-range-thumb {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow-wrap: anywhere;
+}
+
+.history__date {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-faint);
 }
 
 .history__meta {
@@ -6948,12 +7033,38 @@ input[type="range"]::-moz-range-thumb {
 /* --------------------------------------------------------------------------
    18.6 Chunking: collection cards, new collection form, indexing options
    -------------------------------------------------------------------------- */
-/* Collection card: date and the declared chunking stacked in the footer */
+/* Collection card: date, counters and chunking, one line under another */
 .collection__meta {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+/* Counters of GET collections: all the documents, the active ones aside */
+.collection__docs {
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem var(--space-4);
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.collection__docs svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--brand-500);
+}
+
+.collection__doc-active {
+  color: var(--text-faint);
+}
+
+.collection__doc-active::before {
+  content: "·";
+  margin-right: 0.4rem;
 }
 
 .collection__chunking {

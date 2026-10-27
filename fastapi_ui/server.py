@@ -290,6 +290,12 @@ def parse_indexing_options(form: FormData) -> dict:
         "check_text_lang": form.get("check_text_lang") is not None,
         "prepare_proper_pages": form.get("prepare_proper_pages") is not None,
         "merge_document_pages": form.get("merge_document_pages") is not None,
+        # The file of an uploaded document disappears from the disk of the
+        # engine once its embeddings are stored (a document which fails
+        # indexing keeps its file).  The form of the pasted texts has no such
+        # switch: those texts were never files here.
+        "delete_files_after_indexing": form.get("delete_files_after_indexing")
+        is not None,
     }
     if form.get("chunking_mode") == "collection":
         return options
@@ -357,6 +363,23 @@ def format_created_on(value) -> str:
         return text
 
 
+def format_created_on_time(value) -> str:
+    """Engine timestamp as ``YYYY-MM-DD HH:MM``, or an empty string.
+
+    The history of the searches happens during a day, so the time of day is
+    what tells two searches apart; the same ``Z`` suffix of the engine is
+    normalised as in :func:`format_created_on`.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    iso = text[:-1] + "+00:00" if text.endswith(("Z", "z")) else text
+    try:
+        return datetime.datetime.fromisoformat(iso).strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        return text
+
+
 def collection_row(entry) -> dict | None:
     """One entry of ``collections`` as a table row.
 
@@ -375,6 +398,10 @@ def collection_row(entry) -> dict | None:
         "display_name": str(entry.get("display_name") or "").strip() or name,
         "description": str(entry.get("description") or "").strip(),
         "created_on": format_created_on(entry.get("created_on")),
+        # counters of GET collections: None = an engine which does not send
+        # them yet (before 0.1.5), the card then shows nothing instead of a 0
+        "document_count": as_int(entry.get("document_count")),
+        "active_document_count": as_int(entry.get("active_document_count")),
         # chunking: None = no declaration yet (metadata_json is null)
         **collection_chunking(entry.get("metadata_json")),
     }
@@ -394,6 +421,29 @@ def fetch_collection_rows(token: str) -> dict:
     entries = body.get("collections") if isinstance(body, dict) else []
     rows = [row for row in (collection_row(entry) for entry in entries or []) if row]
     return {"collections": rows}
+
+
+def collection_indexing(token: str, collection_name: str) -> dict | None:
+    """The running job of a collection as the bar of its card.
+
+    ``None`` when the engine has no ``api/indexing_status``, the call fails,
+    the collection has never been indexed or its newest job has finished -
+    the card then shows no bar.  A running job answers with its ``job_id``
+    and the numbers ``app.js`` watches (``percent`` and ``finished``) so it
+    can reload the page only when something changed.
+    """
+    status = fetch_indexing_status(token, collection_name)
+    if not status:
+        return None
+    job = status.get("job")
+    if not isinstance(job, dict) or job.get("finished"):
+        return None
+    return {
+        "job_id": as_int(job.get("id")),
+        "status": str(job.get("status") or "indexing"),
+        "percent": as_int(job.get("percent")) or 0,
+        "finished": bool(job.get("finished")),
+    }
 
 
 def fetch_collection_filters(token: str, collection_name: str) -> dict:
@@ -931,6 +981,9 @@ def history_row(entry) -> dict | None:
     return {
         "id": entry["query_response_id"],
         "query": str(entry.get("query") or entry.get("query_str") or "").strip(),
+        # when the search was made; an engine which does not know the field
+        # yet leaves it empty and the panel shows no date
+        "created_on": format_created_on_time(entry.get("created_on")),
         "collection_name": entry.get("collection_name"),
         "documents": _size(stats),
         "snippets": _size(detailed),
@@ -1104,6 +1157,11 @@ def render_collections_page(request: Request, **context) -> HTMLResponse:
     data = fetch_collection_rows(token)
     if "error" in data:
         return render_api_error(request, data["error"])
+
+    # The bar of the card: one status question per collection, so a running
+    # job is visible from the list (the details stay on the documents page)
+    for row in data["collections"]:
+        row["indexing"] = collection_indexing(token, row["name"])
 
     remembered = kb_collection_name(request)
     names = [row["name"] for row in data["collections"]]

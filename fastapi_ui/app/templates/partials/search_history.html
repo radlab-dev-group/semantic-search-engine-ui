@@ -29,6 +29,11 @@
               <div class="history__entry">
                 <a class="history__item{% if current %} is-current{% endif %}" href="/search/history/{{ item.id }}"{% if current %} aria-current="true"{% endif %} title="{{ t('history.open_title') }}">
                   <span class="history__query">{{ item.query or t('history.no_query') }}</span>
+                  {#- When the search was made (created_on of the engine); an
+                      engine without the field shows no date at all -#}
+                  {% if item.created_on %}
+                    <span class="history__date" title="{{ t('history.created_title') }}">{{ item.created_on }}</span>
+                  {% endif %}
                   <span class="history__meta">
                     <span class="history__tag">{{ t.plural('history.snippets', item.snippets) }}</span>
                     <span class="history__tag">{{ t.plural('history.documents', item.documents) }}</span>
