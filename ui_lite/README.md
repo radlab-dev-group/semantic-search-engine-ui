@@ -30,6 +30,16 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/pytest -q
 ```
 
+### With the mock backend (no RadLab needed)
+
+```bash
+.venv/bin/uvicorn tests.mock_backend.server:app --port 8271 &
+SSE_API_HOST=http://localhost:8271 SESSION_SECRET=dev .venv/bin/uvicorn app.main:app --port 8000
+```
+
+Open http://localhost:8000 and log in with any username and the password `demo`.
+A question containing "licence" shows an answer without sources.
+
 ## Configuration
 
 The file `configs/ui-configuration.json` (the path can be changed with `UI_CONFIG`). The format of the `api_hosts`
@@ -98,6 +108,6 @@ app/
   routes/               – login, pages, /ui-api
   templates/, static/   – HTML, CSS (RadLab tokens), JS, fonts
   locales/              – PL and EN texts
-tests/                  – footnote-logic tests and contract tests
+tests/                  – footnote-logic tests, contract tests and the mock backend (tests/mock_backend)
 docs/                   – change requests for RadLab, architectural decisions (ADRs)
 ```

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import EXAMPLE_PATH, load_settings
 from app.main import create_app
-from mock_backend import server as mock
+from tests.mock_backend import server as mock
 
 
 @pytest.fixture

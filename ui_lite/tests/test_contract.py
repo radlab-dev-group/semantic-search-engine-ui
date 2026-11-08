@@ -53,7 +53,7 @@ def test_first_question_creates_chat_and_sends_required_options(logged, backend_
     assert "markdown table" in add["system_prompt"].lower() and "square brackets" in add["system_prompt"]
     assert "documents" not in add["search_options"]
     a = data["answer"]
-    assert not a["no_sources"] and a["answer_id"] and a["format"] == "tabela"
+    assert not a["no_sources"] and a["answer_id"] and a["format"] == "table"
     assert "<table>" in a["html"] and 'class="fn approx"' in a["html"]
     assert {g["name"] for g in a["groups"]} >= {"Przewodnik po AI dla administracji publicznej.pdf"}  # mock backend data
 
@@ -92,7 +92,7 @@ def test_history_and_resume_keep_sources_in_session(logged):
 
 
 def test_resume_after_new_session_has_no_sources(settings, backend_log):
-    from mock_backend import server as mock
+    from tests.mock_backend import server as mock
     # Two separate frontend processes (e.g. a restart): session memory does not carry over, the backend returns only messages.
     with TestClient(create_app(settings, transport=httpx.ASGITransport(app=mock.app))) as c1:
         c1.post("/login", data={"username": "a", "password": "demo"})
@@ -121,7 +121,7 @@ def test_document_preview_params_and_paging(logged, backend_log):
 
 def test_missing_document_maps_to_backend_error(logged):
     r = logged.get("/ui-api/document", params={"collection": "regulacje_ai", "name": "Brak.pdf"})
-    assert r.status_code == 502 and r.json()["message"] == "Nie znaleziono dokumentu"  # mock backend error message
+    assert r.status_code == 502 and r.json()["message"] == "Document not found"
 
 
 def test_backend_down_gives_503(settings):
