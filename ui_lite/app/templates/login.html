@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ t["login.title"] }} · {{ t["app.title"] }}{% endblock %}
+{% block body %}
+<main class="login">
+  <section class="login-art" aria-hidden="true">
+    <span class="brand"><span class="brand-dot"></span>{{ brand }}</span>
+    <div>
+      <p class="eyebrow">{{ t["login.eyebrow"] }}</p>
+      <h1 class="display display-xl" style="max-width:420px">{{ t["login.claim"] }}</h1>
+    </div>
+    <div class="login-orb"></div>
+  </section>
+  <section class="login-form">
+    <div style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:16px">
+      <h2 class="display display-l">{{ t["login.title"] }}</h2>
+      {% if error %}
+      <div class="notice notice-error" role="alert"><div>{{ error }}</div></div>
+      {% endif %}
+      {% if local %}
+      <form method="post" action="/login" style="display:flex;flex-direction:column;gap:16px">
+        <div class="field"><label for="username">{{ t["login.username"] }}</label>
+          <input class="input" id="username" name="username" autocomplete="username" required autofocus></div>
+        <div class="field"><label for="password">{{ t["login.password"] }}</label>
+          <input class="input" id="password" name="password" type="password" autocomplete="current-password" required></div>
+        <button class="btn btn-primary btn-block" type="submit">{{ t["login.submit"] }}</button>
+      </form>
+      {% endif %}
+      {% if local and sso %}<div class="divider">{{ t["login.or"] }}</div>{% endif %}
+      {% if sso %}
+      <a class="btn {% if not local %}btn-primary {% endif %}btn-block" href="/login/sso">{{ t["login.sso"] }}</a>
+      {% endif %}
+      <p class="small muted" style="margin:0">
+        {% for l in languages %}<a href="/lang/{{ l }}?next=/login" {% if l == lang %}aria-current="true" style="font-weight:700;color:var(--text)"{% else %}style="color:var(--text-muted)"{% endif %}>{{ l|upper }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+      </p>
+    </div>
+  </section>
+</main>
+{% endblock %}

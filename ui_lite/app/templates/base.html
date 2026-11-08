@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ t["app.title"] }}{% endblock %}</title>
+<link rel="stylesheet" href="/static/css/fonts.css">
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/components.css">
+<script>
+  try { var th = localStorage.getItem("rag-theme"); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
+</script>
+</head>
+<body>
+{% block body %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,97 @@
+/* Tokeny RadLab – czat RAG dla pracownika.
+   Źródło: :root ze strony radlab.dev (2026-11-01). Nazwy zmiennych jak na radlab.dev,
+   żeby RadLab mógł je podmienić jednym plikiem. Tokeny aplikacji (--app-*) budujemy na nich.
+   Fonty: w repo będą wbudowane (static/fonts, bez CDN); prototyp ładuje je z Google Fonts. */
+
+:root {
+  /* Kolory bazowe (radlab.dev) */
+  --bg: #ffffff;
+  --bg-surface: #faf9f7;
+  --bg-raised: #ffffff;
+  --text: #17181c;
+  --text-muted: #5b5f6a;   /* kontrast 6.4:1 na --bg – tekst drugorzędny */
+  --text-faint: #8b8f9a;   /* 3.3:1 – tylko elementy ozdobne i duże litery */
+  --border: #e7e5e0;
+  --border-strong: #d3d1cb;
+  --accent: #c8102e;       /* 6.0:1 na --bg */
+  --accent-soft: rgba(200, 16, 46, 0.08);
+  --accent-on: #ffffff;
+  --brand-1: #f7a55f;
+  --brand-2: #f6804f;
+  --brand-3: #e93936;
+  --brand-4: #cb273a;
+  --brand-grad: linear-gradient(174deg, var(--brand-1), var(--brand-2) 34%, var(--brand-3) 68%, var(--brand-4));
+  --brand-grad-deep: linear-gradient(135deg, var(--brand-3), var(--brand-4));
+  --grid-line: rgba(23, 24, 28, 0.055);
+  --hero-wash: rgba(246, 128, 79, 0.3);
+  --code-bg: #f6f5f2;
+  --shadow-sm: 0 1px 2px rgba(23, 24, 28, 0.05);
+  --shadow-md: 0 6px 24px -8px rgba(23, 24, 28, 0.18);
+  --shadow-lg: 0 22px 48px -22px rgba(23, 24, 28, 0.32);
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-body: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 10px;
+
+  /* Tokeny aplikacji */
+  --app-sidebar-w: 264px;
+  --app-rail-w: 56px;
+  --app-panel-w: 440px;
+  --app-measure: 720px;            /* szerokość kolumny rozmowy */
+  --app-radius-sm: 6px;
+  --app-radius-lg: 16px;
+  --app-pill: 999px;
+  --app-focus: 0 0 0 3px rgba(200, 16, 46, 0.28);
+  --app-user-bubble: #f3f1ed;
+  --app-highlight: rgba(246, 128, 79, 0.22);   /* podświetlenie cytatu w dokumencie */
+  --app-warn-bg: #fff6ec;
+  --app-warn-border: #f2c99a;
+  --app-warn-text: #7a3b00;
+  --app-error-bg: #fdf0f1;
+  --app-error-border: #f1b9c0;
+  --app-ok: #2f7d3a;
+  --app-t-fast: 120ms;
+  --app-t: 200ms;
+  /* Przycisk główny: gradient RadLab w ciemniejszym zakresie, żeby biały tekst miał ≥ 4.5:1 */
+  --app-primary-bg: linear-gradient(135deg, #cb273a, #c8102e);
+  --app-primary-text: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e0f12; --bg-surface: #15171b; --bg-raised: #191b20;
+    --text: #e9e9ec; --text-muted: #9ba0aa; --text-faint: #747985;
+    --border: #292c33; --border-strong: #3a3e47;
+    --accent: #ff4d5e; --accent-soft: rgba(255, 77, 94, 0.14); --accent-on: #14101a;
+    --brand-3: #ff6a4d; --brand-4: #e0243f;
+    --grid-line: rgba(233, 233, 236, 0.06); --hero-wash: rgba(246, 128, 79, 0.15); --code-bg: #131519;
+    --shadow-sm: none; --shadow-md: 0 8px 30px -10px rgba(0, 0, 0, 0.7); --shadow-lg: 0 24px 54px -24px rgba(0, 0, 0, 0.85);
+    --app-focus: 0 0 0 3px rgba(255, 77, 94, 0.35);
+    --app-user-bubble: #1d2026;
+    --app-highlight: rgba(246, 128, 79, 0.28);
+    --app-warn-bg: #2a2015; --app-warn-border: #5c4325; --app-warn-text: #f3c590;
+    --app-error-bg: #2a1518; --app-error-border: #5c2a31;
+    --app-ok: #8ddb9a;
+    --app-primary-bg: linear-gradient(135deg, #d01f38, #b8152c);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e0f12; --bg-surface: #15171b; --bg-raised: #191b20;
+  --text: #e9e9ec; --text-muted: #9ba0aa; --text-faint: #747985;
+  --border: #292c33; --border-strong: #3a3e47;
+  --accent: #ff4d5e; --accent-soft: rgba(255, 77, 94, 0.14); --accent-on: #14101a;
+  --brand-3: #ff6a4d; --brand-4: #e0243f;
+  --grid-line: rgba(233, 233, 236, 0.06); --hero-wash: rgba(246, 128, 79, 0.15); --code-bg: #131519;
+  --shadow-sm: none; --shadow-md: 0 8px 30px -10px rgba(0, 0, 0, 0.7); --shadow-lg: 0 24px 54px -24px rgba(0, 0, 0, 0.85);
+  --app-focus: 0 0 0 3px rgba(255, 77, 94, 0.35);
+  --app-user-bubble: #1d2026;
+  --app-highlight: rgba(246, 128, 79, 0.28);
+  --app-warn-bg: #2a2015; --app-warn-border: #5c4325; --app-warn-text: #f3c590;
+  --app-error-bg: #2a1518; --app-error-border: #5c2a31;
+  --app-ok: #8ddb9a;
+  --app-primary-bg: linear-gradient(135deg, #d01f38, #b8152c);
+}
