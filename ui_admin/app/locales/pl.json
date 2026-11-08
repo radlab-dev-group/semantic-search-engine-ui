@@ -37,7 +37,9 @@
     "index": "Indeksowanie",
     "index_hint": "chunki · embeddingi",
     "search": "Wyszukiwanie",
-    "search_hint": "wyniki · odpowiedź"
+    "search_hint": "wyniki · odpowiedź",
+    "chat": "Chat",
+    "chat_hint": "rozmowa · źródła"
   },
   "messages": {
     "error_processing": "Wystąpił błąd podczas przetwarzania",

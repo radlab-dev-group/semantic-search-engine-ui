@@ -37,7 +37,9 @@
     "index": "Index",
     "index_hint": "chunk · embed",
     "search": "Search",
-    "search_hint": "retrieve · answer"
+    "search_hint": "retrieve · answer",
+    "chat": "Chat",
+    "chat_hint": "converse · cite"
   },
   "messages": {
     "error_processing": "Error occurred while processing",

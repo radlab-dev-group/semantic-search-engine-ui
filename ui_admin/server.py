@@ -1040,6 +1040,12 @@ def chat_history_row(entry: dict) -> dict | None:
     if not created_raw and history_msgs and isinstance(history_msgs[0], dict):
         created_raw = history_msgs[0].get("date_time")
 
+    # the newest message tells when the chat was last used; the list is
+    # ordered by it (and falls back to the creation date / id)
+    last_raw = None
+    if history_msgs and isinstance(history_msgs[-1], dict):
+        last_raw = history_msgs[-1].get("date_time")
+
     return {
         "id": chat_id,
         "title": title,
@@ -1047,6 +1053,7 @@ def chat_history_row(entry: dict) -> dict | None:
         "collection_name": entry.get("collection_name") or entry.get("collection"),
         "messages_count": len(history_msgs),
         "chat_history": history_msgs,
+        "sort_key": (str(last_raw or created_raw or ""), str(chat_id).zfill(12)),
     }
 
 
@@ -1067,6 +1074,8 @@ def fetch_chat_history(token: str, collection_name: str | None = None) -> list |
             row for row in rows
             if row.get("collection_name") in (None, "", collection_name)
         ]
+    # newest first: ISO timestamps sort lexicographically, ids break ties
+    rows.sort(key=lambda row: row["sort_key"], reverse=True)
     return rows[:HISTORY_LIMIT]
 
 

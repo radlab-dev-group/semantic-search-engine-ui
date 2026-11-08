@@ -10,7 +10,7 @@
       <h1>{{ t('chat.heading') }}</h1>
       <p class="subtitle">{{ t('chat.subtitle') }}</p>
     </div>
-    {% set current_step = 3 %}
+    {% set current_step = 4 %}
     {% include "partials/stepper.html" %}
   </header>
 
@@ -27,7 +27,7 @@
       </div>
     </div>
   {% else %}
-    <div class="search-layout">
+    <div class="search-layout search-layout--results search-layout--chat">
       <div class="search-layout__form">
         <aside class="sidebar search-layout__side">
           <form id="search-params-form" method="get" action="/chat">
@@ -66,13 +66,14 @@
             </div>
           </div>
 
+          <div class="chat-layout">
           {# Chat History panel #}
-          <div id="chat-history-container" data-chat-history-container>
+          <div id="chat-history-container" class="chat-layout__history" data-chat-history-container>
             {% include "partials/chat_history.html" %}
           </div>
 
           {# Chat Card #}
-          <section class="card chat-card" data-chat-container aria-label="{{ t('chat.heading') }}">
+          <section class="card chat-card chat-layout__main" data-chat-container aria-label="{{ t('chat.heading') }}">
             <div class="chat-card__head">
               <div class="chat-card__title-box">
                 <span class="chat-card__status-dot" aria-hidden="true"></span>
@@ -183,6 +184,7 @@
               </form>
             </div>
           </section>
+          </div>
         </div>
       </div>
     </div>

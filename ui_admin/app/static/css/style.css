@@ -1675,6 +1675,31 @@ label.opt--primary:has(input:checked) .opt__icon {
   color: var(--text-muted);
 }
 
+/* conversational entry point: teal/violet outline glowing on hover */
+.btn--chat {
+  position: relative;
+  border-color: transparent;
+  background: linear-gradient(var(--bg-elevated), var(--bg-elevated)) padding-box,
+    var(--gradient-vector) border-box;
+  color: var(--text);
+  box-shadow: 0 6px 18px -10px rgb(20 211 190 / 55%);
+}
+
+.btn--chat svg {
+  color: #14d3be;
+}
+
+.btn--chat:hover {
+  border-color: transparent;
+  background: var(--gradient-vector);
+  color: #fff;
+  box-shadow: 0 14px 34px -10px rgb(20 211 190 / 65%);
+}
+
+.btn--chat:hover svg {
+  color: #fff;
+}
+
 .btn--ghost:hover {
   background: var(--bg-subtle);
   color: var(--text);
@@ -3240,9 +3265,10 @@ input[type="range"]::-moz-range-thumb {
   flex-shrink: 0;
 }
 
+/* row 1: documents + add content; row 2: search + chat */
 .collection__actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
@@ -7326,6 +7352,151 @@ input.is-invalid:focus {
 /* --------------------------------------------------------------------------
    20. Conversational Search (Chat)
    -------------------------------------------------------------------------- */
+/* Two-column area under the collection banner: conversation list on the
+   left, the chat itself on the right. */
+.chat-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 290px) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.chat-layout__history {
+  min-width: 0;
+}
+
+.chat-layout__main {
+  min-width: 0;
+  min-height: 0;
+}
+
+.chat-layout .history {
+  height: 100%;
+}
+
+/* <details> is not a reliable flex container, so the height budget is put
+   on the body/list themselves: the box can never grow past the chat card. */
+.chat-layout .history__box {
+  box-sizing: border-box;
+  height: 100%;
+  max-height: calc(100vh - 300px);
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.chat-layout .history__box:not([open]) {
+  height: auto;
+  min-height: 0;
+}
+
+.chat-layout .history__summary {
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+}
+
+.chat-layout .history__collection {
+  display: none;
+}
+
+.chat-layout .history__body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  /* summary row (~60px) is subtracted from the box budget */
+  max-height: calc(100vh - 360px);
+  min-height: 0;
+  padding: 0 var(--space-4) var(--space-4);
+  overflow: hidden;
+}
+
+.chat-layout .history__filter,
+.chat-layout .chat-history__actions {
+  flex-shrink: 0;
+}
+
+.chat-layout .history__list {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.chat-layout .history__entry {
+  position: relative;
+  align-items: flex-start;
+}
+
+.chat-layout .history__item {
+  padding: 0.55rem 2.25rem 0.55rem 0.75rem;
+}
+
+.chat-layout .history__query {
+  font-size: 0.88rem;
+}
+
+.chat-layout .history__delete {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+
+.chat-layout .history__entry:hover .history__delete,
+.chat-layout .history__entry:focus-within .history__delete {
+  opacity: 1;
+}
+
+.chat-layout .chat-card {
+  height: 100%;
+  max-height: calc(100vh - 300px);
+  min-height: 520px;
+}
+
+.chat-layout .chat-feed {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.chat-layout .chat-input-bar {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1180px) {
+  .chat-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-layout .history__box,
+  .chat-layout .history__body,
+  .chat-layout .chat-card {
+    height: auto;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .chat-layout .history__list {
+    max-height: 240px;
+  }
+
+  .chat-layout .history__collection {
+    display: block;
+  }
+
+  .chat-layout .history__delete {
+    opacity: 1;
+  }
+
+  .chat-layout .chat-feed {
+    min-height: 420px;
+    max-height: 60vh;
+  }
+}
+
 .chat-history__actions {
   margin-bottom: var(--space-3);
 }
