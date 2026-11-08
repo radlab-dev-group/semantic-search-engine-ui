@@ -1,5 +1,5 @@
-/* Czat RAG dla pracownika – interfejs w przeglądarce.
-   Woła wyłącznie /ui-api/* serwera frontendu; ten woła backend RadLab (mapa w README). */
+/* RAG chat for employees – the browser interface.
+   Calls only the frontend server's /ui-api/*; the frontend calls the RadLab backend (map in the README). */
 (() => {
   "use strict";
 
@@ -12,7 +12,7 @@
   const icon = (id, cls = "icon") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch { /* prywatne okno */ } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch { /* private window */ } },
   };
   const docsWord = (n) => {
     if (n === 1) return t("word.document.one");
@@ -24,9 +24,9 @@
 
   const state = {
     collections: [],
-    baseName: null,            // null = baza rozmowy nieznana (wznowiony czat bez metadanych)
-    docs: {},                  // baza → [{name, stem, filetype}]
-    selected: {},              // baza → Set nazw
+    baseName: null,            // null = conversation base unknown (resumed chat without metadata)
+    docs: {},                  // base -> [{name, stem, filetype}]
+    selected: {},              // base -> Set of names
     chatId: null,
     messages: [],
     chats: [],
@@ -48,7 +48,7 @@
   const sel = () => state.selected[state.baseName] || new Set();
   const allSelected = () => sel().size === docs().length;
 
-  /* ---------- Komunikacja z serwerem frontendu ---------- */
+  /* ---------- Communication with the frontend server ---------- */
   async function api(path, opts = {}) {
     let res;
     try {
@@ -64,7 +64,7 @@
       return { ok: false, error: "unavailable" };
     }
     let data = null;
-    try { data = await res.json(); } catch { /* pusta odpowiedź */ }
+    try { data = await res.json(); } catch { /* empty response */ }
     if (res.status === 401) { sessionExpired(); return { ok: false, error: "auth" }; }
     if (!res.ok) return { ok: false, status: res.status, error: (data && data.error) || "backend", message: data && data.message };
     return { ok: true, data };
@@ -177,7 +177,7 @@
       <p class="small muted" style="margin:8px 8px 2px">${esc(t("format.remember"))}</p></div>`;
   }
 
-  /* ---------- Wiadomości ---------- */
+  /* ---------- Messages ---------- */
   function messageView(m, i) {
     if (m.role === "user") return `<div class="msg-user">${esc(m.text)}${m.format ? `<span class="fmt-tag">${esc(fmtById(m.format).label)}</span>` : ""}</div>`;
     if (m.role === "scope") return `<div class="scope-line">${esc(m.text)}</div>`;
@@ -230,7 +230,7 @@
         `<button class="chip-link" data-act="reformat" data-i="${i}" data-f="${esc(f.id)}">${esc(f.label)}</button>`).join("")}</div>` : ""}`;
   }
 
-  /* ---------- Panel: dokumenty i podgląd ---------- */
+  /* ---------- Panel: documents and preview ---------- */
   function panelView() {
     if (!state.panel || state.noAccess || state.loading) return `<aside class="panel" aria-hidden="true"></aside>`;
     if (state.panel === "doc") return docView();
@@ -281,7 +281,7 @@
       <div class="panel-foot">${esc(t("doc.extracted"))}</div></aside>`;
   }
 
-  /* ---------- Akcje ---------- */
+  /* ---------- Actions ---------- */
   async function loadDocs(name) {
     if (!name || state.docs[name]) return;
     const r = await api(`/ui-api/documents?collection=${encodeURIComponent(name)}`);
@@ -472,7 +472,7 @@
     confirmDialog(t("error.session.title"), t("error.session.text"), t("login.submit"), () => { location.href = "/login"; }, false);
   }
 
-  /* ---------- Zdarzenia ---------- */
+  /* ---------- Events ---------- */
   function bind() {
     const q = $("#q");
     if (q) {
@@ -577,7 +577,7 @@
     if (state.panel === "doc") { state.panel = "docs"; render(); }
   });
 
-  /* ---------- Pomocnicze ---------- */
+  /* ---------- Helpers ---------- */
   function stemOf(name) { return name.replace(/\.[A-Za-z0-9]{1,5}$/, ""); }
   function typeOf(name) { const m = name.match(/\.([A-Za-z0-9]{1,5})$/); return m ? m[1].toUpperCase() : ""; }
   function initials(name) { return (name || "?").split(/[\s._@-]+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "?"; }
@@ -593,7 +593,7 @@
     return "history.older";
   }
 
-  /* Cytat w treści strony: dopasowanie odporne na różnice w odstępach i łamaniu wierszy (do CR-02). */
+  /* Quote in the page text: matching resilient to spacing and line-break differences (until CR-02). */
   function findQuote(content, quote) {
     const norm = (s) => s.toLowerCase().replace(/\s+/g, " ");
     const hay = norm(content), needle = norm(quote).trim();
@@ -607,7 +607,7 @@
   }
 
   function mapRange(content, start, end) {
-    // Pozycje w tekście znormalizowanym → pozycje w oryginale.
+    // Positions in the normalized text -> positions in the original.
     let ni = 0, s = -1, inSpace = false;
     for (let i = 0; i < content.length; i++) {
       const space = /\s/.test(content[i]);

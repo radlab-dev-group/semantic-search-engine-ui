@@ -1,7 +1,7 @@
-"""Warstwa pośrednia dla interfejsu w przeglądarce (`/ui-api/*`).
+"""Proxy layer for the browser interface (`/ui-api/*`).
 
-Każda trasa woła jeden lub dwa endpointy backendu RadLab z tokenem z sesji.
-Mapa trasa → endpoint jest w README (sekcja „Mapa endpointów”).
+Each route calls one or two RadLab backend endpoints with the session token.
+The route → endpoint map is in the README (the "Endpoint map" section).
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ def _error(exc: ApiError) -> JSONResponse:
 
 
 async def backend(request: Request, method: str, endpoint: str, **kwargs: Any) -> Any:
-    """Wywołanie z tokenem sesji; w trybie SSO jedna próba odświeżenia tokenu po 401."""
+    """Call with the session token; in SSO mode one token-refresh attempt after a 401."""
     token = request.session.get("token")
     if not token:
         raise ApiError("auth", 401)
@@ -54,11 +54,11 @@ def _sid(request: Request) -> str:
     return request.session.get("sid") or ""
 
 
-# ---------- Bazy wiedzy i dokumenty ----------
+# ---------- Knowledge bases and documents ----------
 
 @router.get("/collections")
 async def collections(request: Request):
-    """GET collections → karty baz wiedzy (nazwa do wywołań, nazwa wyświetlana, opis, liczba dokumentów)."""
+    """GET collections → knowledge base cards (call name, display name, description, document count)."""
     try:
         body = await backend(request, "GET", "collections")
     except ApiError as exc:
@@ -81,7 +81,7 @@ async def collections(request: Request):
 
 @router.get("/documents")
 async def documents(request: Request, collection: str):
-    """GET documents?collection_name → dokumenty włączone do wyszukiwania (panel „Dokumenty”)."""
+    """GET documents?collection_name → documents enabled for search (the Documents panel)."""
     try:
         body = await backend(request, "GET", "documents", params={"collection_name": collection})
     except ApiError as exc:
@@ -92,7 +92,7 @@ async def documents(request: Request, collection: str):
 
 @router.get("/document")
 async def document(request: Request, collection: str, name: str, from_page: int = 1):
-    """GET document_content → strony tekstu dokumentu od wskazanej strony."""
+    """GET document_content → document text pages starting from the given page."""
     s = request.app.state.settings
     try:
         body = await backend(
@@ -113,11 +113,11 @@ async def document(request: Request, collection: str, name: str, from_page: int 
     }
 
 
-# ---------- Czat ----------
+# ---------- Chat ----------
 
 class AskIn(BaseModel):
     question: str = Field(min_length=1, max_length=8000)
-    collection: str | None = None      # None: wznowiony czat o nieznanej bazie – backend użyje kolekcji czatu
+    collection: str | None = None      # None: resumed chat with an unknown base – the backend uses the chat's collection
     chat_id: int | None = None
     documents: list[str] | None = None
     format: str | None = None
@@ -132,7 +132,7 @@ async def _generative_model(request: Request) -> str:
         body = await backend(request, "GET", "generative_models")
         names = list(body.keys()) if isinstance(body, dict) else list(body or [])
         if not names:
-            raise ApiError("backend", 0, "NO_MODELS", "Backend nie zwrócił żadnego modelu generatywnego")
+            raise ApiError("backend", 0, "NO_MODELS", "The backend returned no generative model")
         cache["model"] = names[0]
     return cache["model"]
 
@@ -146,7 +146,7 @@ def _search_options(request: Request, docs: list[str] | None) -> dict[str, Any]:
 
 @router.post("/ask")
 async def ask(request: Request, data: AskIn):
-    """Pytanie lub dopytanie: POST new_chat (pierwsze pytanie) → POST add_user_message."""
+    """A question or follow-up: POST new_chat (first question) → POST add_user_message."""
     s = request.app.state.settings
     store = request.app.state.store
     fmt = s.format(data.format)
@@ -157,7 +157,7 @@ async def ask(request: Request, data: AskIn):
         options = {k: v for k, v in options.items() if v is not None}
         chat_id = data.chat_id
         if chat_id is None and not data.collection:
-            return JSONResponse({"error": "backend", "message": "Brak bazy wiedzy"}, status_code=400)
+            return JSONResponse({"error": "backend", "message": "No knowledge base"}, status_code=400)
         if chat_id is None:
             body = await backend(
                 request, "POST", "new_chat",
@@ -206,7 +206,7 @@ async def ask(request: Request, data: AskIn):
 
 @router.get("/chats")
 async def chats(request: Request):
-    """GET chats → lista do historii (tytuł = pierwsze pytanie, data = ostatnia wiadomość)."""
+    """GET chats → list for the history (title = first question, date = last message)."""
     s = request.app.state.settings
     try:
         body = await backend(request, "GET", "chats")
@@ -232,7 +232,7 @@ async def chats(request: Request):
 
 @router.get("/chats/{chat_id}")
 async def chat_detail(request: Request, chat_id: int):
-    """Wiadomości rozmowy z GET chats; źródła tylko z bieżącej sesji (do CR-04)."""
+    """Conversation messages from GET chats; sources only from the current session (until CR-04)."""
     try:
         body = await backend(request, "GET", "chats")
     except ApiError as exc:
@@ -272,7 +272,7 @@ class RateIn(BaseModel):
 
 @router.post("/rate")
 async def rate(request: Request, data: RateIn):
-    """POST rate_generative_answer (👍 = 1, 👎 = 0, skala 0–1)."""
+    """POST rate_generative_answer (👍 = 1, 👎 = 0, scale 0–1)."""
     payload: dict[str, Any] = {"answer_response_id": data.answer_id, "rate_value": data.value, "rate_value_max": 1}
     if data.comment and data.comment.strip():
         payload["rate_comment"] = data.comment.strip()
@@ -285,7 +285,7 @@ async def rate(request: Request, data: RateIn):
 
 @router.get("/health")
 async def health(request: Request):
-    """GET healthz backendu – baner „usługa niedostępna”."""
+    """Backend GET healthz – the "service unavailable" banner."""
     try:
         body = await request.app.state.api.call("GET", "healthz", lang=lang_of(request), timeout=5)
     except ApiError as exc:

@@ -1,175 +1,113 @@
-# Czat RAG dla pracownika – frontend dla `semantic-search-engine`
+# Employee RAG chat – frontend for `semantic-search-engine`
 
-Minimalistyczny interfejs web, w którym pracownik zadaje pytania do firmowej bazy wiedzy
-i dostaje odpowiedź z przypisami prowadzącymi do strony dokumentu.
-Działa na istniejącym backendzie RadLab [`semantic-search-engine`](https://github.com/radlab-dev-group/semantic-search-engine)
-(sprawdzone na kodzie z commita `58c0b8d`, 2026-10-30). Nie wymaga zmian w backendzie, żeby ruszyć.
-Część funkcji działa w trybie przejściowym do czasu zmian opisanych w [docs/zgloszenia-do-radlab.md](docs/zgloszenia-do-radlab.md).
+A minimalist web interface where an employee asks questions of the company knowledge base
+and gets an answer with footnotes pointing to the document page.
+Runs on the existing RadLab backend [`semantic-search-engine`](https://github.com/radlab-dev-group/semantic-search-engine)
+(verified against the code at commit `58c0b8d`, 2026-10-30). It does not need backend changes to start.
+Some features run in a transitional mode until the changes described in [docs/radlab-change-requests.md](docs/radlab-change-requests.md) land.
 
-Wersja 0.1.0 · rola: pracownik (bez zarządzania kolekcjami) · tylko web na komputer · PL/EN · tryb jasny i ciemny.
+Version 0.1.0 · role: employee (no collection management) · web on a computer only · PL/EN · light and dark mode.
 
-## Co potrafi
+## What it does
 
-- Logowanie lokalne albo kontem firmowym (Keycloak/OAuth przez backend).
-- Wybór bazy wiedzy; nowy czat startuje z ostatnio używaną.
-- Panel „Dokumenty”: lista dokumentów bazy, pola wyboru i „Zaznacz wszystko” – RAG szuka tylko w zaznaczonych.
-- Czat z dopytywaniem; licznik czasu oczekiwania i „Przerwij”.
-- Format odpowiedzi: Zwięźle / W punktach / Szczegółowo / Tabela, z „Pokaż inaczej”.
-- Przypisy [n] przy zdaniach (na razie przybliżone), źródła pogrupowane po dokumencie, linia pokrycia.
-- Podgląd tekstu dokumentu od strony przypisu, z podświetlonym cytatem i kolejnymi stronami.
-- Ocena 👍/👎 z komentarzem, „Kopiuj”, „Kopiuj ze źródłami”.
-- Historia rozmów i wznowienie rozmowy.
-- Jawne komunikaty: brak źródeł w dokumentach, przekroczony czas, brak dostępu, wygasła sesja, usługa niedostępna.
+- Local login or a company account (Keycloak/OAuth through the backend).
+- Choosing a knowledge base; a new chat starts with the last used one.
+- The Documents panel: the list of the base's documents, checkboxes and "Select all" – RAG only searches in the selected ones.
+- Chat with follow-up questions; a waiting counter and "Stop".
+- Answer format: Brief / Bullet points / Detailed / Table, with "Show as:".
+- [n] footnotes next to sentences (approximate for now), sources grouped by document, a coverage line.
+- Document text preview from the footnote page, with the quoted fragment highlighted and the following pages.
+- 👍/👎 rating with a comment, "Copy", "Copy with sources".
+- Conversation history and resuming a conversation.
+- Explicit messages: no sources in the documents, time exceeded, no access, expired session, service unavailable.
 
-## Szybki start
-
-### Z atrapą backendu (bez RadLab)
+## Quick start
 
 ```bash
-docker compose up --build
-```
-
-Otwórz http://localhost:8000, zaloguj się dowolnym loginem i hasłem `demo`.
-Pytanie z „licencja” pokazuje odpowiedź bez źródeł.
-
-### Z prawdziwym backendem
-
-```bash
-cp configs/ui-configuration.example.json configs/ui-configuration.json   # i uzupełnij
-docker build -t radlab-rag-ui .
-docker run -p 8000:8000 \
-  -e SSE_API_HOST=https://sse.example.org \
-  -e SESSION_SECRET="$(openssl rand -base64 32)" \
-  -e SESSION_HTTPS_ONLY=true \
-  -v "$PWD/configs/ui-configuration.json:/srv/configs/ui-configuration.json:ro" \
-  radlab-rag-ui
-```
-
-### Bez Dockera
-
-```bash
+cp configs/ui-configuration.example.json configs/ui-configuration.json   # and fill it in
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/uvicorn mock_backend.server:app --port 8271 &          # tylko gdy nie ma backendu
-SSE_API_HOST=http://localhost:8271 SESSION_SECRET=dev .venv/bin/uvicorn app.main:create_app --factory --port 8000
+.venv/bin/uvicorn app.main:app --port 8000
 .venv/bin/pytest -q
 ```
 
-## Konfiguracja
+### With the mock backend (no RadLab needed)
 
-Plik `configs/ui-configuration.json` (ścieżkę zmienia `UI_CONFIG`). Format sekcji `api_hosts` jest zgodny
-z `ui-configuration.json` obecnego UI RadLab. Wzór: [configs/ui-configuration.example.json](configs/ui-configuration.example.json).
+```bash
+.venv/bin/uvicorn tests.mock_backend.server:app --port 8271 &
+SSE_API_HOST=http://localhost:8271 SESSION_SECRET=dev .venv/bin/uvicorn app.main:app --port 8000
+```
 
-| Sekcja / zmienna | Co ustawia |
+Open http://localhost:8000 and log in with any username and the password `demo`.
+A question containing "licence" shows an answer without sources.
+
+## Configuration
+
+The file `configs/ui-configuration.json` (the path can be changed with `UI_CONFIG`). The format of the `api_hosts`
+section is compatible with the current RadLab UI `ui-configuration.json`. Example: [configs/ui-configuration.example.json](configs/ui-configuration.example.json).
+
+| Section / variable | What it sets |
 |---|---|
-| `api_hosts.semantic_search_engine.host` / `SSE_API_HOST` | adres backendu |
-| `…prefix` / `SSE_API_PREFIX` | prefiks API (`api` albo `api/v1`) |
-| `…ep` | nazwy endpointów, gdyby wdrożenie je zmieniło |
-| `auth.mode` / `AUTH_MODE` | `local` (formularz) albo `sso` (tylko przycisk SSO); `auth.sso_button` dokłada przycisk SSO w trybie `local` |
-| `SESSION_SECRET` | **wymagany w produkcji** – klucz podpisu ciasteczka sesji |
-| `SESSION_HTTPS_ONLY` | `true` za HTTPS |
-| `defaults.options` | opcje generowania wysyłane w każdym `new_chat` i `add_user_message`; `generative_model` pusty = pierwszy z `GET generative_models` |
-| `defaults.search_options` | opcje wyszukiwania (liczba wyników, hybrid, reranking, próg podobieństwa) |
-| `defaults.document_preview_pages` | ile stron pobiera podgląd dokumentu naraz |
-| `citation_instruction` | polecenie dla modelu, żeby po zdaniach podawał nazwę dokumentu (podstawa przypisów przybliżonych) |
-| `formats[]` | formaty odpowiedzi: etykiety PL/EN, `system_prompt`, `max_new_tokens`; `default_format` |
-| `features.chat_sections` | sekcje w historii – zostaw `false` do czasu CR-16 i CR-05 |
+| `api_hosts.semantic_search_engine.host` / `SSE_API_HOST` | the backend address |
+| `…prefix` / `SSE_API_PREFIX` | the API prefix (`api` or `api/v1`) |
+| `…ep` | endpoint names, in case a deployment renames them |
+| `auth.mode` / `AUTH_MODE` | `local` (a form) or `sso` (SSO button only); `auth.sso_button` adds an SSO button in `local` mode |
+| `SESSION_SECRET` | **required in production** – the session cookie signing key |
+| `SESSION_HTTPS_ONLY` | `true` behind HTTPS |
+| `defaults.options` | generation options sent with every `new_chat` and `add_user_message`; empty `generative_model` = the first from `GET generative_models` |
+| `defaults.search_options` | search options (result count, hybrid, reranking, similarity threshold) |
+| `defaults.document_preview_pages` | how many pages the document preview fetches at once |
+| `citation_instruction` | the model instruction to give the document name after sentences (the basis for approximate footnotes) |
+| `formats[]` | answer formats: PL/EN labels, `system_prompt`, `max_new_tokens`; `default_format` |
+| `features.chat_sections` | sections in the history – keep `false` until CR-16 and CR-05 |
 | `timeouts` | GET 30 s, `add_user_message` 150 s |
-| `ui.history_limit` | ile rozmów pokazać przed „Pokaż więcej” |
+| `ui.history_limit` | how many conversations to show before "Show more" |
 
-**SSO.** Przycisk woła `POST login_url` i przekierowuje do Keycloak. Adres powrotu, który trzeba ustawić
-w kliencie Keycloak/backendzie: `https://<adres-frontendu>/login/callback`. Frontend wymienia `code` i `state`
-na token przez `POST login` i odświeża go przez `POST refresh_token` po odpowiedzi 401.
+**SSO.** The button calls `POST login_url` and redirects to Keycloak. The return address that must be set
+in the Keycloak client/backend: `https://<frontend-address>/login/callback`. The frontend exchanges `code` and `state`
+for a token through `POST login` and refreshes it through `POST refresh_token` after a 401 response.
 
-## Jak to działa
+## How it works
 
-Przeglądarka rozmawia tylko z serwerem frontendu (`/ui-api/*`). Serwer woła backend z tokenem z sesji,
-więc backend nie potrzebuje CORS, a token nie trafia do kodu JavaScript (ciasteczko `HttpOnly`, podpisane).
+The browser only talks to the frontend server (`/ui-api/*`). The server calls the backend with the session token,
+so the backend does not need CORS and the token does not reach the JavaScript code (an `HttpOnly`, signed cookie).
 
-### Mapa endpointów
+### Endpoint map
 
-| Element UI | Trasa frontendu | Endpoint backendu |
+| UI element | Frontend route | Backend endpoint |
 |---|---|---|
-| Logowanie lokalne | `POST /login` | `POST login` (`username`, `password`) |
-| Logowanie SSO | `GET /login/sso`, `GET /login/callback` | `POST login_url`, `POST login` (`code`, `state`, `session_state`), `POST refresh_token` |
-| Wylogowanie | `POST /logout` | `POST logout` (tylko SSO) |
-| Lista baz wiedzy | `GET /ui-api/collections` | `GET collections` |
-| Panel „Dokumenty” | `GET /ui-api/documents` | `GET documents?collection_name=` |
-| Pytanie / dopytanie | `POST /ui-api/ask` | `POST new_chat` (pierwsze pytanie), `POST add_user_message` |
-| Zakres dokumentów | (w `ask`) | `search_options.documents` w `new_chat` i `add_user_message` (pomijane, gdy zaznaczone wszystkie) |
-| Format odpowiedzi | (w `ask`) | `system_prompt` = `formats[].system_prompt` + `citation_instruction`; `options.max_new_tokens` |
-| Model | (w `ask`) | `GET generative_models` (raz, gdy brak `generative_model` w konfiguracji) |
-| Przypisy i źródła | (z `ask`) | `last_state[0].rag_message_state.sse_response.detailed_results_json` |
-| Podgląd dokumentu | `GET /ui-api/document` | `GET document_content` (`from_page`, `max_pages`, `next_page`) |
-| Ocena | `POST /ui-api/rate` | `POST rate_generative_answer` (`answer_response_id` = `sse_answer.id`, `rate_value` 0/1, `rate_value_max` 1) |
-| Historia | `GET /ui-api/chats`, `GET /ui-api/chats/{id}` | `GET chats` |
-| Baner „usługa niedostępna” | `GET /ui-api/health` | `GET healthz` |
-| Kopiuj, kopiuj ze źródłami, motyw, język | – | tylko frontend (`lang` idzie w każdym wywołaniu) |
+| Local login | `POST /login` | `POST login` (`username`, `password`) |
+| SSO login | `GET /login/sso`, `GET /login/callback` | `POST login_url`, `POST login` (`code`, `state`, `session_state`), `POST refresh_token` |
+| Knowledge bases | `GET /ui-api/collections` | `GET collections` |
+| Documents | `GET /ui-api/documents` | `GET documents` (`collection_name`) |
+| Question | `POST /ui-api/ask` | `POST new_chat` (first question), `POST add_user_message` (follow-ups) |
+| Generative model | (from `ask`) | `GET generative_models` (once, if `generative_model` is empty in the configuration) |
+| Footnotes and sources | (from `ask`) | `last_state[0].rag_message_state.sse_response.detailed_results_json` |
+| Document preview | `GET /ui-api/document` | `GET document_content` (`from_page`, `max_pages`, `next_page`) |
+| Rating | `POST /ui-api/rate` | `POST rate_generative_answer` (`answer_response_id` = `sse_answer.id`, `rate_value` 0/1, `rate_value_max` 1) |
+| History | `GET /ui-api/chats`, `GET /ui-api/chats/{id}` | `GET chats` |
+| The "service unavailable" banner | `GET /ui-api/health` | `GET healthz` |
+| Copy, copy with sources, theme, language | – | frontend only (`lang` is sent with every call) |
 
-### Przypisy przybliżone (do CR-01)
+### Approximate footnotes (until CR-01)
 
-Backend przekazuje modelowi fragmenty jako `{nazwa_dokumentu: [teksty]}`, bez numerów i stron.
-Frontend prosi model (`citation_instruction`), żeby po zdaniu podawał w nawiasie kwadratowym nazwę dokumentu,
-dopasowuje te nazwy do `detailed_results_json` ([app/core/answers.py](app/core/answers.py)) i jako stronę
-przypisu bierze najlepiej ocenioną stronę fragmentu z tego dokumentu. Przypis ma przerywaną ramkę i opis
-„strona może być przybliżona”. Gdy model nie poda nazw, pod odpowiedzią zostaje lista źródeł.
+The backend passes fragments to the model as `{document_name: [texts]}`, without numbers and pages.
+The frontend asks the model (`citation_instruction`) to put the document name in square brackets after a sentence,
+matches those names against `detailed_results_json` ([app/core/answers.py](app/core/answers.py)) and uses the best-scoring
+fragment page from that document as the footnote page. The footnote has a dashed border and the note
+"the page may be approximate". If the model does not give the names, a source list remains under the answer.
 
-## Braki w API, które trzeba uzupełnić
-
-Pełna lista z kryteriami akceptacji: [docs/zgloszenia-do-radlab.md](docs/zgloszenia-do-radlab.md) (sekcja „Braki w API”).
-
-| Priorytet | Czego brakuje | CR |
-|---|---|---|
-| P0 | Historia rozmowy (pytania i odpowiedzi) przekazywana do modelu generującego odpowiedź RAG | CR-14 |
-| P0 | Numerowane fragmenty i pole `citations[]` w odpowiedzi | CR-01 |
-| P0 | `text_id`, `document_id`, `char_start/end` w wynikach; `document_content?text_id` | CR-02 |
-| P1 | `answer_source` i opcja `rag_only` | CR-03 |
-| P1 | `chats?with_sources=true` | CR-04 |
-| P1 | W `chats`: `title`, `collection_name`, daty, paginacja; `rename_chat`, `delete_chat` | CR-05 |
-| P1 | Sekcje i przypinanie: `chat_groups`, `move_chat`, `pin_chat` | CR-16 |
-| P1 | Zakres dokumentów zapisany przy czacie | CR-18 |
-| P1 | `system_prompt` łączony z promptem szablonu pytań, nie nadpisywany | CR-19 |
-| P2 | `cancel_generation`, postęp / streaming | CR-06 |
-| P2 | Data, typ i liczba stron w `documents` | CR-07 |
-
-## Do sprawdzenia na prawdziwym backendzie
-
-Frontend był testowany na atrapie ([mock_backend/server.py](mock_backend/server.py)), zbudowanej z kodu backendu.
-Przy pierwszym uruchomieniu z RadLab sprawdźcie:
-
-- [ ] Lokalny `POST login` przyjmuje JSON `{username, password}` i zwraca `{"token": …}`.
-- [ ] Odpowiedź `POST login` z `code` (SSO) ma `token` i `refresh_token` w `body`.
-- [ ] `rate_generative_answer` z `answer_response_id = last_state[0].rag_message_state.sse_answer.id` zapisuje ocenę.
-- [ ] Model w wybranym routerze stosuje `citation_instruction` (nazwy dokumentów w nawiasach kwadratowych). Jeśli nie, dostosujcie tekst w konfiguracji.
-- [ ] Kolekcje z szablonami pytań nie nadpisują `system_prompt` (CR-19). Do tego czasu w takich kolekcjach format i przypisy mogą nie działać.
-- [ ] `search_options.documents` zawęża wyszukiwanie w ścieżce czatu (z kodu: `engine/controllers/search/semantic.py`, ok. l. 632).
-- [ ] `GET documents` działa dla zwykłego pracownika w kolekcji udostępnionej jego grupie.
-- [ ] Czas odpowiedzi mieści się w 150 s (inaczej zwiększcie `timeouts.add_user_message_s` i timeout proxy).
-
-## Bezpieczeństwo i wdrożenie
-
-- Sesja to podpisane ciasteczko `HttpOnly`, `SameSite=Lax`; za HTTPS ustawcie `SESSION_HTTPS_ONLY=true`.
-- Odpowiedzi modelu są renderowane z Markdown z wyłączonym HTML, więc model nie wstrzyknie skryptu.
-- Fonty (Inter, Newsreader – SIL OFL 1.1) są w repo; strona nie łączy się z zewnętrznymi serwerami.
-- **Skalowanie:** źródła odpowiedzi i bazę rozmowy frontend trzyma w pamięci procesu (`app/core/session_store.py`),
-  bo backend ich nie zwraca w historii (CR-04, CR-05). Uruchamiajcie jeden proces albo sticky sessions;
-  przy kilku replikach podmieńcie `MemoryStore` na Redis (interfejs `SessionStore`).
-- Proxy przed frontendem musi pozwolić na żądania do 150 s (`/ui-api/ask`).
-
-## Struktura
+## Structure
 
 ```
 app/
-  main.py               – aplikacja FastAPI
-  core/config.py        – konfiguracja (JSON + zmienne środowiskowe)
-  core/api_client.py    – wywołania backendu, envelope, mapowanie błędów
-  core/answers.py       – przypisy, grupowanie źródeł, Markdown
-  core/session_store.py – pamięć źródeł i metadanych rozmów
-  routes/               – logowanie, strona, /ui-api
-  templates/, static/   – HTML, CSS (tokeny RadLab), JS, fonty
-  locales/              – teksty PL i EN
-mock_backend/           – atrapa semantic-search-engine
-tests/                  – testy logiki przypisów i testy kontraktowe
-docs/                   – zgłoszenia do RadLab, decyzje architektoniczne (ADR)
+  main.py               – the FastAPI application
+  core/config.py        – configuration (JSON + environment variables)
+  core/api_client.py    – backend calls, envelope, error mapping
+  core/answers.py       – footnotes, source grouping, Markdown
+  core/session_store.py – memory for sources and conversation metadata
+  routes/               – login, pages, /ui-api
+  templates/, static/   – HTML, CSS (RadLab tokens), JS, fonts
+  locales/              – PL and EN texts
+tests/                  – footnote-logic tests, contract tests and the mock backend (tests/mock_backend)
+docs/                   – change requests for RadLab, architectural decisions (ADRs)
 ```
-
-Klikalny prototyp z opisem przepływów: `projekt/prototyp/` w repozytorium projektu.

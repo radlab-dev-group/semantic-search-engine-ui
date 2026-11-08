@@ -29,5 +29,5 @@ async def app_page(request: Request):
 
 @router.get("/healthz")
 async def healthz():
-    """Stan samego frontendu (dla orkiestracji kontenerów)."""
+    """Health of the frontend itself (for container orchestration)."""
     return {"status": "ok"}

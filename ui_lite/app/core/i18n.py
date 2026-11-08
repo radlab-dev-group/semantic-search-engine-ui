@@ -1,4 +1,4 @@
-"""Teksty interfejsu w plikach `app/locales/<lang>.json` (PL, EN)."""
+"""Interface texts in `app/locales/<lang>.json` files (PL, EN)."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ class Translator:
         return lang if lang in self.languages else self.default
 
     def bundle(self, lang: str) -> dict[str, str]:
-        """Wszystkie teksty języka; brakujące klucze uzupełnia język domyślny."""
+        """All texts for a language; missing keys are filled in from the default language."""
         base = dict(self.texts.get(self.default, {}))
         base.update(self.texts.get(lang, {}))
         return base

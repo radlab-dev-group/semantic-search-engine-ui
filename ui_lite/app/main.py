@@ -1,4 +1,4 @@
-"""Aplikacja FastAPI: minimalistyczny czat RAG dla pracownika (RadLab semantic-search-engine)."""
+"""FastAPI application: a minimalist RAG chat for employees (RadLab semantic-search-engine)."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
         yield
         await app.state.api.close()
 
-    app = FastAPI(title="RadLab – czat RAG", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    app = FastAPI(title="RadLab RAG chat", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.settings = settings
     app.state.api = ApiClient(settings, transport=transport)
     app.state.store = MemoryStore(ttl_s=settings.session_max_age)

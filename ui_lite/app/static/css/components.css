@@ -1,5 +1,5 @@
-/* Komponenty czatu RAG w stylu RadLab. Wymaga tokens.css.
-   Kolejność: baza, typografia, przyciski, pola, układ, rozmowa, źródła, panel, nakładki, stany. */
+/* RAG chat components in the RadLab style. Requires tokens.css.
+   Order: base, typography, buttons, fields, layout, conversation, sources, panel, overlays, states. */
 
 /* ---------- Baza ---------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -70,7 +70,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .check:indeterminate { background: var(--accent); border-color: var(--accent); }
 .check:indeterminate::after { content: ""; width: 9px; height: 2px; background: var(--accent-on); }
 
-/* ---------- Układ aplikacji ---------- */
+/* ---------- Application layout ---------- */
 .app {
   display: grid; height: 100vh; min-height: 560px;
   grid-template-columns: var(--app-sidebar-w) minmax(0, 1fr) var(--app-panel-w);
@@ -146,7 +146,7 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .send[disabled] { background: var(--border-strong); color: var(--bg); cursor: not-allowed; }
 
-/* Chip zakresu (baza wiedzy + liczba dokumentów) */
+/* Scope chip (knowledge base + document count) */
 .scope-chip {
   display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 12px 0 10px;
   border-radius: var(--app-pill); border: 1px solid var(--border); background: var(--bg-surface);
@@ -171,7 +171,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .answer.is-muted { color: var(--text-muted); }
 .scope-line { align-self: center; font-size: 12.5px; color: var(--text-muted); padding: 4px 12px; border-radius: var(--app-pill); background: var(--bg-surface); border: 1px dashed var(--border-strong); }
 
-/* Przypis [n]: pełny = dokładny (po CR-01), przerywany = przybliżony (MVP) */
+/* Footnote [n]: solid border = exact (after CR-01), dashed = approximate (MVP) */
 .fn {
   display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; margin: 0 1px;
   border-radius: var(--app-pill); vertical-align: 2px; cursor: pointer;
@@ -184,7 +184,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .coverage { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
 .coverage::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-grad); }
 
-/* Źródła pogrupowane po dokumencie */
+/* Sources grouped by document */
 .sources { display: flex; flex-direction: column; gap: 8px; }
 .source { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-raised); }
 .source-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; background: transparent; cursor: pointer; text-align: left; font-size: 14px; }
@@ -224,7 +224,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .notice b { font-weight: 600; }
 .notice .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
-/* ---------- Panel boczny: dokumenty i podgląd ---------- */
+/* ---------- Side panel: documents and preview ---------- */
 .panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border-left: 1px solid var(--border); background: var(--bg-surface); }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 60px; padding: 0 10px 0 18px; border-bottom: 1px solid var(--border); }
 .panel-head h2 { margin: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -238,14 +238,14 @@ button, input, textarea { font: inherit; color: inherit; }
 .doc-row .doc-open:hover span:last-child { text-decoration: underline; }
 .panel-foot { padding: 10px 18px 14px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border); }
 
-/* Podgląd dokumentu */
+/* Document preview */
 .doc-meta { display: flex; align-items: center; gap: 8px; padding: 0 4px 12px; font-size: 13px; color: var(--text-muted); }
 .doc-page { background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 12px; font-family: var(--font-body); font-size: 16px; line-height: 1.6; box-shadow: var(--shadow-sm); }
 .doc-page h4 { margin: 0 0 10px; font-family: var(--font-ui); font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
 .doc-page p { margin: 0 0 10px; }
 mark.hl { background: var(--app-highlight); color: inherit; padding: 1px 2px; border-radius: 3px; box-shadow: 0 0 0 2px var(--app-highlight); }
 
-/* ---------- Nakładki ---------- */
+/* ---------- Overlays ---------- */
 .popover { position: absolute; z-index: 30; width: 360px; padding: 10px; border-radius: 14px; border: 1px solid var(--border-strong); background: var(--bg-raised); box-shadow: var(--shadow-lg); }
 .base-card { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 10px 12px; border-radius: var(--radius); border: 1px solid transparent; background: transparent; cursor: pointer; }
 .base-card:hover { background: var(--bg-surface); }

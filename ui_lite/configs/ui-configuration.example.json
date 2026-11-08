@@ -59,36 +59,52 @@
     },
     "document_preview_pages": 3
   },
-  "citation_instruction": "Po każdym zdaniu opartym na dokumentach podaj w nawiasie kwadratowym pełną nazwę dokumentu, z którego pochodzi informacja, np. [Raport roczny 2025.pdf]. Cytuj tylko dokumenty z kontekstu. Nie podawaj numerów stron.",
-  "default_format": "punkty",
+  "citation_instruction": "After each sentence based on the documents, give the full name of the document the information comes from in square brackets, e.g. [Annual report 2025.pdf]. Cite only documents from the context. Do not give page numbers.",
+  "default_format": "bullets",
   "formats": [
     {
-      "id": "zwiezle",
-      "label": {"pl": "Zwięźle", "en": "Brief"},
-      "description": {"pl": "2–4 zdania, najważniejsze na początku", "en": "2–4 sentences, key point first"},
+      "id": "brief",
+      "label": {
+        "pl": "Zwięźle", "en": "Brief"
+      },
+      "description": {
+        "pl": "2–4 zdania, najważniejsze na początku", "en": "2–4 sentences, key point first"
+      },
       "max_new_tokens": 300,
-      "system_prompt": "Odpowiedz zwięźle, w 2–4 zdaniach. Zacznij od najważniejszej informacji."
+      "system_prompt": "Answer briefly, in 2-4 sentences. Start with the most important information."
     },
     {
-      "id": "punkty",
-      "label": {"pl": "W punktach", "en": "Bullet points"},
-      "description": {"pl": "Lista najważniejszych informacji", "en": "List of key points"},
+      "id": "bullets",
+      "label": {
+        "pl": "W punktach", "en": "Bullet points"
+      },
+      "description": {
+        "pl": "Lista najważniejszych informacji", "en": "List of key points"
+      },
       "max_new_tokens": 700,
-      "system_prompt": "Odpowiedz w formie listy 3–7 punktów w Markdown. Każdy punkt zaczyna się od pogrubionego hasła."
+      "system_prompt": "Answer as a Markdown list of 3-7 bullet points. Each point starts with a bolded heading."
     },
     {
-      "id": "szczegolowo",
-      "label": {"pl": "Szczegółowo", "en": "Detailed"},
-      "description": {"pl": "Podsumowanie, sekcje, wnioski i zastrzeżenia", "en": "Summary, sections, conclusions, caveats"},
+      "id": "detailed",
+      "label": {
+        "pl": "Szczegółowo", "en": "Detailed"
+      },
+      "description": {
+        "pl": "Podsumowanie, sekcje, wnioski i zastrzeżenia", "en": "Summary, sections, conclusions, caveats"
+      },
       "max_new_tokens": 1500,
-      "system_prompt": "Odpowiedz wyczerpująco w Markdown: zacznij od 2-zdaniowego podsumowania, potem sekcje z nagłówkami (###), na końcu wnioski i informacje, których nie znaleziono w dokumentach."
+      "system_prompt": "Answer comprehensively in Markdown: start with a 2-sentence summary, then sections with headings (###), and end with conclusions and information that was not found in the documents."
     },
     {
-      "id": "tabela",
-      "label": {"pl": "Tabela", "en": "Table"},
-      "description": {"pl": "Zestawienie w kolumnach – do porównań", "en": "Columns – for comparisons"},
+      "id": "table",
+      "label": {
+        "pl": "Tabela", "en": "Table"
+      },
+      "description": {
+        "pl": "Zestawienie w kolumnach – do porównań", "en": "Columns – for comparisons"
+      },
       "max_new_tokens": 900,
-      "system_prompt": "Odpowiedz w formie tabeli Markdown. Ostatnia kolumna to źródło w nawiasie kwadratowym. Pod tabelą jedno zdanie podsumowania."
+      "system_prompt": "Answer as a Markdown table. The last column is the source in square brackets. Below the table, one summary sentence."
     }
   ],
   "features": {
