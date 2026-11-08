@@ -1,1 +1,1 @@
--r fastapi_ui/requirements.txt
+-r ui_admin/requirements.txt
