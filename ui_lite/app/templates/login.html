@@ -3,7 +3,10 @@
 {% block body %}
 <main class="login">
   <section class="login-art" aria-hidden="true">
-    <span class="brand"><span class="brand-dot"></span>{{ brand }}</span>
+    <span class="brand" aria-label="RadLab — {{ brand }}">
+      <img class="brand-logo brand-logo-light" src="/static/img/logo.png" width="300" height="88" alt="{{ brand }}" fetchpriority="high">
+      <img class="brand-logo brand-logo-dark" src="/static/img/logo-inverted.png" width="300" height="88" alt="{{ brand }}">
+    </span>
     <div>
       <p class="eyebrow">{{ t["login.eyebrow"] }}</p>
       <h1 class="display display-xl" style="max-width:420px">{{ t["login.claim"] }}</h1>

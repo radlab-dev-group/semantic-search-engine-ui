@@ -4,11 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ t["app.title"] }}{% endblock %}</title>
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e0f12">
+<link rel="icon" href="/static/img/small-ico.png" type="image/png">
+<link rel="apple-touch-icon" href="/static/img/apple-touch.png">
 <link rel="stylesheet" href="/static/css/fonts.css">
 <link rel="stylesheet" href="/static/css/tokens.css">
 <link rel="stylesheet" href="/static/css/components.css">
 <script>
-  try { var th = localStorage.getItem("rag-theme"); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
+  try {
+    var th = localStorage.getItem("rag-theme") || localStorage.getItem("radlab-theme");
+    if (th === "dark" || th === "light") document.documentElement.dataset.theme = th;
+  } catch (e) {}
 </script>
 </head>
 <body>

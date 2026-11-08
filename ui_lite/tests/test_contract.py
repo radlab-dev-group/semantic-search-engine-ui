@@ -18,6 +18,12 @@ REQUIRED = {
 def test_app_requires_login(client):
     r = client.get("/", follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"] == "/login"
+    login = client.get("/login")
+    assert (
+        login.status_code == 200
+        and "/static/img/logo.png" in login.text
+        and "/static/img/logo-inverted.png" in login.text
+    )
     assert client.get("/ui-api/collections").status_code == 401
 
 
@@ -30,12 +36,24 @@ def test_login_wrong_password(client, backend_log):
 
 
 def test_login_and_app_page(logged):
+    login_page = logged.get("/login", follow_redirects=False)
+    assert login_page.status_code == 303
     r = logged.get("/")
     assert (
         r.status_code == 200
         and 'id="app-data"' in r.text
         and "/static/js/app.js" in r.text
+        and "/static/img/small-ico.png" in r.text
+        and "/static/img/apple-touch.png" in r.text
     )
+    for asset in (
+        "/static/img/logo.png",
+        "/static/img/logo-inverted.png",
+        "/static/img/mark.png",
+        "/static/img/small-ico.png",
+        "/static/img/apple-touch.png",
+    ):
+        assert logged.get(asset).status_code == 200
 
 
 def test_collections_use_token_and_lang(logged, backend_log):

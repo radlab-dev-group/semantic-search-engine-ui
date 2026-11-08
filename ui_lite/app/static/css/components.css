@@ -86,8 +86,24 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .sidebar-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 14px 8px 18px; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-ui); font-weight: 700; font-size: 16px; letter-spacing: -0.01em; color: var(--text); text-decoration: none; }
+.brand-logo { display: block; height: 34px; width: auto; max-width: 100%; }
+.brand-logo-dark { display: none; }
+:root[data-theme="dark"] .brand-logo-light { display: none; }
+:root[data-theme="dark"] .brand-logo-dark { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-logo-light { display: none; }
+  :root:not([data-theme="light"]) .brand-logo-dark { display: block; }
+}
+.brand-mark { display: block; width: 24px; height: 24px; border-radius: 50%; flex: none; }
 .brand-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--brand-grad); flex: none; }
 .brand small { font-weight: 500; color: var(--text-muted); font-size: 13px; }
+.theme-toggle .icon-moon { display: none; }
+:root[data-theme="dark"] .theme-toggle .icon-moon { display: inline-block; }
+:root[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .icon-moon { display: inline-block; }
+  :root:not([data-theme="light"]) .theme-toggle .icon-sun { display: none; }
+}
 .sidebar .btn-new { margin: 8px 14px 12px; justify-content: flex-start; }
 .history { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
 .history-label { padding: 14px 10px 6px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
@@ -113,7 +129,7 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .topbar-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar-actions { display: flex; align-items: center; gap: 6px; }
-.feed { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+.feed { flex: 1; overflow-y: auto; }
 .feed-inner { max-width: var(--app-measure); margin: 0 auto; padding: 28px 24px 24px; display: flex; flex-direction: column; gap: 22px; }
 
 /* Ekran startowy */
@@ -246,8 +262,16 @@ button, input, textarea { font: inherit; color: inherit; }
 mark.hl { background: var(--app-highlight); color: inherit; padding: 1px 2px; border-radius: 3px; box-shadow: 0 0 0 2px var(--app-highlight); }
 
 /* ---------- Overlays ---------- */
-.popover { position: absolute; z-index: 30; width: 360px; padding: 10px; border-radius: 14px; border: 1px solid var(--border-strong); background: var(--bg-raised); box-shadow: var(--shadow-lg); }
-.base-card { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 10px 12px; border-radius: var(--radius); border: 1px solid transparent; background: transparent; cursor: pointer; }
+.popover-anchor { position: relative; display: inline-flex; max-width: 100%; }
+.popover {
+  position: absolute; left: 0; bottom: calc(100% + 10px); z-index: 30;
+  width: 360px; max-width: calc(100vw - 32px); max-height: min(62vh, 480px);
+  display: flex; flex-direction: column;
+  padding: 10px; border-radius: 14px; border: 1px solid var(--border-strong);
+  background: var(--bg-raised); box-shadow: var(--shadow-lg);
+}
+.popover-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 2px; }
+.base-card { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 10px 12px; border-radius: var(--radius); border: 1px solid transparent; background: transparent; cursor: pointer; flex-shrink: 0; }
 .base-card:hover { background: var(--bg-surface); }
 .base-card[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .base-card b { font-size: 14px; }
@@ -262,8 +286,21 @@ mark.hl { background: var(--app-highlight); color: inherit; padding: 1px 2px; bo
 /* ---------- Logowanie ---------- */
 .login { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
 .login-art { position: relative; overflow: hidden; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; padding: 40px; }
+.login-art .brand-logo { height: 42px; }
 .login-art::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px); background-size: 48px 48px; }
-.login-orb { position: absolute; right: -80px; bottom: -80px; width: 420px; height: 420px; border-radius: 50%; background: var(--brand-grad); opacity: .9; }
+.login-orb {
+  position: absolute; right: -80px; bottom: -80px; width: 420px; height: 420px; border-radius: 50%;
+  background: var(--brand-grad); opacity: .94;
+  box-shadow:
+    inset -14px -20px 54px rgba(58, 12, 6, 0.34),
+    inset 12px 14px 40px rgba(255, 255, 255, 0.26),
+    0 42px 90px -34px color-mix(in srgb, var(--brand-4) 68%, transparent);
+}
+.login-orb::after {
+  content: ""; position: absolute; inset: -4%; border-radius: 50%;
+  background: conic-gradient(from 210deg, transparent 0 56%, rgba(255, 255, 255, 0.13) 72%, transparent 90%);
+  filter: blur(13px);
+}
 .login-art > :not(.login-orb) { position: relative; }
 .login-form { display: grid; place-items: center; padding: 40px; }
 .login-form form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 16px; }
