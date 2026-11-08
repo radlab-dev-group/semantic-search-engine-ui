@@ -2303,7 +2303,18 @@ def main() -> int:
         )
 
         # --- Conversational search (Chat) ---------------------------------- #
+        search_html = client.get("/search?collection_name=user_col").text
         chat_html = client.get("/chat?collection_name=user_col").text
+        check(
+            "search and chat pages include collapsible search parameters controls",
+            "data-params-toggle" in search_html
+            and "params-collapse-btn" in search_html
+            and "params-rail" in search_html
+            and "data-params-toggle" in chat_html
+            and "params-collapse-btn" in chat_html
+            and "params-rail" in chat_html,
+            "",
+        )
         check(
             "chat page renders with navigation, collection banner, history and params",
             'href="/chat"' in chat_html

@@ -802,6 +802,44 @@ function initParamsPanel() {
   });
 }
 
+const PARAMS_COLLAPSED_KEY = "sse-params-collapsed";
+
+function setParamsCollapsed(layout, collapsed, persist = true) {
+  if (!layout) return;
+  layout.classList.toggle("is-params-collapsed", Boolean(collapsed));
+  const expanded = String(!collapsed);
+  layout.querySelectorAll("[data-params-toggle]").forEach((btn) => {
+    btn.setAttribute("aria-expanded", expanded);
+  });
+  if (persist) {
+    try {
+      if (collapsed) localStorage.setItem(PARAMS_COLLAPSED_KEY, "1");
+      else localStorage.removeItem(PARAMS_COLLAPSED_KEY);
+    } catch (error) {
+      /* storage unavailable */
+    }
+  }
+}
+
+function initParamsCollapse() {
+  const layout = document.querySelector(".search-layout");
+  if (!layout) return;
+  let initialCollapsed = false;
+  try {
+    initialCollapsed = localStorage.getItem(PARAMS_COLLAPSED_KEY) === "1";
+  } catch (error) {
+    initialCollapsed = false;
+  }
+  setParamsCollapsed(layout, initialCollapsed, false);
+
+  layout.querySelectorAll("[data-params-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const next = !layout.classList.contains("is-params-collapsed");
+      setParamsCollapsed(layout, next, true);
+    });
+  });
+}
+
 /* -------------------------------------------- query console: collection */
 // The banner above the question shows which collection it goes to: the name,
 // the description and the date come from the data-* attributes of the chosen
@@ -864,6 +902,10 @@ function initCollectionBanner() {
   const change = banner.querySelector("[data-banner-change]");
   if (change && select) {
     change.addEventListener("click", () => {
+      const layout = document.querySelector(".search-layout");
+      if (layout && layout.classList.contains("is-params-collapsed")) {
+        setParamsCollapsed(layout, false, true);
+      }
       const group = select.closest("details");
       if (group) group.open = true;
       select.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -3266,6 +3308,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initParamsMemory();
   initSliders();
   initParamsPanel();
+  initParamsCollapse();
   initCollectionBanner();
   initCollectionFilter();
   initCollectionIndexing();

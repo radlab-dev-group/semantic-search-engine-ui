@@ -845,14 +845,24 @@ svg {
 /* Sidebar head: eyebrow + "restore defaults" (shown once options are kept) */
 .params-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
+.params-head .card__eyebrow {
+  margin-bottom: 0;
+}
+
+.params-head__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
 .params-reset {
-  margin-bottom: var(--space-2);
   font-size: 0.78rem;
   font-weight: 550;
   color: var(--text-muted);
@@ -864,6 +874,104 @@ svg {
 .params-reset:focus-visible {
   color: var(--brand-500);
   text-decoration: underline;
+}
+
+.params-collapse-btn {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.params-collapse-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.params-collapse-btn:hover {
+  color: var(--brand-500);
+  border-color: var(--brand-500);
+  background: rgb(124 108 255 / 10%);
+}
+
+/* Collapsed sidebar rail & toggle in collection banner */
+.params-rail {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: 44px;
+  padding: var(--space-3) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease), background 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.params-rail:hover,
+.params-rail:focus-visible {
+  color: var(--brand-500);
+  border-color: var(--brand-500);
+  background: linear-gradient(180deg, rgb(20 211 190 / 8%), rgb(124 108 255 / 12%)), var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+}
+
+.params-rail__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--brand-500);
+}
+
+.params-rail__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.params-rail__label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.coll-banner__params-btn {
+  display: none;
+}
+
+.coll-banner__params-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.search-layout.is-params-collapsed,
+.search-layout--chat.is-params-collapsed {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-3);
+}
+
+.search-layout.is-params-collapsed [data-params] {
+  display: none;
+}
+
+.search-layout.is-params-collapsed .params-rail {
+  display: flex;
+}
+
+.search-layout.is-params-collapsed .coll-banner__params-btn {
+  display: inline-flex;
 }
 
 /* Search parameters: collapsible groups with a live one-line summary.
@@ -5836,9 +5944,15 @@ input[type="range"]::-moz-range-thumb {
     order: 2;
   }
 
-  .search-layout {
+  .search-layout,
+  .search-layout.is-params-collapsed,
+  .search-layout--chat.is-params-collapsed {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
+  }
+
+  .search-layout.is-params-collapsed .params-rail {
+    display: none;
   }
 
   .search-layout__side,
@@ -7354,7 +7468,7 @@ input.is-invalid:focus {
    -------------------------------------------------------------------------- */
 /* Two-column area under the collection banner: conversation list on the
    left, the chat itself on the right. */
-.search-layout--chat {
+.search-layout--chat:not(.is-params-collapsed) {
   grid-template-columns: minmax(270px, 310px) minmax(0, 1fr);
 }
 

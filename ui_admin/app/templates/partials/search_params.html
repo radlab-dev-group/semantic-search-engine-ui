@@ -71,14 +71,24 @@
 <div class="card card--panel params" data-params>
   <div class="params-head">
     <p class="card__eyebrow">{{ t('params.eyebrow') }}</p>
-    {#- Always shown: options changed without a search live in the browser only -#}
-    <a class="params-reset" href="/search/params/reset{% if selected_collection %}?collection_name={{ selected_collection | urlencode }}{% endif %}"
-       title="{{ t('params.reset_title') }}"
-       data-confirm="{{ t('params.reset_confirm') }}"
-       data-confirm-title="{{ t('params.reset_confirm_title') }}"
-       data-confirm-ok="{{ t('params.reset_confirm_ok') }}"
-       data-confirm-warning="false"
-       data-confirm-icon="reset">↺ {{ t('params.reset') }}</a>
+    <div class="params-head__actions">
+      {#- Always shown: options changed without a search live in the browser only -#}
+      <a class="params-reset" href="/search/params/reset{% if selected_collection %}?collection_name={{ selected_collection | urlencode }}{% endif %}"
+         title="{{ t('params.reset_title') }}"
+         data-confirm="{{ t('params.reset_confirm') }}"
+         data-confirm-title="{{ t('params.reset_confirm_title') }}"
+         data-confirm-ok="{{ t('params.reset_confirm_ok') }}"
+         data-confirm-warning="false"
+         data-confirm-icon="reset">↺ {{ t('params.reset') }}</a>
+      <button type="button"
+              class="btn btn--ghost btn--xs btn--icon params-collapse-btn"
+              data-params-toggle
+              aria-expanded="true"
+              title="{{ t('params.hide') }}"
+              aria-label="{{ t('params.hide') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m14 9-3 3 3 3"/></svg>
+      </button>
+    </div>
   </div>
 
   {#- 1. Collection and number of results ------------------------------ -#}

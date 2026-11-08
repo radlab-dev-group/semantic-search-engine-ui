@@ -33,6 +33,17 @@
     <div class="search-layout{% if has_results %} search-layout--results{% endif %}">
       <form method="post" action="/search" class="search-layout__form" data-busy-form>
         <aside class="sidebar search-layout__side">
+          <button type="button"
+                  class="params-rail"
+                  data-params-toggle
+                  aria-expanded="true"
+                  title="{{ t('params.show') }}"
+                  aria-label="{{ t('params.show') }}">
+            <span class="params-rail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m12 9 3 3-3 3"/></svg>
+            </span>
+            <span class="params-rail__label">{{ t('params.eyebrow') }}</span>
+          </button>
           {% include "partials/search_params.html" %}
         </aside>
 
@@ -72,6 +83,15 @@
                 <p class="coll-banner__empty">{{ t('search.banner_none') }}</p>
               </div>
               <div class="coll-banner__actions">
+                <button type="button"
+                        class="btn btn--ghost btn--sm coll-banner__params-btn"
+                        data-params-toggle
+                        aria-expanded="true"
+                        title="{{ t('params.show') }}"
+                        aria-label="{{ t('params.show') }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m12 9 3 3-3 3"/></svg>
+                  <span>{{ t('params.toggle_short') }}</span>
+                </button>
                 <a class="btn btn--ghost btn--sm" href="/collections/manage{% if active %}?collection_name={{ active.name | urlencode }}{% endif %}" data-banner-manage title="{{ t('search.banner_documents_title') }}">{{ t('search.banner_documents') }}</a>
                 <button type="button" class="btn btn--ghost btn--sm" data-banner-change title="{{ t('search.banner_change_title') }}">{{ t('search.banner_change') }}</button>
               </div>

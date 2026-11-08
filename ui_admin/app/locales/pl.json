@@ -514,6 +514,9 @@
   },
   "params": {
     "eyebrow": "Parametry wyszukiwania",
+    "hide": "Ukryj parametry",
+    "show": "Pokaż parametry",
+    "toggle_short": "Parametry",
     "reset": "Przywróć domyślne",
     "reset_title": "Zapomnij opcje ostatniego wyszukiwania i użyj wartości domyślnych",
     "reset_confirm": "Czy na pewno chcesz przywrócić domyślne parametry wyszukiwania? Opcje ostatniego wyszukiwania zostaną zresetowane.",

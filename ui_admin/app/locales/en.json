@@ -482,6 +482,9 @@
   },
   "params": {
     "eyebrow": "Search parameters",
+    "hide": "Hide parameters",
+    "show": "Show parameters",
+    "toggle_short": "Parameters",
     "reset": "Restore defaults",
     "reset_title": "Forget the options of the last search and use the default values",
     "reset_confirm": "Are you sure you want to restore default search parameters? Custom options will be reset.",
