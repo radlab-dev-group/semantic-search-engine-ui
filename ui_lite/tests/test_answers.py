@@ -1,45 +1,45 @@
 from app.core.answers import Fragment, build_answer, extract_results
 
-A = "Raport roczny 2025.pdf"
-B = "Polityka bezpieczeństwa.docx"
+A = "Annual report 2025.pdf"
+B = "Security policy.docx"
 
 
 def frags():
     return [
-        Fragment(B, 3, "Hasła zmienia się co 90 dni.", "", "", 0.9),
-        Fragment(A, 12, "Przychody wzrosły o 8%.", "", "", 0.8),
-        Fragment(A, 14, "Koszty spadły.", "", "", 0.5),
+        Fragment(B, 3, "Passwords change every 90 days.", "", "", 0.9),
+        Fragment(A, 12, "Revenue grew by 8%.", "", "", 0.8),
+        Fragment(A, 14, "Costs fell.", "", "", 0.5),
     ]
 
 
 def test_footnotes_numbered_in_order_of_first_citation():
-    out = build_answer(f"Przychody wzrosły [{A}]. Hasła zmienia się często [{B}].", frags())
+    out = build_answer(f"Revenue grew [{A}]. Passwords change often [{B}].", frags())
     assert [g["name"] for g in out["groups"]] == [A, B]
     assert 'data-fn="1"' in out["html"] and 'data-fn="2"' in out["html"]
-    assert out["plain"] == "Przychody wzrosły[1]. Hasła zmienia się często[2]."
+    assert out["plain"] == "Revenue grew[1]. Passwords change often[2]."
     assert out["cited"] is True
 
 
 def test_footnote_page_is_best_scored_fragment_and_pages_listed():
-    out = build_answer(f"Wynik [{A}].", frags())
+    out = build_answer(f"Result [{A}].", frags())
     a = out["groups"][0]
-    assert a["page"] == 12 and a["pages"] == [12, 14] and a["quote"] == "Przychody wzrosły o 8%."
+    assert a["page"] == 12 and a["pages"] == [12, 14] and a["quote"] == "Revenue grew by 8%."
 
 
 def test_name_without_extension_and_case_matches():
-    out = build_answer("Wynik [raport roczny 2025].", frags())
+    out = build_answer("Result [annual report 2025].", frags())
     assert 'data-fn="1"' in out["html"]
 
 
 def test_unmatched_brackets_are_kept_and_uncited_documents_listed():
-    out = build_answer("Zobacz [punkt 3] oraz [Nieznany plik.pdf].", frags())
-    assert "[punkt 3]" in out["plain"] and "[Nieznany plik.pdf]" in out["plain"]
+    out = build_answer("See [section 3] and [unknown file.pdf].", frags())
+    assert "[section 3]" in out["plain"] and "[unknown file.pdf]" in out["plain"]
     assert out["cited"] is False
-    assert [g["name"] for g in out["groups"]] == [B, A]  # kolejność według trafności
+    assert [g["name"] for g in out["groups"]] == [B, A]  # relevance order
 
 
 def test_several_names_in_one_bracket():
-    out = build_answer(f"Oba dokumenty [{A}; {B}].", frags())
+    out = build_answer(f"Both documents [{A}; {B}].", frags())
     assert out["plain"].endswith("[1][2].")
 
 
