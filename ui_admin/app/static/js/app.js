@@ -1438,8 +1438,9 @@ function initFormBusyStates(root = document) {
     return form.querySelector("button[type='submit'], button:not([type])");
   }
 
-  root.querySelectorAll("form:not([method='dialog'])").forEach((form) => {
+  root.querySelectorAll("form:not([method='dialog']):not([data-chat-form])").forEach((form) => {
     form.addEventListener("submit", (event) => {
+      if (event.defaultPrevented) return;
       // Buttons can live outside the form (linked via the form attribute),
       // so resolve the actually submitted control first.
       const button = busyButtonFor(event);
@@ -2791,6 +2792,11 @@ function resetChatToNew() {
   if (activeInput) activeInput.value = "";
   const headerTitle = document.querySelector("[data-chat-header-title]");
   if (headerTitle) headerTitle.textContent = t("chat_new_title", {}, "Nowa rozmowa");
+  const msgCount = document.querySelector("[data-chat-msg-count]");
+  if (msgCount) {
+    msgCount.textContent = "0";
+    msgCount.classList.add("is-hidden");
+  }
   const feed = document.querySelector("[data-chat-feed]");
   if (feed) {
     feed.querySelectorAll(".chat-msg:not([data-chat-waiting])").forEach((msg) => msg.remove());
@@ -2824,6 +2830,13 @@ async function loadChat(chatId) {
 
     const headerTitle = document.querySelector("[data-chat-header-title]");
     if (headerTitle) headerTitle.textContent = payload.title || `Czat #${payload.chat_id}`;
+
+    const msgCount = document.querySelector("[data-chat-msg-count]");
+    const countVal = (payload.messages || []).length;
+    if (msgCount) {
+      msgCount.textContent = String(countVal);
+      msgCount.classList.toggle("is-hidden", countVal === 0);
+    }
 
     const feed = document.querySelector("[data-chat-feed]");
     if (!feed) return;
@@ -2896,16 +2909,21 @@ function renderChatMessage(feed, msg) {
       <div class="chat-msg__actions">
         <button type="button" class="btn btn--ghost btn--xs" data-copy-answer title="Kopiuj odpowiedź">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Kopiuj
+          <span>Kopiuj</span>
         </button>
         ${msg.plain && msg.groups && msg.groups.length > 0 ? `
           <button type="button" class="btn btn--ghost btn--xs" data-copy-with-sources title="Kopiuj ze źródłami">
-            Kopiuj ze źródłami
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+            <span>Kopiuj ze źródłami</span>
           </button>
         ` : ""}
         ${msg.answer_id ? `
-          <button type="button" class="btn btn--ghost btn--xs btn--icon" data-rate-btn="1" data-answer-id="${msg.answer_id}" title="Dobra odpowiedź">👍</button>
-          <button type="button" class="btn btn--ghost btn--xs btn--icon" data-rate-btn="0" data-answer-id="${msg.answer_id}" title="Zła odpowiedź">👎</button>
+          <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn" data-rate-btn="1" data-answer-id="${msg.answer_id}" title="Dobra odpowiedź" aria-label="Dobra odpowiedź">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+          </button>
+          <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn" data-rate-btn="0" data-answer-id="${msg.answer_id}" title="Zła odpowiedź" aria-label="Zła odpowiedź">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+          </button>
         ` : ""}
       </div>
     `;
@@ -2921,7 +2939,7 @@ function renderChatMessage(feed, msg) {
         ${msg.date_time ? `<time class="chat-msg__time">${msg.date_time}</time>` : ""}
         ${msg.generation_time ? `<span class="chat-msg__time">(${typeof msg.generation_time === 'number' ? msg.generation_time.toFixed(1) : msg.generation_time}s)</span>` : ""}
       </div>
-      <div class="chat-msg__body markdown-body">
+      <div class="chat-msg__body markdown markdown-body">
         ${msg.html || escapeHtml(msg.text || "").replace(/\n/g, "<br>")}
       </div>
       ${sourcesHtml}
@@ -2934,9 +2952,10 @@ function renderChatMessage(feed, msg) {
     btn.addEventListener("click", () => {
       const textToCopy = msg.plain || msg.text || msgDiv.querySelector(".chat-msg__body")?.innerText || "";
       navigator.clipboard.writeText(textToCopy).then(() => {
-        const orig = btn.innerText;
-        btn.innerText = "Skopiowano!";
-        setTimeout(() => { btn.innerText = orig; }, 2000);
+        const labelEl = btn.querySelector("span") || btn;
+        const orig = labelEl.textContent;
+        labelEl.textContent = "Skopiowano!";
+        setTimeout(() => { labelEl.textContent = orig; }, 2000);
       });
     });
   });
@@ -2948,9 +2967,10 @@ function renderChatMessage(feed, msg) {
         full += "\n\nŹródła:\n" + msg.groups.map(g => `[${g.n}] ${g.name}` + (g.page ? ` (s. ${g.page})` : "")).join("\n");
       }
       navigator.clipboard.writeText(full).then(() => {
-        const orig = btn.innerText;
-        btn.innerText = "Skopiowano!";
-        setTimeout(() => { btn.innerText = orig; }, 2000);
+        const labelEl = btn.querySelector("span") || btn;
+        const orig = labelEl.textContent;
+        labelEl.textContent = "Skopiowano!";
+        setTimeout(() => { labelEl.textContent = orig; }, 2000);
       });
     });
   });
@@ -2977,10 +2997,9 @@ function renderChatMessage(feed, msg) {
         });
         const rJson = await res.json();
         if (rJson.status) {
-          btn.style.opacity = "1";
-          btn.style.fontWeight = "bold";
+          btn.classList.add("is-active");
           const sibling = btn.parentElement.querySelector(`[data-rate-btn='${rateVal === "1" ? "0" : "1"}']`);
-          if (sibling) sibling.style.opacity = "0.4";
+          if (sibling) sibling.classList.remove("is-active");
         }
       } catch (e) {
         console.error("Failed to rate", e);
@@ -3008,6 +3027,12 @@ function renderChatMessage(feed, msg) {
   } else {
     feed.appendChild(msgDiv);
   }
+  const msgCount = document.querySelector("[data-chat-msg-count]");
+  if (msgCount) {
+    const totalMsgs = feed.querySelectorAll(".chat-msg:not([data-chat-waiting])").length;
+    msgCount.textContent = String(totalMsgs);
+    msgCount.classList.toggle("is-hidden", totalMsgs === 0);
+  }
 }
 
 function initChat() {
@@ -3018,11 +3043,23 @@ function initChat() {
 
   const form = container.querySelector("[data-chat-form]");
   const textarea = container.querySelector("[data-chat-input]");
+  const sendBtn = container.querySelector("[data-chat-send]");
+  const sendSpinner = container.querySelector("[data-chat-spinner]");
   const feed = container.querySelector("[data-chat-feed]");
   const waiting = container.querySelector("[data-chat-waiting]");
   const timer = container.querySelector("[data-chat-timer]");
   const stopBtn = container.querySelector("[data-chat-stop]");
   const emptyState = container.querySelector("[data-chat-empty]");
+
+  const setSendingState = (busy) => {
+    if (sendBtn) {
+      sendBtn.disabled = busy;
+      sendBtn.classList.toggle("is-sending", busy);
+    }
+    if (sendSpinner) {
+      sendSpinner.classList.toggle("is-hidden", !busy);
+    }
+  };
 
   let abortController = null;
   let timerInterval = null;
@@ -3074,6 +3111,7 @@ function initChat() {
         timerInterval = null;
       }
       if (waiting) waiting.classList.add("is-hidden");
+      setSendingState(false);
     });
   }
 
@@ -3138,6 +3176,7 @@ function initChat() {
       let seconds = 0;
       if (timer) timer.textContent = "0 s";
       if (waiting) waiting.classList.remove("is-hidden");
+      setSendingState(true);
       feed.scrollTop = feed.scrollHeight;
 
       timerInterval = setInterval(() => {
@@ -3159,6 +3198,7 @@ function initChat() {
           timerInterval = null;
         }
         if (waiting) waiting.classList.add("is-hidden");
+        setSendingState(false);
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
@@ -3203,6 +3243,7 @@ function initChat() {
           timerInterval = null;
         }
         if (waiting) waiting.classList.add("is-hidden");
+        setSendingState(false);
         if (err.name !== "AbortError") {
           console.error("Chat request failed", err);
           renderChatMessage(feed, {

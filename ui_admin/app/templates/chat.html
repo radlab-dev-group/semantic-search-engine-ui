@@ -125,7 +125,7 @@
                         <span class="chat-msg__author">{% if msg.role == 'user' %}{{ username or t('chat.user_label') }}{% else %}{{ t('chat.assistant_label') }}{% endif %}</span>
                         {% if msg.date_time %}<time class="chat-msg__time">{{ msg.date_time }}</time>{% endif %}
                       </div>
-                      <div class="chat-msg__body markdown-body">
+                      <div class="chat-msg__body markdown markdown-body">
                         {{ msg.html | safe if msg.html else (msg.text | render_plain | safe) }}
                       </div>
                     </div>
