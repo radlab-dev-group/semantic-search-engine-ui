@@ -85,6 +85,29 @@ def test_documents_list(logged, backend_log):
     )
 
 
+def test_documents_list_keeps_duplicate_names(logged, monkeypatch):
+    from tests.mock_backend import server as mock
+
+    monkeypatch.setitem(
+        mock.DOCUMENTS,
+        "duplikaty",
+        [
+            {"id": 10, "name": "overview.md", "relative_path": "/part1/overview.md"},
+            {"id": 11, "name": "overview.md", "relative_path": "/part2/overview.md"},
+            {"id": 12, "name": "overview.md", "category": "orange"},
+        ],
+    )
+    docs = logged.get("/ui-api/documents", params={"collection": "duplikaty"}).json()[
+        "documents"
+    ]
+    assert len(docs) == 3
+    assert [d["name"] for d in docs] == ["overview.md", "overview.md", "overview.md"]
+    assert [d.get("id") for d in docs] == [12, 10, 11]
+    assert docs[1]["relative_path"] == "/part1/overview.md"
+    assert docs[2]["relative_path"] == "/part2/overview.md"
+    assert docs[0]["category"] == "orange"
+
+
 def test_first_question_creates_chat_and_sends_required_options(logged, backend_log):
     r = logged.post(
         "/ui-api/ask",

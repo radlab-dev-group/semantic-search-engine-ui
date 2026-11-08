@@ -45,6 +45,7 @@
 
   const base = () => state.collections.find((c) => c.name === state.baseName) || null;
   const docs = () => state.docs[state.baseName] || [];
+  const docKey = (d, i = 0) => d.key || (d.id != null ? `id:${d.id}` : `idx:${i}:${d.name}`);
   const sel = () => state.selected[state.baseName] || new Set();
   const allSelected = () => sel().size === docs().length;
 
@@ -276,7 +277,11 @@
     const all = docs();
     if (!state.docs[state.baseName]) return `<aside class="panel">${head}<div class="panel-body"><span class="spinner" role="status" aria-label="${esc(t("ui.loading"))}"></span></div></aside>`;
     const q = state.docFilter.toLowerCase();
-    const list = all.filter((d) => d.name.toLowerCase().includes(q));
+    const list = all.filter((d) =>
+      d.name.toLowerCase().includes(q)
+      || (d.relative_path && d.relative_path.toLowerCase().includes(q))
+      || (d.category && d.category.toLowerCase().includes(q))
+    );
     const n = sel().size, total = all.length;
     return `<aside class="panel" aria-label="${esc(t("docs.title"))}">${head}
       <div class="panel-body">
@@ -284,9 +289,14 @@
         ${total > 10 ? `<div style="position:relative;margin-bottom:8px"><svg class="icon" aria-hidden="true" style="position:absolute;left:12px;top:9px;color:var(--text-muted)"><use href="#i-search"/></svg><input class="input input-sm" id="docfilter" placeholder="${esc(t("docs.search"))}" value="${esc(state.docFilter)}" aria-label="${esc(t("docs.search"))}" style="width:100%;padding-left:36px"></div>` : ""}
         ${total ? `<label class="doc-select-all"><span>${esc(t("docs.select_all"))} <span class="muted" style="font-weight:400">(${n} / ${total})</span></span>
           <input type="checkbox" class="check" id="selall" ${n === total ? "checked" : ""}></label>` : `<p class="small muted">${esc(t("docs.empty"))}</p>`}
-        ${list.map((d) => `<div class="doc-row">
-          <button class="doc-open" data-act="open-doc" data-doc="${esc(d.name)}" title="${esc(d.name)}">${d.filetype ? `<span class="filetype">${esc(d.filetype)}</span>` : ""}<span>${esc(d.stem)}</span></button>
-          <input type="checkbox" class="check" data-doc-check="${esc(d.name)}" aria-label="${esc(t("docs.include", { name: d.stem }))}" ${sel().has(d.name) ? "checked" : ""}></div>`).join("")}
+        ${list.map((d) => {
+          const k = docKey(d);
+          const hint = d.relative_path || d.category || "";
+          const title = hint ? `${d.name} (${hint})` : d.name;
+          return `<div class="doc-row">
+          <button class="doc-open" data-act="open-doc" data-doc="${esc(d.name)}" ${d.id != null ? `data-doc-id="${esc(d.id)}"` : ""} title="${esc(title)}">${d.filetype ? `<span class="filetype">${esc(d.filetype)}</span>` : ""}<span>${esc(d.stem)}${hint ? ` <small class="muted">(${esc(hint)})</small>` : ""}</span></button>
+          <input type="checkbox" class="check" data-doc-check="${esc(k)}" aria-label="${esc(t("docs.include", { name: d.stem }))}" ${sel().has(k) ? "checked" : ""}></div>`;
+        }).join("")}
         ${total && !list.length ? `<p class="small muted" style="padding:8px">${esc(t("docs.no_match"))}</p>` : ""}
       </div>
       <div class="panel-foot">${esc(t("docs.footer"))}</div></aside>`;
@@ -322,8 +332,9 @@
   async function loadDocs(name) {
     if (!name || state.docs[name]) return;
     const r = await api(`/ui-api/documents?collection=${encodeURIComponent(name)}`);
-    state.docs[name] = r.ok ? r.data.documents : [];
-    if (!state.selected[name]) state.selected[name] = new Set(state.docs[name].map((d) => d.name));
+    const raw = r.ok ? r.data.documents : [];
+    state.docs[name] = raw.map((d, i) => ({ ...d, key: docKey(d, i) }));
+    if (!state.selected[name]) state.selected[name] = new Set(state.docs[name].map((d) => d.key));
     render();
   }
 
@@ -337,9 +348,10 @@
     if (!question || state.waiting || !base() && state.chatId === null) return;
     if (base() && docs().length && sel().size === 0) return;
     state.popover = false;
-    const documents = base() && docs().length && !allSelected() ? [...sel()] : null;
+    const selectedDocs = docs().filter((d) => sel().has(d.key));
+    const documents = base() && docs().length && !allSelected() ? [...new Set(selectedDocs.map((d) => d.name))] : null;
     const label = base()
-      ? t("wait.searching", { n: documents ? documents.length : (docs().length || base().active_document_count || ""), word: t("word.document.loc"), base: base().display_name })
+      ? t("wait.searching", { n: documents ? selectedDocs.length : (docs().length || base().active_document_count || ""), word: t("word.document.loc"), base: base().display_name })
       : t("wait.searching_chat");
     state.messages.push({ role: "user", text: question, format });
     const thinking = { role: "thinking", seconds: 0, label };
@@ -406,7 +418,12 @@
       : { role: "assistant", answer: m.answer, baseLabel: known ? base().display_name : "" });
     if (known) {
       await loadDocs(d.collection);
-      state.selected[d.collection] = new Set(d.documents || docs().map((x) => x.name));
+      if (d.documents && d.documents.length) {
+        const docSet = new Set(d.documents);
+        state.selected[d.collection] = new Set(docs().filter((x) => docSet.has(x.name) || docSet.has(x.key)).map((x) => x.key));
+      } else {
+        state.selected[d.collection] = new Set(docs().map((x) => x.key));
+      }
     } else {
       state.messages.push({ role: "notice", text: t("history.unknown_base") });
     }
@@ -414,15 +431,16 @@
     render(true);
   }
 
-  async function openDoc(name, page = 1, highlight = null, approx = false) {
+  async function openDoc(name, page = 1, highlight = null, approx = false, docId = null) {
     if (!base()) return;
     state.panel = "doc";
-    state.doc = { name, from: page, pages: [], highlight, approx, loading: true };
+    state.doc = { name, id: docId, from: page, pages: [], highlight, approx, loading: true };
     state.resetPanelScroll = true;
     render();
-    const r = await api(`/ui-api/document?collection=${encodeURIComponent(state.baseName)}&name=${encodeURIComponent(name)}&from_page=${page}`);
-    if (!state.doc || state.doc.name !== name) return;
-    if (!r.ok) { state.doc = { name, error: r.error, message: r.error === "backend" ? r.message : "" }; render(); return; }
+    const idParam = docId != null ? `&document_id=${encodeURIComponent(docId)}` : "";
+    const r = await api(`/ui-api/document?collection=${encodeURIComponent(state.baseName)}&name=${encodeURIComponent(name)}&from_page=${page}${idParam}`);
+    if (!state.doc || state.doc.name !== name || state.doc.id !== docId) return;
+    if (!r.ok) { state.doc = { name, id: docId, error: r.error, message: r.error === "backend" ? r.message : "" }; render(); return; }
     Object.assign(state.doc, { loading: false, pages: r.data.pages, total: r.data.total_pages, next: r.data.next_page });
     state.resetPanelScroll = true;
     render();
@@ -431,7 +449,8 @@
 
   async function morePages() {
     const d = state.doc;
-    const r = await api(`/ui-api/document?collection=${encodeURIComponent(state.baseName)}&name=${encodeURIComponent(d.name)}&from_page=${d.next}`);
+    const idParam = d.id != null ? `&document_id=${encodeURIComponent(d.id)}` : "";
+    const r = await api(`/ui-api/document?collection=${encodeURIComponent(state.baseName)}&name=${encodeURIComponent(d.name)}&from_page=${d.next}${idParam}`);
     if (r.ok) { d.pages.push(...r.data.pages); d.next = r.data.next_page; state.scrollToEnd = false; render(); }
   }
 
@@ -527,7 +546,7 @@
     if (all) {
       all.indeterminate = sel().size > 0 && !allSelected();
       all.addEventListener("change", () => {
-        state.selected[state.baseName] = all.checked ? new Set(docs().map((d) => d.name)) : new Set();
+        state.selected[state.baseName] = all.checked ? new Set(docs().map((d) => d.key)) : new Set();
         scopeChanged(); render();
       });
     }
@@ -578,7 +597,7 @@
       case "open-docs": state.panel = "docs"; store.set("rag-panel", "open"); render(); break;
       case "close-panel": state.panel = null; store.set("rag-panel", "closed"); render(); break;
       case "back": state.panel = "docs"; render(); break;
-      case "open-doc": openDoc(el.dataset.doc, 1); break;
+      case "open-doc": openDoc(el.dataset.doc, 1, null, false, el.dataset.docId ? +el.dataset.docId : null); break;
       case "open-fragment": { const g = m.answer.groups[+el.dataset.g], f = g.fragments[+el.dataset.f]; openDoc(g.name, f.page || 1, f.text, false); break; }
       case "more-pages": morePages(); break;
       case "toggle-src": m.open = m.open === +el.dataset.g ? null : +el.dataset.g; state.scrollToEnd = false; render(); break;
@@ -597,7 +616,7 @@
         state.messages = state.messages.filter((x) => x.role !== "error"); render();
         const ta = $("#q"); ta.value = q; autosize(ta); ta.focus(); break;
       }
-      case "select-all": state.selected[state.baseName] = new Set(docs().map((d) => d.name)); scopeChanged(); render(); break;
+      case "select-all": state.selected[state.baseName] = new Set(docs().map((d) => d.key)); scopeChanged(); render(); break;
       case "more-chats": state.showAllChats = true; render(); break;
       case "theme": {
         const r = document.documentElement;

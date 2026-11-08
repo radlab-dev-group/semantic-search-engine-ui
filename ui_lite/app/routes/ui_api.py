@@ -115,36 +115,63 @@ async def documents(request: Request, collection: str):
         )
     except ApiError as exc:
         return _error(exc)
-    names = sorted(
-        {
-            d["name"]
-            for d in (body or {}).get("documents", [])
-            if isinstance(d, dict) and d.get("name")
-        },
-        key=str.lower,
+    raw_docs = [
+        d
+        for d in (body or {}).get("documents", [])
+        if isinstance(d, dict) and d.get("name")
+    ]
+    raw_docs.sort(
+        key=lambda d: (
+            str(d["name"]).lower(),
+            str(d.get("relative_path") or "").lower(),
+            str(d.get("category") or "").lower(),
+            d.get("id") or 0,
+        )
     )
-    return {
-        "documents": [
-            {"name": n, "stem": stem(n), "filetype": filetype(n)} for n in names
-        ]
-    }
+    items: list[dict[str, Any]] = []
+    for d in raw_docs:
+        n = str(d["name"])
+        item: dict[str, Any] = {
+            "name": n,
+            "stem": stem(n),
+            "filetype": filetype(n),
+        }
+        if d.get("id") is not None:
+            item["id"] = d["id"]
+        rel_path = str(d.get("relative_path") or "").strip()
+        if rel_path and rel_path != "/" and rel_path != n and rel_path != f"/{n}":
+            item["relative_path"] = rel_path
+        cat = str(d.get("category") or "").strip()
+        if cat:
+            item["category"] = cat
+        items.append(item)
+    return {"documents": items}
 
 
 @router.get("/document")
-async def document(request: Request, collection: str, name: str, from_page: int = 1):
+async def document(
+    request: Request,
+    collection: str,
+    name: str,
+    from_page: int = 1,
+    document_id: int | None = None,
+):
     """GET document_content → document text pages starting from the given page."""
     s = request.app.state.settings
+    params: dict[str, Any] = {
+        "collection_name": collection,
+        "document_name": name,
+        "from_page": max(1, from_page),
+        "max_pages": s.preview_pages,
+    }
+    if document_id is not None:
+        params["document_id"] = document_id
     try:
         body = await backend(
             request,
             "GET",
             "document_content",
-            params={
-                "collection_name": collection,
-                "document_name": name,
-                "from_page": max(1, from_page),
-                "max_pages": s.preview_pages,
-            },
+            params=params,
         )
     except ApiError as exc:
         return _error(exc)
