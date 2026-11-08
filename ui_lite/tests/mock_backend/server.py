@@ -241,7 +241,13 @@ async def documents(request: Request):
     name = e["params"].get("collection_name")
     if name not in DOCUMENTS:
         return err(200, "e__data_404", "Collection not found")
-    return ok({"documents": [{"name": n} for n in DOCUMENTS[name]]})
+    return ok(
+        {
+            "documents": [
+                n if isinstance(n, dict) else {"name": n} for n in DOCUMENTS[name]
+            ]
+        }
+    )
 
 
 @app.get("/api/document_content")

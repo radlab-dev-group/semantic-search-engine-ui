@@ -45,6 +45,7 @@
 
   const base = () => state.collections.find((c) => c.name === state.baseName) || null;
   const docs = () => state.docs[state.baseName] || [];
+  const docKey = (d, i = 0) => d.key || (d.id != null ? `id:${d.id}` : `idx:${i}:${d.name}`);
   const sel = () => state.selected[state.baseName] || new Set();
   const allSelected = () => sel().size === docs().length;
 
@@ -71,20 +72,43 @@
   }
 
   /* ---------- Render ---------- */
-  function render() {
+  function render(scrollFeed = false) {
     const root = $("#root");
     root.removeAttribute("aria-busy");
     const cls = ["app"];
     if (!state.panel || state.noAccess) cls.push("panel-closed");
     if (state.panel === "doc") cls.push("reading");
     const keep = $("#q") ? { value: $("#q").value, focus: document.activeElement === $("#q") } : null;
+    const prevFeed = $(".feed");
+    const prevHistory = $(".history");
+    const prevPanel = $(".panel-body");
+    const prevPopover = $(".popover-list");
+    const feedTop = prevFeed ? prevFeed.scrollTop : null;
+    const historyTop = prevHistory ? prevHistory.scrollTop : null;
+    const panelTop = prevPanel ? prevPanel.scrollTop : null;
+    const popoverTop = prevPopover ? prevPopover.scrollTop : null;
     root.innerHTML = `<div class="${cls.join(" ")}">${sidebarView()}${mainView()}${panelView()}</div>`;
     bind();
     const q = $("#q");
     if (q && keep) { q.value = keep.value; autosize(q); if (keep.focus) q.focus(); }
     const feed = $(".feed");
-    if (feed && state.scrollToEnd !== false) feed.scrollTop = feed.scrollHeight;
-    state.scrollToEnd = true;
+    const shouldScrollEnd = scrollFeed || state.scrollToEnd === true;
+    state.scrollToEnd = false;
+    if (feed) {
+      if (shouldScrollEnd) {
+        if (feedTop !== null) feed.scrollTop = feedTop;
+        feed.scrollTo({ top: feed.scrollHeight, behavior: "smooth" });
+      } else if (feedTop !== null) {
+        feed.scrollTop = feedTop;
+      }
+    }
+    const history = $(".history");
+    if (history && historyTop !== null) history.scrollTop = historyTop;
+    const panel = $(".panel-body");
+    if (panel && panelTop !== null && !state.resetPanelScroll) panel.scrollTop = panelTop;
+    state.resetPanelScroll = false;
+    const popover = $(".popover-list");
+    if (popover && popoverTop !== null) popover.scrollTop = popoverTop;
   }
 
   function sidebarView() {
@@ -94,7 +118,12 @@
     for (const c of list) (groups[dateGroup(c.updated)] ||= []).push(c);
     const order = ["history.today", "history.yesterday", "history.week", "history.older"];
     return `<nav class="sidebar" aria-label="${esc(t("history.label"))}">
-      <div class="sidebar-head"><span class="brand"><span class="brand-dot"></span>${esc(DATA.brand)}</span></div>
+      <div class="sidebar-head">
+        <span class="brand" aria-label="RadLab — ${esc(DATA.brand)}">
+          <img class="brand-logo brand-logo-light" src="/static/img/logo.png" width="300" height="88" alt="${esc(DATA.brand)}" fetchpriority="high">
+          <img class="brand-logo brand-logo-dark" src="/static/img/logo-inverted.png" width="300" height="88" alt="${esc(DATA.brand)}">
+        </span>
+      </div>
       <button class="btn btn-new" data-act="new">${icon("plus")} ${esc(t("chat.new"))}</button>
       <div class="history">
         ${state.chats.length === 0 ? `<p class="section-empty">${esc(t("history.empty"))}</p>` : ""}
@@ -106,12 +135,12 @@
         <span style="display:flex;align-items:center;gap:8px;min-width:0"><span class="avatar">${esc(initials(DATA.user))}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(DATA.user)}</span></span>
         <span style="display:flex">
           ${CFG.languages.length > 1 ? `<a class="icon-btn" style="font-size:12px;font-weight:700;text-decoration:none" href="/lang/${CFG.lang === "pl" ? "en" : "pl"}?next=/" aria-label="${esc(t("ui.language"))}">${CFG.lang === "pl" ? "EN" : "PL"}</a>` : ""}
-          <button class="icon-btn" data-act="theme" aria-label="${esc(t("ui.theme"))}">${icon("moon")}</button>
+          <button class="icon-btn theme-toggle" data-act="theme" aria-label="${esc(t("ui.theme"))}">${icon("sun", "icon icon-sun")}${icon("moon", "icon icon-moon")}</button>
           <button class="icon-btn" data-act="logout" aria-label="${esc(t("ui.logout"))}">${icon("out")}</button>
         </span>
       </div>
       <div class="sidebar-rail">
-        <span class="brand-dot" aria-hidden="true"></span>
+        <img class="brand-mark" src="/static/img/small-ico.png" width="24" height="24" alt="${esc(DATA.brand)}">
         <button class="icon-btn" data-act="new" aria-label="${esc(t("chat.new"))}">${icon("plus")}</button>
         <button class="icon-btn" data-act="back" aria-label="${esc(t("history.show"))}">${icon("panel")}</button>
       </div>
@@ -123,8 +152,11 @@
     const n = sel().size, total = docs().length;
     const part = !total ? `${base().active_document_count ?? ""} ${docsWord(base().active_document_count || 0)}`
       : n === total ? t("scope.all", { n: total, word: docsWord(total) }) : t("scope.some", { n, total, word: t("word.document.many") });
-    return `<button class="scope-chip ${total && n !== total ? "is-partial" : ""}" data-act="popover-base" aria-haspopup="dialog" aria-expanded="${state.popover === "base"}">
-      📚 <b>${esc(base().display_name)}</b><span class="part">· ${esc(part)}</span>${icon("down")}</button>`;
+    return `<span class="popover-anchor">
+      <button class="scope-chip ${total && n !== total ? "is-partial" : ""}" data-act="popover-base" aria-haspopup="dialog" aria-expanded="${state.popover === "base"}">
+        📚 <b>${esc(base().display_name)}</b><span class="part">· ${esc(part)}</span>${icon("down")}</button>
+      ${state.popover === "base" ? basePopover() : ""}
+    </span>`;
   }
 
   function mainView() {
@@ -153,27 +185,33 @@
           <label class="sr-only" for="q">${esc(t("chat.question"))}</label>
           <textarea id="q" rows="1" maxlength="8000" placeholder="${esc(busy ? t("chat.placeholder.wait") : empty ? t("chat.placeholder.first") : t("chat.placeholder.follow"))}" ${busy ? "disabled" : ""}></textarea>
           <div class="composer-row"><span class="composer-chips">${scopeChip()}
-            <button class="scope-chip" data-act="popover-format" aria-haspopup="dialog" aria-expanded="${state.popover === "format"}">${icon("list")}<b>${esc(fmtById(state.format).label)}</b>${icon("down")}</button></span>
+            <span class="popover-anchor">
+              <button class="scope-chip" data-act="popover-format" aria-haspopup="dialog" aria-expanded="${state.popover === "format"}">${icon("list")}<b>${esc(fmtById(state.format).label)}</b>${icon("down")}</button>
+              ${state.popover === "format" ? formatPopover() : ""}
+            </span></span>
             <button class="send" data-act="send" aria-label="${esc(t("chat.send"))}" ${busy || none ? "disabled" : ""}>${icon("send")}</button></div>
         </div>
         <p class="composer-hint">${none ? `<b>${esc(t("scope.none"))}</b>` : esc(t("chat.disclaimer"))}</p>
-        ${state.popover === "base" ? basePopover() : state.popover === "format" ? formatPopover() : ""}
       </div>
     </main>`;
   }
 
   function basePopover() {
-    return `<div class="popover" role="dialog" aria-label="${esc(t("base.choose"))}" style="left:24px;bottom:122px">
+    return `<div class="popover popover--base" role="dialog" aria-label="${esc(t("base.choose"))}">
       <p class="eyebrow" style="margin:4px 8px 8px">${esc(t("base.label"))}</p>
-      ${state.collections.map((c) => `<button class="base-card" role="menuitemradio" aria-checked="${c.name === state.baseName}" data-base="${esc(c.name)}">
-        <b>${esc(c.display_name)}</b>${c.description ? `<span>${esc(c.description)}</span>` : ""}<span>${c.active_document_count ?? "–"} ${docsWord(c.active_document_count || 0)}</span></button>`).join("")}
+      <div class="popover-list">
+        ${state.collections.map((c) => `<button class="base-card" role="menuitemradio" aria-checked="${c.name === state.baseName}" data-base="${esc(c.name)}">
+          <b>${esc(c.display_name)}</b>${c.description ? `<span>${esc(c.description)}</span>` : ""}<span>${c.active_document_count ?? "–"} ${docsWord(c.active_document_count || 0)}</span></button>`).join("")}
+      </div>
     </div>`;
   }
 
   function formatPopover() {
-    return `<div class="popover" role="dialog" aria-label="${esc(t("format.label"))}" style="left:24px;bottom:122px">
+    return `<div class="popover popover--format" role="dialog" aria-label="${esc(t("format.label"))}">
       <p class="eyebrow" style="margin:4px 8px 8px">${esc(t("format.question"))}</p>
-      ${CFG.formats.map((f) => `<button class="base-card" role="menuitemradio" aria-checked="${f.id === state.format}" data-format="${esc(f.id)}"><b>${esc(f.label)}</b><span>${esc(f.description)}</span></button>`).join("")}
+      <div class="popover-list">
+        ${CFG.formats.map((f) => `<button class="base-card" role="menuitemradio" aria-checked="${f.id === state.format}" data-format="${esc(f.id)}"><b>${esc(f.label)}</b><span>${esc(f.description)}</span></button>`).join("")}
+      </div>
       <p class="small muted" style="margin:8px 8px 2px">${esc(t("format.remember"))}</p></div>`;
   }
 
@@ -239,7 +277,11 @@
     const all = docs();
     if (!state.docs[state.baseName]) return `<aside class="panel">${head}<div class="panel-body"><span class="spinner" role="status" aria-label="${esc(t("ui.loading"))}"></span></div></aside>`;
     const q = state.docFilter.toLowerCase();
-    const list = all.filter((d) => d.name.toLowerCase().includes(q));
+    const list = all.filter((d) =>
+      d.name.toLowerCase().includes(q)
+      || (d.relative_path && d.relative_path.toLowerCase().includes(q))
+      || (d.category && d.category.toLowerCase().includes(q))
+    );
     const n = sel().size, total = all.length;
     return `<aside class="panel" aria-label="${esc(t("docs.title"))}">${head}
       <div class="panel-body">
@@ -247,9 +289,14 @@
         ${total > 10 ? `<div style="position:relative;margin-bottom:8px"><svg class="icon" aria-hidden="true" style="position:absolute;left:12px;top:9px;color:var(--text-muted)"><use href="#i-search"/></svg><input class="input input-sm" id="docfilter" placeholder="${esc(t("docs.search"))}" value="${esc(state.docFilter)}" aria-label="${esc(t("docs.search"))}" style="width:100%;padding-left:36px"></div>` : ""}
         ${total ? `<label class="doc-select-all"><span>${esc(t("docs.select_all"))} <span class="muted" style="font-weight:400">(${n} / ${total})</span></span>
           <input type="checkbox" class="check" id="selall" ${n === total ? "checked" : ""}></label>` : `<p class="small muted">${esc(t("docs.empty"))}</p>`}
-        ${list.map((d) => `<div class="doc-row">
-          <button class="doc-open" data-act="open-doc" data-doc="${esc(d.name)}" title="${esc(d.name)}">${d.filetype ? `<span class="filetype">${esc(d.filetype)}</span>` : ""}<span>${esc(d.stem)}</span></button>
-          <input type="checkbox" class="check" data-doc-check="${esc(d.name)}" aria-label="${esc(t("docs.include", { name: d.stem }))}" ${sel().has(d.name) ? "checked" : ""}></div>`).join("")}
+        ${list.map((d) => {
+          const k = docKey(d);
+          const hint = d.relative_path || d.category || "";
+          const title = hint ? `${d.name} (${hint})` : d.name;
+          return `<div class="doc-row">
+          <button class="doc-open" data-act="open-doc" data-doc="${esc(d.name)}" ${d.id != null ? `data-doc-id="${esc(d.id)}"` : ""} title="${esc(title)}">${d.filetype ? `<span class="filetype">${esc(d.filetype)}</span>` : ""}<span>${esc(d.stem)}${hint ? ` <small class="muted">(${esc(hint)})</small>` : ""}</span></button>
+          <input type="checkbox" class="check" data-doc-check="${esc(k)}" aria-label="${esc(t("docs.include", { name: d.stem }))}" ${sel().has(k) ? "checked" : ""}></div>`;
+        }).join("")}
         ${total && !list.length ? `<p class="small muted" style="padding:8px">${esc(t("docs.no_match"))}</p>` : ""}
       </div>
       <div class="panel-foot">${esc(t("docs.footer"))}</div></aside>`;
@@ -285,8 +332,9 @@
   async function loadDocs(name) {
     if (!name || state.docs[name]) return;
     const r = await api(`/ui-api/documents?collection=${encodeURIComponent(name)}`);
-    state.docs[name] = r.ok ? r.data.documents : [];
-    if (!state.selected[name]) state.selected[name] = new Set(state.docs[name].map((d) => d.name));
+    const raw = r.ok ? r.data.documents : [];
+    state.docs[name] = raw.map((d, i) => ({ ...d, key: docKey(d, i) }));
+    if (!state.selected[name]) state.selected[name] = new Set(state.docs[name].map((d) => d.key));
     render();
   }
 
@@ -300,9 +348,10 @@
     if (!question || state.waiting || !base() && state.chatId === null) return;
     if (base() && docs().length && sel().size === 0) return;
     state.popover = false;
-    const documents = base() && docs().length && !allSelected() ? [...sel()] : null;
+    const selectedDocs = docs().filter((d) => sel().has(d.key));
+    const documents = base() && docs().length && !allSelected() ? [...new Set(selectedDocs.map((d) => d.name))] : null;
     const label = base()
-      ? t("wait.searching", { n: documents ? documents.length : (docs().length || base().active_document_count || ""), word: t("word.document.loc"), base: base().display_name })
+      ? t("wait.searching", { n: documents ? selectedDocs.length : (docs().length || base().active_document_count || ""), word: t("word.document.loc"), base: base().display_name })
       : t("wait.searching_chat");
     state.messages.push({ role: "user", text: question, format });
     const thinking = { role: "thinking", seconds: 0, label };
@@ -318,7 +367,7 @@
     const hardTimeout = setTimeout(() => controller.abort("timeout"), (CFG.answerTimeoutS + 5) * 1000);
     state.waiting = { controller, timer, thinking };
     if ($("#q")) $("#q").value = "";
-    render();
+    render(true);
 
     const r = await api("/ui-api/ask", {
       method: "POST", signal: controller.signal,
@@ -339,7 +388,7 @@
       if (kind === "unavailable") state.offline = true;
       state.messages.push({ role: "error", kind, message: kind === "backend" ? r.message : "", question, format });
     }
-    render();
+    render(true);
   }
 
   function stop() {
@@ -348,7 +397,7 @@
 
   function newChat(baseName) {
     if (state.waiting) stop();
-    if (baseName) { state.baseName = baseName; store.set("rag-base", baseName); loadDocs(baseName); }
+    if (baseName) { state.baseName = baseName; store.set("rag-base", baseName); state.resetPanelScroll = true; loadDocs(baseName); }
     else if (!base() && state.collections.length) state.baseName = state.collections[0].name;
     state.chatId = null; state.messages = []; state.popover = false;
     if (state.panel === "doc") state.panel = "docs";
@@ -369,29 +418,39 @@
       : { role: "assistant", answer: m.answer, baseLabel: known ? base().display_name : "" });
     if (known) {
       await loadDocs(d.collection);
-      state.selected[d.collection] = new Set(d.documents || docs().map((x) => x.name));
+      if (d.documents && d.documents.length) {
+        const docSet = new Set(d.documents);
+        state.selected[d.collection] = new Set(docs().filter((x) => docSet.has(x.name) || docSet.has(x.key)).map((x) => x.key));
+      } else {
+        state.selected[d.collection] = new Set(docs().map((x) => x.key));
+      }
     } else {
       state.messages.push({ role: "notice", text: t("history.unknown_base") });
     }
-    render();
+    state.resetPanelScroll = true;
+    render(true);
   }
 
-  async function openDoc(name, page = 1, highlight = null, approx = false) {
+  async function openDoc(name, page = 1, highlight = null, approx = false, docId = null) {
     if (!base()) return;
     state.panel = "doc";
-    state.doc = { name, from: page, pages: [], highlight, approx, loading: true };
+    state.doc = { name, id: docId, from: page, pages: [], highlight, approx, loading: true };
+    state.resetPanelScroll = true;
     render();
-    const r = await api(`/ui-api/document?collection=${encodeURIComponent(state.baseName)}&name=${encodeURIComponent(name)}&from_page=${page}`);
-    if (!state.doc || state.doc.name !== name) return;
-    if (!r.ok) { state.doc = { name, error: r.error, message: r.error === "backend" ? r.message : "" }; render(); return; }
+    const idParam = docId != null ? `&document_id=${encodeURIComponent(docId)}` : "";
+    const r = await api(`/ui-api/document?collection=${encodeURIComponent(state.baseName)}&name=${encodeURIComponent(name)}&from_page=${page}${idParam}`);
+    if (!state.doc || state.doc.name !== name || state.doc.id !== docId) return;
+    if (!r.ok) { state.doc = { name, id: docId, error: r.error, message: r.error === "backend" ? r.message : "" }; render(); return; }
     Object.assign(state.doc, { loading: false, pages: r.data.pages, total: r.data.total_pages, next: r.data.next_page });
+    state.resetPanelScroll = true;
     render();
     $("#hl")?.scrollIntoView({ block: "center" });
   }
 
   async function morePages() {
     const d = state.doc;
-    const r = await api(`/ui-api/document?collection=${encodeURIComponent(state.baseName)}&name=${encodeURIComponent(d.name)}&from_page=${d.next}`);
+    const idParam = d.id != null ? `&document_id=${encodeURIComponent(d.id)}` : "";
+    const r = await api(`/ui-api/document?collection=${encodeURIComponent(state.baseName)}&name=${encodeURIComponent(d.name)}&from_page=${d.next}${idParam}`);
     if (r.ok) { d.pages.push(...r.data.pages); d.next = r.data.next_page; state.scrollToEnd = false; render(); }
   }
 
@@ -487,7 +546,7 @@
     if (all) {
       all.indeterminate = sel().size > 0 && !allSelected();
       all.addEventListener("change", () => {
-        state.selected[state.baseName] = all.checked ? new Set(docs().map((d) => d.name)) : new Set();
+        state.selected[state.baseName] = all.checked ? new Set(docs().map((d) => d.key)) : new Set();
         scopeChanged(); render();
       });
     }
@@ -538,7 +597,7 @@
       case "open-docs": state.panel = "docs"; store.set("rag-panel", "open"); render(); break;
       case "close-panel": state.panel = null; store.set("rag-panel", "closed"); render(); break;
       case "back": state.panel = "docs"; render(); break;
-      case "open-doc": openDoc(el.dataset.doc, 1); break;
+      case "open-doc": openDoc(el.dataset.doc, 1, null, false, el.dataset.docId ? +el.dataset.docId : null); break;
       case "open-fragment": { const g = m.answer.groups[+el.dataset.g], f = g.fragments[+el.dataset.f]; openDoc(g.name, f.page || 1, f.text, false); break; }
       case "more-pages": morePages(); break;
       case "toggle-src": m.open = m.open === +el.dataset.g ? null : +el.dataset.g; state.scrollToEnd = false; render(); break;
@@ -557,12 +616,15 @@
         state.messages = state.messages.filter((x) => x.role !== "error"); render();
         const ta = $("#q"); ta.value = q; autosize(ta); ta.focus(); break;
       }
-      case "select-all": state.selected[state.baseName] = new Set(docs().map((d) => d.name)); scopeChanged(); render(); break;
+      case "select-all": state.selected[state.baseName] = new Set(docs().map((d) => d.key)); scopeChanged(); render(); break;
       case "more-chats": state.showAllChats = true; render(); break;
       case "theme": {
         const r = document.documentElement;
         const dark = r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-        r.dataset.theme = dark ? "light" : "dark"; store.set("rag-theme", r.dataset.theme); break;
+        r.dataset.theme = dark ? "light" : "dark";
+        store.set("rag-theme", r.dataset.theme);
+        store.set("radlab-theme", r.dataset.theme);
+        break;
       }
       case "logout": $("#logout-form").submit(); break;
       case "recheck": checkHealth(true); break;

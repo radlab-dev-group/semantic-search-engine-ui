@@ -18,6 +18,12 @@ REQUIRED = {
 def test_app_requires_login(client):
     r = client.get("/", follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"] == "/login"
+    login = client.get("/login")
+    assert (
+        login.status_code == 200
+        and "/static/img/logo.png" in login.text
+        and "/static/img/logo-inverted.png" in login.text
+    )
     assert client.get("/ui-api/collections").status_code == 401
 
 
@@ -30,12 +36,24 @@ def test_login_wrong_password(client, backend_log):
 
 
 def test_login_and_app_page(logged):
+    login_page = logged.get("/login", follow_redirects=False)
+    assert login_page.status_code == 303
     r = logged.get("/")
     assert (
         r.status_code == 200
         and 'id="app-data"' in r.text
         and "/static/js/app.js" in r.text
+        and "/static/img/small-ico.png" in r.text
+        and "/static/img/apple-touch.png" in r.text
     )
+    for asset in (
+        "/static/img/logo.png",
+        "/static/img/logo-inverted.png",
+        "/static/img/mark.png",
+        "/static/img/small-ico.png",
+        "/static/img/apple-touch.png",
+    ):
+        assert logged.get(asset).status_code == 200
 
 
 def test_collections_use_token_and_lang(logged, backend_log):
@@ -65,6 +83,29 @@ def test_documents_list(logged, backend_log):
         calls(backend_log, "documents")[0]["params"]["collection_name"]
         == "regulacje_ai"
     )
+
+
+def test_documents_list_keeps_duplicate_names(logged, monkeypatch):
+    from tests.mock_backend import server as mock
+
+    monkeypatch.setitem(
+        mock.DOCUMENTS,
+        "duplikaty",
+        [
+            {"id": 10, "name": "overview.md", "relative_path": "/part1/overview.md"},
+            {"id": 11, "name": "overview.md", "relative_path": "/part2/overview.md"},
+            {"id": 12, "name": "overview.md", "category": "orange"},
+        ],
+    )
+    docs = logged.get("/ui-api/documents", params={"collection": "duplikaty"}).json()[
+        "documents"
+    ]
+    assert len(docs) == 3
+    assert [d["name"] for d in docs] == ["overview.md", "overview.md", "overview.md"]
+    assert [d.get("id") for d in docs] == [12, 10, 11]
+    assert docs[1]["relative_path"] == "/part1/overview.md"
+    assert docs[2]["relative_path"] == "/part2/overview.md"
+    assert docs[0]["category"] == "orange"
 
 
 def test_first_question_creates_chat_and_sends_required_options(logged, backend_log):
