@@ -98,7 +98,8 @@
               <div class="chat-card__title-box">
                 <span class="chat-card__status-dot" aria-hidden="true"></span>
                 <h2 class="chat-card__title" data-chat-header-title>{{ active_chat_title or t('chat.new_chat_title') }}</h2>
-                <span class="tabs__count is-hidden" data-chat-msg-count>0</span>
+                {% set init_msg_count = (active_chat_messages | length) if active_chat_messages else 0 %}
+                <span class="tabs__count{% if init_msg_count == 0 %} is-hidden{% endif %}" data-chat-msg-count>{{ init_msg_count }}</span>
               </div>
               <div class="chat-card__actions">
                 <button type="button" class="btn btn--ghost btn--sm" data-chat-new title="{{ t('chat.new_chat') }}">
@@ -144,10 +145,99 @@
                       <div class="chat-msg__header">
                         <span class="chat-msg__author">{% if msg.role == 'user' %}{{ username or t('chat.user_label') }}{% else %}{{ t('chat.assistant_label') }}{% endif %}</span>
                         {% if msg.date_time %}<time class="chat-msg__time">{{ msg.date_time }}</time>{% endif %}
+                        {% if msg.generation_time %}<span class="chat-msg__time">({{ msg.generation_time }}s)</span>{% endif %}
                       </div>
                       <div class="chat-msg__body markdown markdown-body">
                         {{ msg.html | safe if msg.html else (msg.text | render_plain | safe) }}
                       </div>
+                      {% if msg.groups and msg.groups | length > 0 %}
+                        {% set total_frags = msg.fragments_count if msg.fragments_count is defined and msg.fragments_count else (msg.groups | map(attribute='fragments') | map('length') | sum) %}
+                        <div class="chat-msg__sources">
+                          <details class="chat-sources-accordion">
+                            <summary class="chat-sources-accordion__summary">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chat-sources-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                              <span>{{ t('chat.sources_title') }} ({{ msg.groups | length }}){% if total_frags > (msg.groups | length) %} · {{ t.plural('chat.chunks_count', total_frags) }}{% endif %}</span>
+                            </summary>
+                            <div class="chat-sources-list">
+                              {% for g in msg.groups %}
+                                {% set frags = g.fragments if g.fragments is defined and g.fragments else [{'page': g.page, 'text': g.quote}] %}
+                                {% set multi = frags | length > 1 %}
+                                <div class="chat-source-item{% if multi %} chat-source-item--multi{% endif %}" data-source-group="{{ g.n }}" data-active-chunk="0" data-total-chunks="{{ frags | length }}">
+                                  <div class="chat-source-item__head">
+                                    <span class="chat-source-item__badge">{{ g.n }}</span>
+                                    <strong class="chat-source-item__name">{{ g.name }}</strong>
+                                    {% if g.pages and g.pages | length > 1 %}
+                                      <span class="chat-source-item__page">s. {{ g.pages | join(', ') }}</span>
+                                    {% elif g.page %}
+                                      <span class="chat-source-item__page">s. {{ g.page }}</span>
+                                    {% endif %}
+                                    {% if multi %}
+                                      <span class="chat-source-item__count">{{ t.plural('chat.chunks_count', frags | length) }}</span>
+                                      <div class="chat-source-nav" data-source-nav>
+                                        <button type="button" class="chat-source-nav__btn" data-chunk-step="-1" title="{{ t('chat.chunk_prev') }}" aria-label="{{ t('chat.chunk_prev') }}">‹</button>
+                                        <span class="chat-source-nav__pos" data-chunk-pos>1 / {{ frags | length }}</span>
+                                        <button type="button" class="chat-source-nav__btn" data-chunk-step="1" title="{{ t('chat.chunk_next') }}" aria-label="{{ t('chat.chunk_next') }}">›</button>
+                                        <button type="button" class="chat-source-nav__all" data-chunk-toggle-all data-label-show="{{ t('chat.chunk_show_all', n=frags | length) }}" data-label-hide="{{ t('chat.chunk_hide_all') }}">{{ t('chat.chunk_show_all', n=frags | length) }}</button>
+                                      </div>
+                                    {% endif %}
+                                    {% if selected_collection %}
+                                      <a href="/collections/documents/preview?collection_name={{ selected_collection | urlencode }}&document_name={{ g.name | urlencode }}{% if g.page %}#page-{{ g.page }}{% endif %}" target="_blank" rel="noopener" class="chat-source-item__preview-link" data-source-preview-link data-base-href="/collections/documents/preview?collection_name={{ selected_collection | urlencode }}&document_name={{ g.name | urlencode }}" title="{{ t('hits.open_document') }}">↗</a>
+                                    {% endif %}
+                                  </div>
+                                  {% if multi %}
+                                    <div class="chat-source-chips" role="tablist" aria-label="{{ g.name }}">
+                                      {% for f in frags %}
+                                        <button type="button" class="chat-source-chip{% if loop.first %} is-active{% endif %}" data-chunk-select="{{ loop.index0 }}" role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}">
+                                          #{{ loop.index }}{% if f.page %} · s. {{ f.page }}{% elif f.chunk is defined and f.chunk is not none %} · chunk {{ f.chunk }}{% endif %}
+                                        </button>
+                                      {% endfor %}
+                                    </div>
+                                  {% endif %}
+                                  <div class="chat-source-chunks" data-source-chunks>
+                                    {% for f in frags %}
+                                      <div class="chat-source-chunk{% if loop.first %} is-active{% endif %}" data-source-chunk="{{ loop.index0 }}" data-chunk-page="{{ f.page or '' }}">
+                                        {% if multi %}
+                                          <div class="chat-source-chunk__meta">
+                                            <span class="chat-source-chunk__num">#{{ loop.index }}</span>
+                                            {% if f.page %}<span class="chat-source-chunk__tag">{{ t('hits.page') }} {{ f.page }}</span>{% endif %}
+                                            {% if f.chunk is defined and f.chunk is not none %}<span class="chat-source-chunk__tag">{{ t('hits.chunk') }} {{ f.chunk }}</span>{% endif %}
+                                            {% if f.score is defined and f.score %}<span class="chat-source-chunk__score">{{ '%.3f' | format(f.score) }}</span>{% endif %}
+                                          </div>
+                                        {% endif %}
+                                        {% if f.text %}
+                                          <p class="chat-source-item__quote">{% if f.left is defined and f.left %}<span class="chat-source-chunk__ctx">…{{ f.left }} </span>{% endif %}{{ f.text }}{% if f.right is defined and f.right %}<span class="chat-source-chunk__ctx"> {{ f.right }}…</span>{% endif %}</p>
+                                        {% endif %}
+                                      </div>
+                                    {% endfor %}
+                                  </div>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          </details>
+                        </div>
+                      {% endif %}
+                      {% if msg.role != 'user' %}
+                        <div class="chat-msg__actions">
+                          <button type="button" class="btn btn--ghost btn--xs" data-copy-answer data-plain-text="{{ msg.plain or msg.text }}" title="{{ t('chat.copy') }}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            <span>{{ t('chat.copy') }}</span>
+                          </button>
+                          {% if msg.groups and msg.groups | length > 0 %}
+                            <button type="button" class="btn btn--ghost btn--xs" data-copy-with-sources data-plain-text="{{ msg.plain or msg.text }}" title="{{ t('chat.copy_with_sources') }}">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+                              <span>{{ t('chat.copy_with_sources') }}</span>
+                            </button>
+                          {% endif %}
+                          {% if msg.answer_id %}
+                            <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn{% if msg.rate_value == 1 %} is-active{% endif %}" data-rate-btn="1" data-answer-id="{{ msg.answer_id }}" title="{{ t('chat.rate_up') }}" aria-label="{{ t('chat.rate_up') }}">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                            </button>
+                            <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn{% if msg.rate_value == 0 %} is-active{% endif %}" data-rate-btn="0" data-answer-id="{{ msg.answer_id }}" title="{{ t('chat.rate_down') }}" aria-label="{{ t('chat.rate_down') }}">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                            </button>
+                          {% endif %}
+                        </div>
+                      {% endif %}
                     </div>
                   </div>
                 {% endfor %}

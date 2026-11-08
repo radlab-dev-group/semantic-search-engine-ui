@@ -40,6 +40,7 @@
 
       <div class="btn-row">
         <a class="btn btn-primary btn--sm" href="/search?collection_name={{ uploaded.collection_name | urlencode }}">{{ t('upload.search_in_collection') }}</a>
+        <a class="btn btn--chat btn--sm" href="/chat?collection_name={{ uploaded.collection_name | urlencode }}">{{ t('upload.chat_with_collection') }}</a>
         <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ uploaded.collection_name | urlencode }}">{{ t('upload.see_documents') }}</a>
       </div>
     {% endif %}

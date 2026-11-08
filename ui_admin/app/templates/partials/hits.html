@@ -104,6 +104,7 @@
   </div>
 
   <div data-view-panel="cards">
+    {% set doc_seen = namespace(counts = {}) %}
     <ol class="hits" data-hits data-highlight="{{ question or '' }}">
       {% for row in rows %}
         {% set f = namespace(text = none, doc = none, path = none, page = none, chunk = none, lang = none) %}
@@ -113,6 +114,9 @@
         {% for key in page_keys %}{% if f.page is none and row.get(key) is not none %}{% set f.page = row.get(key) %}{% endif %}{% endfor %}
         {% for key in chunk_keys %}{% if f.chunk is none and row.get(key) is not none %}{% set f.chunk = row.get(key) %}{% endif %}{% endfor %}
         {% for key in lang_keys %}{% if f.lang is none and row.get(key) %}{% set f.lang = row.get(key) | string %}{% endif %}{% endfor %}
+        {% set doc_total = documents.counts.get(f.doc, 1) if f.doc else 1 %}
+        {% set doc_pos = (doc_seen.counts.get(f.doc, 0) + 1) if f.doc else 1 %}
+        {% if f.doc %}{% set _ = doc_seen.counts.update({f.doc: doc_pos}) %}{% endif %}
         {% set score = row.get('score') %}
         {% set folder = f.path %}
         {% if f.path and f.doc and f.path.endswith(f.doc) %}{% set folder = f.path[:(f.path | length) - (f.doc | length)] %}{% endif %}
@@ -123,7 +127,7 @@
         {% set long_text = (f.text and f.text | length > 360) %}
         {% set expandable = long_text or ctx.left or ctx.right %}
 
-        <li class="hit {% if loop.index <= 3 %}hit--top{% endif %}" data-hit data-doc="{{ f.doc or '' }}">
+        <li class="hit {% if loop.index <= 3 %}hit--top{% endif %}" id="hit-card-{{ loop.index }}" data-hit data-doc="{{ f.doc or '' }}" data-doc-pos="{{ doc_pos }}" data-doc-total="{{ doc_total }}">
           <div class="hit__rank" aria-label="{{ t('hits.rank', rank=loop.index) }}">
             <span class="hit__rank-num">{{ loop.index }}</span>
           </div>
@@ -139,6 +143,13 @@
                   {% if f.chunk is not none %}<li>{{ t('hits.chunk') }} <b>{{ f.chunk }}</b></li>{% endif %}
                   {% if row.get('result_id') is not none %}<li>{{ t('hits.id') }} <b>{{ row.get('result_id') }}</b></li>{% endif %}
                   {% if f.lang %}<li class="hit__lang">{{ f.lang | upper }}</li>{% endif %}
+                  {% if doc_total > 1 %}
+                    <li class="hit__doc-stepper" data-hit-doc-stepper>
+                      <button type="button" class="hit__doc-step-btn" data-hit-doc-jump="-1" title="{{ t('hits.prev_doc_chunk') }}" aria-label="{{ t('hits.prev_doc_chunk') }}">‹</button>
+                      <span class="hit__doc-step-pos">{{ t('hits.doc_chunk_position', current=doc_pos, total=doc_total) }}</span>
+                      <button type="button" class="hit__doc-step-btn" data-hit-doc-jump="1" title="{{ t('hits.next_doc_chunk') }}" aria-label="{{ t('hits.next_doc_chunk') }}">›</button>
+                    </li>
+                  {% endif %}
                 </ul>
               </div>
               {% if score is number %}

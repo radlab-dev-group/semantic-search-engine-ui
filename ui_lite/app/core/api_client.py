@@ -23,7 +23,9 @@ class ApiError(Exception):
     kind: auth | forbidden | timeout | unavailable | not_found | backend
     """
 
-    def __init__(self, kind: str, status: int = 0, code: str = "", message: str = "") -> None:
+    def __init__(
+        self, kind: str, status: int = 0, code: str = "", message: str = ""
+    ) -> None:
         super().__init__(f"{kind} {status} {code} {message}".strip())
         self.kind = kind
         self.status = status
@@ -32,15 +34,22 @@ class ApiError(Exception):
 
 
 class ApiClient:
-    def __init__(self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None) -> None:
+    def __init__(
+        self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None
+    ) -> None:
         self.settings = settings
-        base = settings.api_host + (f"/{settings.api_prefix}" if settings.api_prefix else "")
+        base = settings.api_host + (
+            f"/{settings.api_prefix}" if settings.api_prefix else ""
+        )
         self._client = httpx.AsyncClient(
             base_url=base,
             verify=settings.verify_tls,
             timeout=settings.timeout_default,
             transport=transport,
-            headers={"Accept": "application/json", "User-Agent": "radlab-rag-ui/0.1"},
+            headers={
+                "Accept": "application/json",
+                "User-Agent": "radlab-rag-ui/0.1",
+            },
         )
 
     async def close(self) -> None:
@@ -68,7 +77,8 @@ class ApiClient:
             response = await self._client.request(
                 method,
                 f"/{path}",
-                params={k: v for k, v in (params or {}).items() if v is not None} or None,
+                params={k: v for k, v in (params or {}).items() if v is not None}
+                or None,
                 json=json,
                 headers=headers,
                 timeout=timeout or self.settings.timeout_default,
@@ -86,7 +96,13 @@ class ApiClient:
 
         if response.status_code >= 400:
             code, message = _first_error(payload)
-            log.warning("API %s %s → %s %s", method, path, response.status_code, code or message)
+            log.warning(
+                "API %s %s → %s %s",
+                method,
+                path,
+                response.status_code,
+                code or message,
+            )
             if response.status_code == 401:
                 raise ApiError("auth", 401, code, message)
             if response.status_code == 403:
@@ -111,7 +127,7 @@ def _first_error(payload: Any) -> tuple[str, str]:
         errors = payload.get("errors") or []
         if isinstance(errors, list) and errors and isinstance(errors[0], dict):
             first = errors[0]
-        # Backend: {"error_code": "e__data_502", "message": "<text in the lang language>"}
+            # Backend: {"error_code": "e__data_502", "message": "<text in the lang language>"}
             code = first.get("error_code") or first.get("code") or ""
             return str(code), str(first.get("message") or first.get("msg") or "")
         if "detail" in payload:

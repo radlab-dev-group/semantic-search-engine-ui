@@ -32,7 +32,11 @@ def client(settings, backend_log):
 
 @pytest.fixture
 def logged(client):
-    r = client.post("/login", data={"username": "anna", "password": "demo"}, follow_redirects=False)
+    r = client.post(
+        "/login",
+        data={"username": "anna", "password": "demo"},
+        follow_redirects=False,
+    )
     assert r.status_code == 303
     return client
 

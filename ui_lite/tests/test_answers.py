@@ -23,7 +23,11 @@ def test_footnotes_numbered_in_order_of_first_citation():
 def test_footnote_page_is_best_scored_fragment_and_pages_listed():
     out = build_answer(f"Result [{A}].", frags())
     a = out["groups"][0]
-    assert a["page"] == 12 and a["pages"] == [12, 14] and a["quote"] == "Revenue grew by 8%."
+    assert (
+        a["page"] == 12
+        and a["pages"] == [12, 14]
+        and a["quote"] == "Revenue grew by 8%."
+    )
 
 
 def test_name_without_extension_and_case_matches():
@@ -44,16 +48,34 @@ def test_several_names_in_one_bracket():
 
 
 def test_raw_html_from_model_is_escaped_and_tables_render():
-    out = build_answer(f"<script>alert(1)</script>\n\n| a | b |\n|---|---|\n| x | y [{A}] |", frags())
+    out = build_answer(
+        f"<script>alert(1)</script>\n\n| a | b |\n|---|---|\n| x | y [{A}] |",
+        frags(),
+    )
     assert "<script>" not in out["html"] and "&lt;script&gt;" in out["html"]
     assert "<table>" in out["html"] and 'class="fn approx"' in out["html"]
 
 
 def test_extract_results_accepts_dict_of_index_and_reads_answer_id():
-    body = {"last_state": [{"rag_message_state": {
-        "sse_response": {"detailed_results_json": {"0": {"document_name": A, "page_number": 2, "text_str": "x", "score_normalized": 0.5}}},
-        "sse_answer": {"id": 77},
-    }}]}
+    body = {
+        "last_state": [
+            {
+                "rag_message_state": {
+                    "sse_response": {
+                        "detailed_results_json": {
+                            "0": {
+                                "document_name": A,
+                                "page_number": 2,
+                                "text_str": "x",
+                                "score_normalized": 0.5,
+                            }
+                        }
+                    },
+                    "sse_answer": {"id": 77},
+                }
+            }
+        ]
+    }
     fragments, answer_id, ran = extract_results(body)
     assert len(fragments) == 1 and fragments[0].page == 2 and answer_id == 77 and ran
 

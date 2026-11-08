@@ -105,7 +105,10 @@ def check_i18n(client) -> None:
     )
     check(
         "polish plural forms",
-        [i18n.translate_plural("pl", "upload.files_count", n) for n in (1, 3, 5, 22, 112)]
+        [
+            i18n.translate_plural("pl", "upload.files_count", n)
+            for n in (1, 3, 5, 22, 112)
+        ]
         == ["1 plik", "3 pliki", "5 plików", "22 pliki", "112 plików"]
         and i18n.translate_plural("en", "upload.files_count", 1) == "1 file",
         "",
@@ -154,7 +157,16 @@ def check_i18n(client) -> None:
         )
 
     client.cookies.set("sse_lang", "pl")
-    pages = {url: client.get(url).text for url in ["/home", "/collections", "/collections/manage", "/documents/upload", "/search"]}
+    pages = {
+        url: client.get(url).text
+        for url in [
+            "/home",
+            "/collections",
+            "/collections/manage",
+            "/documents/upload",
+            "/search",
+        ]
+    }
     check(
         "polish collection counters use the plural forms",
         "128 dokumentów" in pages["/collections"]
@@ -201,7 +213,9 @@ def check_i18n(client) -> None:
         "/search/generate",
         data={"generation_id": generation.group(1) if generation else ""},
     ).json()
-    generated_html = payload.get("answer_html", "") + payload.get("feedback_html", "")
+    generated_html = payload.get("answer_html", "") + payload.get(
+        "feedback_html", ""
+    )
     check(
         "polish search results",
         "Co znalazł silnik" in response.text
@@ -272,7 +286,7 @@ def check_chunking(client) -> None:
         and f'name="number_of_overlap_tokens" min="0" max="{server.constants.OVERLAP_TOKENS_LIMIT}" step="1" value="0" data-chunk-overlap data-range-max="{server.constants.OVERLAP_TOKENS_LIMIT}">'
         in page
         and page.count('<input type="range" id="new_') == 2
-        and '<output>500</output>' in page
+        and "<output>500</output>" in page
         and 'name="chunking_default_max" value="500"' in page
         and 'name="chunking_default_overlap" value="0"' in page
         and 'name="chunking_edited" value="0"' in page
@@ -379,7 +393,8 @@ def check_chunking(client) -> None:
         and 'value="100" data-chunk-overlap data-range-max="200" class="is-invalid" aria-invalid="true"'
         in response.text
         and not any(
-            entry["path"].endswith("new_collection") for entry in REQUEST_LOG[before:]
+            entry["path"].endswith("new_collection")
+            for entry in REQUEST_LOG[before:]
         ),
         "",
     )
@@ -528,7 +543,8 @@ def check_chunking(client) -> None:
     check(
         "000006_DATA clears the override and proposes the collection values",
         response.status_code == 200
-        and "Chunking settings differ from the ones of the collection." in response.text
+        and "Chunking settings differ from the ones of the collection."
+        in response.text
         and 'name="chunking_mode" value="collection" checked' in files_form
         and "Collection settings restored: 256 tokens · overlap 0" in files_form
         and 'data-ref-chunk="256"' in files_form
@@ -566,13 +582,16 @@ def check_chunking(client) -> None:
         and 'value="long.txt"' in text_form
         and 'class="tab-panel is-active" role="tabpanel" id="panel-add-text"'
         in response.text
-        and 'class="field-slider is-invalid"' not in response.text.split('id="panel-add-text"')[0],
+        and 'class="field-slider is-invalid"'
+        not in response.text.split('id="panel-add-text"')[0],
         response.text[:300],
     )
 
 
 # The panel of a request which has not finished yet, before its status
-INDEXING_RUNNING_PANEL = 'class="indexing-panel is-running indexing-panel--preparing"'
+INDEXING_RUNNING_PANEL = (
+    'class="indexing-panel is-running indexing-panel--preparing"'
+)
 
 
 def indexing_panel(html: str) -> str:
@@ -710,9 +729,9 @@ def check_indexing(client) -> None:
         and 'data-doc-index-badge="indexed"' in running_page
         and ">indexed</span>" in running_page
         and "data-indexing-autoclose" in running_page
-        and 'data-indexing-dismiss' in running_page
-        and 'data-indexing-switcher' in running_page
-        and 'data-indexing-tabs' in running_page,
+        and "data-indexing-dismiss" in running_page
+        and "data-indexing-switcher" in running_page
+        and "data-indexing-tabs" in running_page,
         indexing_panel(running_page)
         + " || "
         + str(re.findall(r'data-doc-index-badge="([a-z]+)"', running_page)),
@@ -757,7 +776,8 @@ def check_indexing(client) -> None:
     check(
         "the indexing panel shows the current session count, not the collection total",
         "Still waiting for indexing in this session: 3" in session_count_page
-        and "Still waiting for indexing in the collection: 47" not in session_count_page,
+        and "Still waiting for indexing in the collection: 47"
+        not in session_count_page,
         indexing_panel(session_count_page),
     )
 
@@ -795,7 +815,9 @@ def check_indexing(client) -> None:
     )
 
     # --- failures the page has to live with --------------------------------- #
-    unknown_job = client.get("/collections/indexing-status", params={"job_id": 999999})
+    unknown_job = client.get(
+        "/collections/indexing-status", params={"job_id": 999999}
+    )
     unknown_collection = client.get(
         "/collections/indexing-status", params={"collection_name": "there_is_none"}
     )
@@ -881,7 +903,11 @@ def main() -> int:
         response = client.get("/home")
         check(
             "home page",
-            response.status_code == 200 and "SSSUI" in response.text,
+            response.status_code == 200
+            and "SSSUI" in response.text
+            and 'href="/search"' in response.text
+            and 'href="/chat"' in response.text
+            and "04 · Chat" in response.text,
             str(response.status_code),
         )
 
@@ -947,7 +973,7 @@ def main() -> int:
             "every collection is in the page, the window is client side",
             response.text.count("data-collection-card") == len(COLLECTIONS),
             f'cards: {response.text.count("data-collection-card")}'
-            f', engine: {len(COLLECTIONS)}',
+            f", engine: {len(COLLECTIONS)}",
         )
         check(
             "collections list links to upload, chat and search of a collection",
@@ -960,16 +986,16 @@ def main() -> int:
         response_alias = client.get("/collection")
         check(
             "/collection route renders collections page",
-            response_alias.status_code == 200
-            and "user_col" in response_alias.text,
+            response_alias.status_code == 200 and "user_col" in response_alias.text,
             str(response_alias.status_code),
         )
         check(
             "collections list can be filtered by name",
-            'data-collection-filter' in response.text
-            and 'data-collection-grid' in response.text
-            and 'data-collection-card data-search="moje dokumenty user_col"' in response.text
-            and 'data-collection-nomatch' in response.text
+            "data-collection-filter" in response.text
+            and "data-collection-grid" in response.text
+            and 'data-collection-card data-search="moje dokumenty user_col"'
+            in response.text
+            and "data-collection-nomatch" in response.text
             and 'type="search" placeholder="' in response.text,
             "",
         )
@@ -1125,7 +1151,7 @@ def main() -> int:
                 r'class="doc-row is-disabled" data-name="old\.pdf"', manage_page
             )
             is not None
-            and 'data-doc-disabled-count>1<' in manage_page,
+            and "data-doc-disabled-count>1<" in manage_page,
             "",
         )
         search_page = client.get("/search?collection_name=user_col").text
@@ -1203,7 +1229,10 @@ def main() -> int:
                     },
                 }
             )
-            == ([{"page": 1, "text": "raz"}, {"page": 2, "text": "dwa"}], "raz\n\ndwa"),
+            == (
+                [{"page": 1, "text": "raz"}, {"page": 2, "text": "dwa"}],
+                "raz\n\ndwa",
+            ),
             "",
         )
         check(
@@ -1301,7 +1330,8 @@ def main() -> int:
         ).text
         check(
             "an engine without the content of a document is reported in the window",
-            "The engine did not return the content of this document" in broken_preview,
+            "The engine did not return the content of this document"
+            in broken_preview,
             "",
         )
 
@@ -1783,12 +1813,18 @@ def main() -> int:
             }
 
         kept = kept_options(results_html)
-        check("search options are kept after the search", all(kept.values()), str(kept))
+        check(
+            "search options are kept after the search", all(kept.values()), str(kept)
+        )
         kept = kept_options(client.get("/search").text)
         check(
-            "search options are kept on the search page", all(kept.values()), str(kept)
+            "search options are kept on the search page",
+            all(kept.values()),
+            str(kept),
         )
-        clear_link = re.search(r'<a class="btn btn--ghost" href="([^"]+)"[^>]*>Clear</a>', results_html)
+        clear_link = re.search(
+            r'<a class="btn btn--ghost" href="([^"]+)"[^>]*>Clear</a>', results_html
+        )
         check(
             "clear is a link back to the empty search page",
             clear_link is not None
@@ -1803,7 +1839,9 @@ def main() -> int:
             check(
                 "clear drops the question, the instruction and the results, keeps the options",
                 'class="query-console__question" placeholder="' in cleared_html
-                and re.search(r'name="question"[^>]*required></textarea>', cleared_html)
+                and re.search(
+                    r'name="question"[^>]*required></textarea>', cleared_html
+                )
                 is not None
                 and re.search(r'name="prompt"[^>]*></textarea>', cleared_html)
                 is not None
@@ -1897,7 +1935,8 @@ def main() -> int:
         )
         check(
             "score columns render bars",
-            'data-score="0.87"' in response.text and 'class="score"' in response.text,
+            'data-score="0.87"' in response.text
+            and 'class="score"' in response.text,
             "",
         )
         check(
@@ -2013,7 +2052,8 @@ def main() -> int:
         )
         check(
             "missing min_similarity falls back to the engine default",
-            options_vo.get("min_similarity") == server.constants.DEFAULT_MIN_SIMILARITY,
+            options_vo.get("min_similarity")
+            == server.constants.DEFAULT_MIN_SIMILARITY,
             str(options_vo),
         )
 
@@ -2121,13 +2161,15 @@ def main() -> int:
             "history entries provide a confirmed delete action",
             'formaction="/search/history/42/delete"' in history_html
             and "formnovalidate" in history_html
-            and 'data-confirm-title="Delete this search from history"' in history_html
+            and 'data-confirm-title="Delete this search from history"'
+            in history_html
             and 'data-confirm-items="Jak wygląda proces ofertowy?"' in history_html,
             "",
         )
         check(
             "history panel is open when there are no results",
-            re.search(r'<details class="history__box" open', history_html) is not None,
+            re.search(r'<details class="history__box" open', history_html)
+            is not None,
             "",
         )
         check(
@@ -2324,14 +2366,17 @@ def main() -> int:
             and 'name="hybrid_search"' in chat_html
             and 'name="rerank_results"' in chat_html
             and 'name="use_qa_generative"' in chat_html
-            and 'data-chat-input' in chat_html,
+            and "data-chat-input" in chat_html,
             "",
         )
-        conv_redirect = client.get("/conversational?collection_name=user_col", follow_redirects=False)
+        conv_redirect = client.get(
+            "/conversational?collection_name=user_col", follow_redirects=False
+        )
         check(
             "conversational aliases redirect to /chat",
             conv_redirect.status_code == 303
-            and conv_redirect.headers.get("location") == "/chat?collection_name=user_col",
+            and conv_redirect.headers.get("location")
+            == "/chat?collection_name=user_col",
             str(conv_redirect.headers),
         )
 
@@ -2339,18 +2384,77 @@ def main() -> int:
         check(
             "chat history partial returns history items",
             "data-chat-history" in chat_hist_partial
-            and "Jak wygląda proces ofertowy?" in chat_hist_partial,
+            and "data-chat-new" in chat_hist_partial
+            and "Jak wygląda proces ofertowy?" in chat_hist_partial
+            and "data-confirm=" in chat_hist_partial
+            and "data-confirm-title=" in chat_hist_partial
+            and "data-confirm-ok=" in chat_hist_partial
+            and 'data-confirm-items="Jak wygląda proces ofertowy?"'
+            in chat_hist_partial,
+            "",
+        )
+
+        chat_hist_active = client.get(
+            "/chat/history?collection_name=user_col&active_chat_id=1"
+        ).text
+        check(
+            "chat history partial marks active chat when active_chat_id is passed",
+            'class="history__item is-current"' in chat_hist_active
+            and "history__tag--current" in chat_hist_active,
+            "",
+        )
+
+        kb_manage_page = client.get(
+            "/collections/manage?collection_name=user_col"
+        ).text
+        kb_collections_page = client.get("/collections").text
+        check(
+            "knowledge base header includes both Search in collection and Chat with collection links",
+            'class="kb-bar__search"' in kb_manage_page
+            and 'class="kb-bar__chat"' in kb_manage_page
+            and 'href="/chat?collection_name=user_col"' in kb_manage_page
+            and 'class="kb-bar__chat"' in kb_collections_page,
             "",
         )
 
         chat_msgs_res = client.get("/chat/messages/1")
         chat_msgs_json = chat_msgs_res.json()
         check(
-            "chat messages endpoint returns history messages",
+            "chat messages endpoint returns history messages with sources and footnotes",
             chat_msgs_json.get("status") is True
             and len(chat_msgs_json.get("messages", [])) == 2
-            and "Proces ofertowy" in chat_msgs_json["messages"][1]["text"],
+            and "Proces ofertowy" in chat_msgs_json["messages"][1]["text"]
+            and "fn-badge" in chat_msgs_json["messages"][1]["html"]
+            and len(chat_msgs_json["messages"][1].get("groups", [])) == 1
+            and chat_msgs_json["messages"][1]["groups"][0]["name"] == "doc-a.pdf"
+            and chat_msgs_json["messages"][1]["groups"][0]["page"] == 2
+            and chat_msgs_json["messages"][1]["groups"][0]["pages"] == [2, 5]
+            and len(chat_msgs_json["messages"][1]["groups"][0]["fragments"]) == 2
+            and chat_msgs_json["messages"][1]["groups"][0]["fragments"][1]["chunk"]
+            == 11
+            and chat_msgs_json["messages"][1].get("answer_id") == 101,
             str(chat_msgs_json),
+        )
+
+        chat_with_id_page = client.get(
+            "/chat?collection_name=user_col&chat_id=1"
+        ).text
+        check(
+            "chat page with active chat_id renders history messages with sources and multi-chunk controls",
+            "chat-sources-accordion" in chat_with_id_page
+            and "doc-a.pdf" in chat_with_id_page
+            and "fn-badge" in chat_with_id_page
+            and "chat-source-item--multi" in chat_with_id_page
+            and 'data-chunk-step="-1"' in chat_with_id_page
+            and 'data-chunk-step="1"' in chat_with_id_page
+            and 'data-chunk-select="0"' in chat_with_id_page
+            and 'data-chunk-select="1"' in chat_with_id_page
+            and 'data-source-chunk="0"' in chat_with_id_page
+            and 'data-source-chunk="1"' in chat_with_id_page
+            and "Drugi fragment dokumentu ofertowego o akceptacji"
+            in chat_with_id_page
+            and 'data-answer-id="101"' in chat_with_id_page,
+            "",
         )
 
         ask_res = client.post(

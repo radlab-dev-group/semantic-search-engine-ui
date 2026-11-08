@@ -193,20 +193,14 @@ class SemanticSearchEngineAPI(BaseApiInterface):
                     "delete_search_history", "api/delete_search_history"
                 )
             )
-            self.delete_collection = (
-                api_config.semantic_search_engine_endpoints.get(
-                    "delete_collection", "api/delete_collection"
-                )
+            self.delete_collection = api_config.semantic_search_engine_endpoints.get(
+                "delete_collection", "api/delete_collection"
             )
-            self.delete_documents = (
-                api_config.semantic_search_engine_endpoints.get(
-                    "delete_documents", "api/delete_documents"
-                )
+            self.delete_documents = api_config.semantic_search_engine_endpoints.get(
+                "delete_documents", "api/delete_documents"
             )
-            self.delete_texts = (
-                api_config.semantic_search_engine_endpoints.get(
-                    "delete_texts", "api/delete_texts"
-                )
+            self.delete_texts = api_config.semantic_search_engine_endpoints.get(
+                "delete_texts", "api/delete_texts"
             )
             self.add_and_index_texts = (
                 api_config.semantic_search_engine_endpoints.get(

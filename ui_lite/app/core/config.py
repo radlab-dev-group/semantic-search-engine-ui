@@ -56,7 +56,10 @@ class Settings:
         for item in self.formats:
             if item["id"] == format_id:
                 return item
-        return next((f for f in self.formats if f["id"] == self.default_format), self.formats[0])
+        return next(
+            (f for f in self.formats if f["id"] == self.default_format),
+            self.formats[0],
+        )
 
     def public(self, lang: str) -> dict[str, Any]:
         """Part of the configuration visible in the browser (no hosts or secrets)."""
@@ -82,7 +85,11 @@ class Settings:
 
 def _localized(value: Any, lang: str, fallback: str) -> str:
     if isinstance(value, dict):
-        return value.get(lang) or value.get("en") or next(iter(value.values()), fallback)
+        return (
+            value.get(lang)
+            or value.get("en")
+            or next(iter(value.values()), fallback)
+        )
     return value or fallback
 
 
@@ -94,14 +101,21 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 def load_settings(path: str | os.PathLike | None = None) -> Settings:
-    cfg_path = Path(path or os.environ.get("UI_CONFIG") or os.environ.get("UI_CONFIG_PATH") or DEFAULT_PATH)
+    cfg_path = Path(
+        path
+        or os.environ.get("UI_CONFIG")
+        or os.environ.get("UI_CONFIG_PATH")
+        or DEFAULT_PATH
+    )
     if not cfg_path.exists():
         cfg_path = EXAMPLE_PATH
     raw = json.loads(cfg_path.read_text(encoding="utf-8"))
     warnings: list[str] = []
 
     sse = raw.get("api_hosts", {}).get("semantic_search_engine", {})
-    host = os.environ.get("SSE_API_HOST") or sse.get("host") or "http://localhost:8271"
+    host = (
+        os.environ.get("SSE_API_HOST") or sse.get("host") or "http://localhost:8271"
+    )
     prefix = os.environ.get("SSE_API_PREFIX", sse.get("prefix", "api"))
     auth = raw.get("auth", {})
     ui = raw.get("ui", {})
@@ -109,12 +123,21 @@ def load_settings(path: str | os.PathLike | None = None) -> Settings:
     defaults = raw.get("defaults", {})
     formats = raw.get("formats") or []
     if not formats:
-        raise ValueError("Configuration must contain at least one format in the 'formats' section")
+        raise ValueError(
+            "Configuration must contain at least one format in the 'formats' section"
+        )
 
-    secret = os.environ.get("SESSION_SECRET") or os.environ.get("UI_SECRET_KEY") or raw.get("session_secret") or ""
+    secret = (
+        os.environ.get("SESSION_SECRET")
+        or os.environ.get("UI_SECRET_KEY")
+        or raw.get("session_secret")
+        or ""
+    )
     if not secret:
         secret = secrets.token_urlsafe(32)
-        warnings.append("SESSION_SECRET not set – generated a random one; sessions will be lost on restart.")
+        warnings.append(
+            "SESSION_SECRET not set – generated a random one; sessions will be lost on restart."
+        )
 
     return Settings(
         raw=raw,

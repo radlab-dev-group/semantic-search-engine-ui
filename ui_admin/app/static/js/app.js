@@ -219,6 +219,31 @@ function initHitFilters() {
       })
     );
   });
+
+  document.querySelectorAll("[data-hits]").forEach((list) => {
+    list.querySelectorAll("[data-hit-doc-jump]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const currentHit = btn.closest("[data-hit]");
+        if (!currentHit) return;
+        const doc = currentHit.dataset.doc;
+        if (!doc) return;
+        const step = Number(btn.dataset.hitDocJump) || 0;
+        const sameDocHits = Array.from(list.querySelectorAll("[data-hit]")).filter(
+          (el) => el.dataset.doc === doc && !el.hidden
+        );
+        if (sameDocHits.length <= 1) return;
+        const currentIdx = sameDocHits.indexOf(currentHit);
+        if (currentIdx < 0) return;
+        const nextIdx = ((currentIdx + step) % sameDocHits.length + sameDocHits.length) % sameDocHits.length;
+        const targetHit = sameDocHits[nextIdx];
+        if (targetHit) {
+          targetHit.scrollIntoView({ behavior: "smooth", block: "center" });
+          targetHit.classList.add("is-highlighted");
+          setTimeout(() => targetHit.classList.remove("is-highlighted"), 2000);
+        }
+      });
+    });
+  });
 }
 
 /* ----------------------------------------- results: expand long passages */
@@ -1586,15 +1611,22 @@ function initConfirmDialogs() {
     event.preventDefault();
     event.stopImmediatePropagation();
 
+    const items = trigger.dataset.confirmItems ? [trigger.dataset.confirmItems] : [];
     const phrase = trigger.dataset.confirmPhrase || "";
     const showWarning = trigger.dataset.confirmWarning !== "false";
     const iconType = trigger.dataset.confirmIcon;
 
+    const executeConfirmedAction = () => {
+      if (trigger.tagName === "A" && trigger.href) {
+        window.location.href = trigger.href;
+      } else {
+        trigger.dispatchEvent(new CustomEvent("confirmed", { bubbles: true }));
+      }
+    };
+
     if (!canShowModal) {
       if (window.confirm(text)) {
-        if (trigger.tagName === "A" && trigger.href) {
-          window.location.href = trigger.href;
-        }
+        executeConfirmedAction();
       }
       return;
     }
@@ -1607,8 +1639,18 @@ function initConfirmDialogs() {
       icon.innerHTML = iconType === "reset" ? resetIconSvg : defaults.iconHtml;
     }
 
-    list.replaceChildren();
-    list.classList.add("hidden");
+    list.replaceChildren(...items.slice(0, 8).map((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      return li;
+    }));
+    if (items.length > 8) {
+      const more = document.createElement("li");
+      more.className = "confirm-dialog__more";
+      more.textContent = t("confirm_more", { n: items.length - 8 }, "+{n} more");
+      list.append(more);
+    }
+    list.classList.toggle("hidden", !items.length);
 
     phraseBox.classList.toggle("hidden", !phrase);
     phraseInput.value = "";
@@ -1624,9 +1666,7 @@ function initConfirmDialogs() {
       dialog.onclose = null;
       resetDialogVisuals();
       if (dialog.returnValue !== "ok") return;
-      if (trigger.tagName === "A" && trigger.href) {
-        window.location.href = trigger.href;
-      }
+      executeConfirmedAction();
     };
     dialog.returnValue = "";
     dialog.showModal();
@@ -2764,14 +2804,9 @@ function initChatHistory(root = document) {
     }
 
     panel.querySelectorAll("[data-delete-chat]").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+      btn.addEventListener("confirmed", async () => {
         const chatId = btn.dataset.deleteChat;
         if (!chatId) return;
-
-        const confirmMsg = btn.dataset.confirm || "Czy na pewno chcesz usunąć tę rozmowę?";
-        if (!window.confirm(confirmMsg)) return;
 
         try {
           const res = await fetch("/chat/delete", {
@@ -2785,10 +2820,21 @@ function initChatHistory(root = document) {
             if (item) item.remove();
             const countBadge = panel.querySelector("[data-chat-history-count]");
             const remaining = panel.querySelectorAll("[data-chat-item]").length;
-            if (countBadge) countBadge.textContent = remaining;
+            if (countBadge) {
+              if (remaining > 0) countBadge.textContent = String(remaining);
+              else countBadge.remove();
+            }
             const activeInput = document.getElementById("active_chat_id");
             if (activeInput && activeInput.value === String(chatId)) {
               resetChatToNew();
+            }
+            if (remaining === 0) {
+              const collSelect = document.querySelector("select[name='collection_name']");
+              const collName = collSelect ? collSelect.value : "";
+              const collLabel = collSelect && collSelect.selectedOptions[0]
+                ? (collSelect.selectedOptions[0].dataset.displayName || collName)
+                : "";
+              if (collName) refreshChatHistory(collName, collLabel);
             }
           }
         } catch (err) {
@@ -2804,13 +2850,24 @@ function initChatHistory(root = document) {
         if (chatId) loadChat(chatId);
       });
     });
+
+    panel.querySelectorAll("[data-chat-new]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        resetChatToNew();
+        const textarea = document.querySelector("[data-chat-input]");
+        if (textarea) textarea.focus();
+      });
+    });
   });
 }
 
 async function refreshChatHistory(collectionName, collectionLabel = "") {
   const panel = document.querySelector("[data-chat-history]");
   if (!panel) return;
+  const activeChatId = document.getElementById("active_chat_id")?.value || "";
   const query = new URLSearchParams({ collection_name: collectionName, collection_label: collectionLabel });
+  if (activeChatId) query.set("active_chat_id", activeChatId);
   try {
     const response = await fetch(`/chat/history?${query}`, {
       credentials: "same-origin",
@@ -2830,6 +2887,11 @@ async function refreshChatHistory(collectionName, collectionLabel = "") {
 }
 
 function resetChatToNew() {
+  const stopBtn = document.querySelector("[data-chat-stop]");
+  const waiting = document.querySelector("[data-chat-waiting]");
+  if (waiting && !waiting.classList.contains("is-hidden") && stopBtn) {
+    stopBtn.click();
+  }
   const activeInput = document.getElementById("active_chat_id");
   if (activeInput) activeInput.value = "";
   const headerTitle = document.querySelector("[data-chat-header-title]");
@@ -2844,15 +2906,31 @@ function resetChatToNew() {
     feed.querySelectorAll(".chat-msg:not([data-chat-waiting])").forEach((msg) => msg.remove());
     const emptyState = feed.querySelector("[data-chat-empty]");
     if (emptyState) emptyState.classList.remove("is-hidden");
+    feed.scrollTop = 0;
   }
   document.querySelectorAll("[data-chat-item] .history__item").forEach((el) => {
     el.classList.remove("is-current");
     el.removeAttribute("aria-current");
+    el.querySelectorAll(".history__tag--current").forEach((tag) => tag.remove());
   });
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("chat_id")) {
+      url.searchParams.delete("chat_id");
+      window.history.replaceState({}, "", url.pathname + (url.search || ""));
+    }
+  } catch (err) {
+    // ignore URL manipulation errors
+  }
 }
 
 async function loadChat(chatId) {
   if (!chatId) return;
+  const stopBtn = document.querySelector("[data-chat-stop]");
+  const waiting = document.querySelector("[data-chat-waiting]");
+  if (waiting && !waiting.classList.contains("is-hidden") && stopBtn) {
+    stopBtn.click();
+  }
   try {
     const res = await fetch(`/chat/messages/${encodeURIComponent(chatId)}`);
     if (!res.ok) return;
@@ -2896,9 +2974,21 @@ async function loadChat(chatId) {
       if (!link) return;
       const isCurrent = item.dataset.chatId === String(payload.chat_id);
       link.classList.toggle("is-current", isCurrent);
-      if (isCurrent) link.setAttribute("aria-current", "true");
-      else link.removeAttribute("aria-current");
+      if (isCurrent) {
+        link.setAttribute("aria-current", "true");
+      } else {
+        link.removeAttribute("aria-current");
+        link.querySelectorAll(".history__tag--current").forEach((tag) => tag.remove());
+      }
     });
+
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("chat_id", String(payload.chat_id));
+      window.history.replaceState({}, "", url.pathname + url.search);
+    } catch (err) {
+      // ignore URL manipulation errors
+    }
 
     feed.scrollTop = feed.scrollHeight;
   } catch (err) {
@@ -2920,25 +3010,78 @@ function renderChatMessage(feed, msg) {
   let sourcesHtml = "";
   if (msg.groups && msg.groups.length > 0) {
     const collName = document.querySelector("select[name='collection_name']")?.value || "";
+    const totalFrags = msg.fragments_count || msg.groups.reduce((acc, g) => acc + ((g.fragments && g.fragments.length) || 1), 0);
+    const totalChunksSuffix = totalFrags > msg.groups.length
+      ? ` · ${t("chat_chunks_count", { n: totalFrags }, "{n} fragmentów")}`
+      : "";
     sourcesHtml = `
       <div class="chat-msg__sources">
         <details class="chat-sources-accordion">
           <summary class="chat-sources-accordion__summary">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chat-sources-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-            <span>Źródła (${msg.groups.length})</span>
+            <span>Źródła (${msg.groups.length})${escapeHtml(totalChunksSuffix)}</span>
           </summary>
           <div class="chat-sources-list">
-            ${msg.groups.map(g => `
-              <div class="chat-source-item" data-source-group="${g.n}">
+            ${msg.groups.map(g => {
+              const frags = Array.isArray(g.fragments) && g.fragments.length > 0
+                ? g.fragments
+                : [{ page: g.page, text: g.quote }];
+              const multi = frags.length > 1;
+              const pagesLabel = Array.isArray(g.pages) && g.pages.length > 1
+                ? `s. ${g.pages.join(", ")}`
+                : (g.page ? `s. ${g.page}` : "");
+              const basePreviewUrl = collName
+                ? `/collections/documents/preview?collection_name=${encodeURIComponent(collName)}&document_name=${encodeURIComponent(g.name)}`
+                : "";
+              const previewUrl = basePreviewUrl
+                ? `${basePreviewUrl}${g.page ? `#page-${g.page}` : ""}`
+                : "";
+              const showAllLabel = t("chat_chunk_show_all", { n: frags.length }, `Pokaż wszystkie (${frags.length})`);
+              const hideAllLabel = t("chat_chunk_hide_all", {}, "Zwiń listę");
+              return `
+              <div class="chat-source-item${multi ? " chat-source-item--multi" : ""}" data-source-group="${g.n}" data-active-chunk="0" data-total-chunks="${frags.length}">
                 <div class="chat-source-item__head">
                   <span class="chat-source-item__badge">${g.n}</span>
                   <strong class="chat-source-item__name">${escapeHtml(g.name)}</strong>
-                  ${g.page ? `<span class="chat-source-item__page">s. ${g.page}</span>` : ""}
-                  ${collName ? `<a href="/collections/documents/preview?collection_name=${encodeURIComponent(collName)}&document_name=${encodeURIComponent(g.name)}" target="_blank" rel="noopener" class="chat-source-item__preview-link" title="Podgląd dokumentu">↗</a>` : ""}
+                  ${pagesLabel ? `<span class="chat-source-item__page">${escapeHtml(pagesLabel)}</span>` : ""}
+                  ${multi ? `
+                    <span class="chat-source-item__count">${escapeHtml(t("chat_chunks_count", { n: frags.length }, `${frags.length} fragmentów`))}</span>
+                    <div class="chat-source-nav" data-source-nav>
+                      <button type="button" class="chat-source-nav__btn" data-chunk-step="-1" title="${escapeHtml(t("chat_chunk_prev", {}, "Poprzedni fragment"))}" aria-label="${escapeHtml(t("chat_chunk_prev", {}, "Poprzedni fragment"))}">‹</button>
+                      <span class="chat-source-nav__pos" data-chunk-pos>1 / ${frags.length}</span>
+                      <button type="button" class="chat-source-nav__btn" data-chunk-step="1" title="${escapeHtml(t("chat_chunk_next", {}, "Następny fragment"))}" aria-label="${escapeHtml(t("chat_chunk_next", {}, "Następny fragment"))}">›</button>
+                      <button type="button" class="chat-source-nav__all" data-chunk-toggle-all data-label-show="${escapeHtml(showAllLabel)}" data-label-hide="${escapeHtml(hideAllLabel)}">${escapeHtml(showAllLabel)}</button>
+                    </div>
+                  ` : ""}
+                  ${previewUrl ? `<a href="${previewUrl}" target="_blank" rel="noopener" class="chat-source-item__preview-link" data-source-preview-link data-base-href="${basePreviewUrl}" title="Podgląd dokumentu">↗</a>` : ""}
                 </div>
-                ${g.quote ? `<p class="chat-source-item__quote">${escapeHtml(g.quote)}</p>` : ""}
+                ${multi ? `
+                  <div class="chat-source-chips" role="tablist" aria-label="${escapeHtml(g.name)}">
+                    ${frags.map((f, idx) => `
+                      <button type="button" class="chat-source-chip${idx === 0 ? " is-active" : ""}" data-chunk-select="${idx}" role="tab" aria-selected="${idx === 0 ? "true" : "false"}">
+                        #${idx + 1}${f.page ? ` · s. ${escapeHtml(f.page)}` : (f.chunk !== undefined && f.chunk !== null ? ` · chunk ${escapeHtml(f.chunk)}` : "")}
+                      </button>
+                    `).join("")}
+                  </div>
+                ` : ""}
+                <div class="chat-source-chunks" data-source-chunks>
+                  ${frags.map((f, idx) => `
+                    <div class="chat-source-chunk${idx === 0 ? " is-active" : ""}" data-source-chunk="${idx}" data-chunk-page="${escapeHtml(f.page || "")}">
+                      ${multi ? `
+                        <div class="chat-source-chunk__meta">
+                          <span class="chat-source-chunk__num">#${idx + 1}</span>
+                          ${f.page ? `<span class="chat-source-chunk__tag">strona ${escapeHtml(f.page)}</span>` : ""}
+                          ${f.chunk !== undefined && f.chunk !== null ? `<span class="chat-source-chunk__tag">chunk ${escapeHtml(f.chunk)}</span>` : ""}
+                          ${typeof f.score === "number" && f.score > 0 ? `<span class="chat-source-chunk__score">${f.score.toFixed(3)}</span>` : ""}
+                        </div>
+                      ` : ""}
+                      ${f.text ? `<p class="chat-source-item__quote">${f.left ? `<span class="chat-source-chunk__ctx">…${escapeHtml(f.left)} </span>` : ""}${escapeHtml(f.text)}${f.right ? `<span class="chat-source-chunk__ctx"> ${escapeHtml(f.right)}…</span>` : ""}</p>` : ""}
+                    </div>
+                  `).join("")}
+                </div>
               </div>
-            `).join("")}
+            `;
+            }).join("")}
           </div>
         </details>
       </div>
@@ -2960,10 +3103,10 @@ function renderChatMessage(feed, msg) {
           </button>
         ` : ""}
         ${msg.answer_id ? `
-          <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn" data-rate-btn="1" data-answer-id="${msg.answer_id}" title="Dobra odpowiedź" aria-label="Dobra odpowiedź">
+          <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn${msg.rate_value === 1 ? " is-active" : ""}" data-rate-btn="1" data-answer-id="${msg.answer_id}" title="Dobra odpowiedź" aria-label="Dobra odpowiedź">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
           </button>
-          <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn" data-rate-btn="0" data-answer-id="${msg.answer_id}" title="Zła odpowiedź" aria-label="Zła odpowiedź">
+          <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn${msg.rate_value === 0 ? " is-active" : ""}" data-rate-btn="0" data-answer-id="${msg.answer_id}" title="Zła odpowiedź" aria-label="Zła odpowiedź">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>
           </button>
         ` : ""}
@@ -2989,10 +3132,26 @@ function renderChatMessage(feed, msg) {
     </div>
   `;
 
-  // Attach event handlers
+  bindChatMessageEvents(msgDiv, msg);
+
+  const waiting = feed.querySelector("[data-chat-waiting]");
+  if (waiting) {
+    feed.insertBefore(msgDiv, waiting);
+  } else {
+    feed.appendChild(msgDiv);
+  }
+  const msgCount = document.querySelector("[data-chat-msg-count]");
+  if (msgCount) {
+    const totalMsgs = feed.querySelectorAll(".chat-msg:not([data-chat-waiting])").length;
+    msgCount.textContent = String(totalMsgs);
+    msgCount.classList.toggle("is-hidden", totalMsgs === 0);
+  }
+}
+
+function bindChatMessageEvents(msgDiv, msg = {}) {
   msgDiv.querySelectorAll("[data-copy-answer]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const textToCopy = msg.plain || msg.text || msgDiv.querySelector(".chat-msg__body")?.innerText || "";
+      const textToCopy = msg.plain || msg.text || btn.dataset.plainText || msgDiv.querySelector(".chat-msg__body")?.innerText || "";
       navigator.clipboard.writeText(textToCopy).then(() => {
         const labelEl = btn.querySelector("span") || btn;
         const orig = labelEl.textContent;
@@ -3004,9 +3163,19 @@ function renderChatMessage(feed, msg) {
 
   msgDiv.querySelectorAll("[data-copy-with-sources]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      let full = msg.plain || msg.text || "";
+      let full = msg.plain || msg.text || btn.dataset.plainText || "";
       if (msg.groups && msg.groups.length > 0) {
         full += "\n\nŹródła:\n" + msg.groups.map(g => `[${g.n}] ${g.name}` + (g.page ? ` (s. ${g.page})` : "")).join("\n");
+      } else {
+        const items = Array.from(msgDiv.querySelectorAll(".chat-source-item"));
+        if (items.length > 0) {
+          full += "\n\nŹródła:\n" + items.map((el) => {
+            const n = el.dataset.sourceGroup || "";
+            const name = el.querySelector(".chat-source-item__name")?.textContent || "";
+            const page = el.querySelector(".chat-source-item__page")?.textContent || "";
+            return `[${n}] ${name}` + (page ? ` (${page})` : "");
+          }).join("\n");
+        }
       }
       navigator.clipboard.writeText(full).then(() => {
         const labelEl = btn.querySelector("span") || btn;
@@ -3049,32 +3218,106 @@ function renderChatMessage(feed, msg) {
     });
   });
 
+  const selectSourceChunk = (sourceItem, nextIndex) => {
+    if (!sourceItem) return;
+    const chunks = Array.from(sourceItem.querySelectorAll("[data-source-chunk]"));
+    if (!chunks.length) return;
+    const total = chunks.length;
+    const clamped = ((nextIndex % total) + total) % total;
+    sourceItem.dataset.activeChunk = String(clamped);
+
+    chunks.forEach((chunk, idx) => {
+      chunk.classList.toggle("is-active", idx === clamped);
+    });
+
+    sourceItem.querySelectorAll("[data-chunk-select]").forEach((chip) => {
+      const active = Number(chip.dataset.chunkSelect) === clamped;
+      chip.classList.toggle("is-active", active);
+      chip.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    const pos = sourceItem.querySelector("[data-chunk-pos]");
+    if (pos) pos.textContent = `${clamped + 1} / ${total}`;
+
+    const activeChunkEl = chunks[clamped];
+    const page = activeChunkEl?.dataset.chunkPage || "";
+    const previewLink = sourceItem.querySelector("[data-source-preview-link]");
+    if (previewLink && previewLink.dataset.baseHref) {
+      previewLink.href = `${previewLink.dataset.baseHref}${page ? `#page-${page}` : ""}`;
+    }
+  };
+
+  msgDiv.querySelectorAll(".chat-source-item--multi").forEach((sourceItem) => {
+    sourceItem.querySelectorAll("[data-chunk-step]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const step = Number(btn.dataset.chunkStep) || 0;
+        const current = Number(sourceItem.dataset.activeChunk) || 0;
+        if (sourceItem.classList.contains("is-expanded-all")) {
+          sourceItem.classList.remove("is-expanded-all");
+          const toggleAllBtn = sourceItem.querySelector("[data-chunk-toggle-all]");
+          if (toggleAllBtn && toggleAllBtn.dataset.labelShow) {
+            toggleAllBtn.textContent = toggleAllBtn.dataset.labelShow;
+          }
+        }
+        selectSourceChunk(sourceItem, current + step);
+      });
+    });
+
+    sourceItem.querySelectorAll("[data-chunk-select]").forEach((chip) => {
+      chip.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const targetIdx = Number(chip.dataset.chunkSelect) || 0;
+        selectSourceChunk(sourceItem, targetIdx);
+        if (sourceItem.classList.contains("is-expanded-all")) {
+          const chunkEl = sourceItem.querySelector(`[data-source-chunk='${targetIdx}']`);
+          chunkEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      });
+    });
+
+    const toggleAllBtn = sourceItem.querySelector("[data-chunk-toggle-all]");
+    if (toggleAllBtn) {
+      toggleAllBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const expanded = sourceItem.classList.toggle("is-expanded-all");
+        toggleAllBtn.textContent = expanded
+          ? (toggleAllBtn.dataset.labelHide || "Zwiń listę")
+          : (toggleAllBtn.dataset.labelShow || "Wszystkie");
+      });
+    }
+  });
+
   msgDiv.querySelectorAll(".fn-badge").forEach((badge) => {
     badge.addEventListener("click", () => {
       const fnNum = badge.dataset.fn;
+      const fnFrag = badge.dataset.fnFrag;
       const targetSource = msgDiv.querySelector(`[data-source-group='${fnNum}']`);
       if (targetSource) {
         const details = targetSource.closest("details");
         if (details) details.open = true;
+        if (targetSource.classList.contains("chat-source-item--multi")) {
+          if (fnFrag !== undefined && fnFrag !== "") {
+            selectSourceChunk(targetSource, Number(fnFrag) || 0);
+          } else {
+            // If clicking the same document footnote repeatedly, cycle through its chunks
+            const total = Number(targetSource.dataset.totalChunks) || 1;
+            if (total > 1 && targetSource.dataset.lastClickedFn === "true") {
+              const current = Number(targetSource.dataset.activeChunk) || 0;
+              selectSourceChunk(targetSource, current + 1);
+            }
+            targetSource.dataset.lastClickedFn = "true";
+          }
+        }
         targetSource.scrollIntoView({ behavior: "smooth", block: "nearest" });
         targetSource.classList.add("is-highlighted");
         setTimeout(() => targetSource.classList.remove("is-highlighted"), 2000);
       }
     });
   });
-
-  const waiting = feed.querySelector("[data-chat-waiting]");
-  if (waiting) {
-    feed.insertBefore(msgDiv, waiting);
-  } else {
-    feed.appendChild(msgDiv);
-  }
-  const msgCount = document.querySelector("[data-chat-msg-count]");
-  if (msgCount) {
-    const totalMsgs = feed.querySelectorAll(".chat-msg:not([data-chat-waiting])").length;
-    msgCount.textContent = String(totalMsgs);
-    msgCount.classList.toggle("is-hidden", totalMsgs === 0);
-  }
 }
 
 function initChat() {
@@ -3082,6 +3325,10 @@ function initChat() {
   if (!container) return;
 
   initChatHistory(document);
+
+  container.querySelectorAll(".chat-msg:not([data-chat-waiting])").forEach((msgDiv) => {
+    bindChatMessageEvents(msgDiv);
+  });
 
   const form = container.querySelector("[data-chat-form]");
   const textarea = container.querySelector("[data-chat-input]");
@@ -3106,9 +3353,10 @@ function initChat() {
   let abortController = null;
   let timerInterval = null;
 
-  // Global new chat buttons
-  document.querySelectorAll("[data-chat-new]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+  // Global new chat buttons (inside chat card; history panel buttons are bound in initChatHistory)
+  container.querySelectorAll("[data-chat-new]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
       resetChatToNew();
       if (textarea) textarea.focus();
     });
@@ -3259,6 +3507,16 @@ function initChat() {
           const headerTitle = document.querySelector("[data-chat-header-title]");
           if (headerTitle && payload.title) headerTitle.textContent = payload.title;
 
+          try {
+            const url = new URL(window.location.href);
+            if (payload.chat_id) {
+              url.searchParams.set("chat_id", String(payload.chat_id));
+              window.history.replaceState({}, "", url.pathname + url.search);
+            }
+          } catch (err) {
+            // ignore URL manipulation errors
+          }
+
           renderChatMessage(feed, {
             role: "assistant",
             html: payload.html,
@@ -3267,6 +3525,13 @@ function initChat() {
             answer_id: payload.answer_id,
             generation_time: payload.generation_time,
           });
+
+          const msgCount = document.querySelector("[data-chat-msg-count]");
+          if (msgCount && feed) {
+            const countVal = feed.querySelectorAll(".chat-msg:not([data-chat-waiting])").length;
+            msgCount.textContent = String(countVal);
+            msgCount.classList.toggle("is-hidden", countVal === 0);
+          }
 
           // Refresh history panel
           const collSelect = document.querySelector("select[name='collection_name']");
@@ -3360,12 +3625,12 @@ document.addEventListener("change", async (event) => {
   if (select.closest("form[data-autosubmit]")) return;
 
   const scope = select.closest("form") || document;
-  refreshHistory(select.value, (select.selectedOptions[0]?.textContent || "").trim());
-  refreshChatHistory(select.value, (select.selectedOptions[0]?.textContent || "").trim());
-  updateCollectionBanner(select);
   if (document.querySelector("[data-chat-container]")) {
     resetChatToNew();
   }
+  refreshHistory(select.value, (select.selectedOptions[0]?.textContent || "").trim());
+  refreshChatHistory(select.value, (select.selectedOptions[0]?.textContent || "").trim());
+  updateCollectionBanner(select);
   const targets = {
     categories: scope.querySelector("select[name='categories']"),
     documents: scope.querySelector("select[name='documents']"),

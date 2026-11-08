@@ -27,12 +27,68 @@ MOCK_CHATS = {
                 "role": "user",
                 "text": "Jak wygląda proces ofertowy?",
                 "date_time": "2026-10-24T15:04:05.123456Z",
+                "state": {
+                    "rag_message_state": {
+                        "sse_answer": {
+                            "id": 101,
+                            "generation_time": "00:00:01.42",
+                            "rate_value": 1,
+                        },
+                        "sse_response": {
+                            "detailed_results_json": {
+                                "1": {
+                                    "document_name": "doc-a.pdf",
+                                    "page_number": 2,
+                                    "text_number": 4,
+                                    "text_str": "Fragment dokumentu ofertowego",
+                                    "score": 0.95,
+                                },
+                                "2": {
+                                    "document_name": "doc-a.pdf",
+                                    "page_number": 5,
+                                    "text_number": 11,
+                                    "text_str": "Drugi fragment dokumentu ofertowego o akceptacji",
+                                    "score": 0.82,
+                                },
+                            }
+                        },
+                    }
+                },
             },
             {
                 "id": 2,
                 "role": "assistant",
                 "text": "Proces ofertowy składa się z przygotowania oferty i jej akceptacji [doc-a.pdf].",
                 "date_time": "2026-10-24T15:04:08.123456Z",
+                "prev_message": 1,
+                "generation_time": "00:00:01.42",
+                "state": {
+                    "rag_message_state": {
+                        "sse_answer": {
+                            "id": 101,
+                            "generation_time": "00:00:01.42",
+                            "rate_value": 1,
+                        },
+                        "sse_response": {
+                            "detailed_results_json": {
+                                "1": {
+                                    "document_name": "doc-a.pdf",
+                                    "page_number": 2,
+                                    "text_number": 4,
+                                    "text_str": "Fragment dokumentu ofertowego",
+                                    "score": 0.95,
+                                },
+                                "2": {
+                                    "document_name": "doc-a.pdf",
+                                    "page_number": 5,
+                                    "text_number": 11,
+                                    "text_str": "Drugi fragment dokumentu ofertowego o akceptacji",
+                                    "score": 0.82,
+                                },
+                            }
+                        },
+                    }
+                },
             },
         ],
     },
@@ -265,8 +321,18 @@ CHUNKING_DEFAULTS = {"max_tokens_in_chunk": 500, "number_of_overlap_tokens": 0}
 
 # GET embedders / rerankers: "models" (names) plus "models_info"
 EMBEDDERS_INFO = [
-    {"name": "embedder-a", "vector_size": 768, "max_model_length": 512, "device": "cuda"},
-    {"name": "embedder-b", "vector_size": 1024, "max_model_length": None, "device": "cpu"},
+    {
+        "name": "embedder-a",
+        "vector_size": 768,
+        "max_model_length": 512,
+        "device": "cuda",
+    },
+    {
+        "name": "embedder-b",
+        "vector_size": 1024,
+        "max_model_length": None,
+        "device": "cpu",
+    },
 ]
 RERANKERS_INFO = [{"name": "reranker-a", "max_model_length": 512, "device": "cuda"}]
 
@@ -405,9 +471,11 @@ def _indexing_payload(job):
         "finished": job["status"] in INDEXING_FINISHED,
         "created_on": "2026-10-16T10:00:00+02:00",
         "started_on": "2026-10-16T10:00:01+02:00" if job["steps"] else None,
-        "finished_on": "2026-10-16T10:05:00+02:00"
-        if job["status"] in INDEXING_FINISHED
-        else None,
+        "finished_on": (
+            "2026-10-16T10:05:00+02:00"
+            if job["status"] in INDEXING_FINISHED
+            else None
+        ),
     }
 
 
@@ -843,17 +911,25 @@ class MockHandler(BaseHTTPRequestHandler):
         if ep == "chats":
             query_col = query.get("collection_name")
             history = []
-            for chat_id, chat in sorted(MOCK_CHATS.items(), key=lambda x: x[0], reverse=True):
-                if query_col and chat.get("collection_name") not in (None, "", query_col):
+            for chat_id, chat in sorted(
+                MOCK_CHATS.items(), key=lambda x: x[0], reverse=True
+            ):
+                if query_col and chat.get("collection_name") not in (
+                    None,
+                    "",
+                    query_col,
+                ):
                     continue
-                history.append({
-                    "chat_id": chat_id,
-                    "collection_name": chat.get("collection_name"),
-                    "title": chat.get("title"),
-                    "created_on": chat.get("created_on"),
-                    "is_read_only": False,
-                    "chat_history": chat["messages"],
-                })
+                history.append(
+                    {
+                        "chat_id": chat_id,
+                        "collection_name": chat.get("collection_name"),
+                        "title": chat.get("title"),
+                        "created_on": chat.get("created_on"),
+                        "is_read_only": False,
+                        "chat_history": chat["messages"],
+                    }
+                )
             return self._send(_ok({"history": history}))
         return self._send(_ok({}))
 
@@ -871,7 +947,10 @@ class MockHandler(BaseHTTPRequestHandler):
                 chunking = json.loads(chunking)
             if not isinstance(chunking, dict):
                 chunking = dict(CHUNKING_DEFAULTS)
-            if chunking["max_tokens_in_chunk"] > EMBEDDERS_INFO[0]["max_model_length"]:
+            if (
+                chunking["max_tokens_in_chunk"]
+                > EMBEDDERS_INFO[0]["max_model_length"]
+            ):
                 return self._send(
                     _chunking_error("CHUNKING_TOO_LONG", body.get("lang"))
                 )
@@ -897,9 +976,7 @@ class MockHandler(BaseHTTPRequestHandler):
                 return self._send(
                     {
                         "status": False,
-                        "errors": [
-                            {"code": "NOT_FOUND", "msg": "Search not found"}
-                        ],
+                        "errors": [{"code": "NOT_FOUND", "msg": "Search not found"}],
                     }
                 )
             return self._send(_ok({"deleted": True}))
@@ -994,7 +1071,10 @@ class MockHandler(BaseHTTPRequestHandler):
                     {
                         "status": False,
                         "errors": [
-                            {"code": "DOCUMENT_NOT_FOUND", "msg": "Document not found"}
+                            {
+                                "code": "DOCUMENT_NOT_FOUND",
+                                "msg": "Document not found",
+                            }
                         ],
                     }
                 )
@@ -1073,13 +1153,45 @@ class MockHandler(BaseHTTPRequestHandler):
             }
             chat["messages"].append(user_msg)
 
-            answer_text = f"Odpowiedź na pytanie: {question} na podstawie [doc-a.pdf]."
+            answer_text = (
+                f"Odpowiedź na pytanie: {question} na podstawie [doc-a.pdf]."
+            )
             answer_id = 200 + len(chat["messages"])
+            msg_state = {
+                "rag_message_state": {
+                    "sse_answer": {
+                        "id": answer_id,
+                        "generation_time": "00:00:01.25",
+                    },
+                    "sse_response": {
+                        "detailed_results_json": {
+                            "1": {
+                                "document_name": "doc-a.pdf",
+                                "page_number": 2,
+                                "text_number": 4,
+                                "text_str": "Fragment dokumentu ofertowego",
+                                "score": 0.95,
+                            },
+                            "2": {
+                                "document_name": "doc-a.pdf",
+                                "page_number": 5,
+                                "text_number": 11,
+                                "text_str": "Drugi fragment dokumentu ofertowego o akceptacji",
+                                "score": 0.82,
+                            },
+                        }
+                    },
+                }
+            }
+            user_msg["state"] = msg_state
             asst_msg = {
                 "id": answer_id,
                 "role": "assistant",
                 "text": answer_text,
                 "date_time": "2026-11-08T19:00:03Z",
+                "prev_message": user_msg["id"],
+                "generation_time": "00:00:01.25",
+                "state": msg_state,
             }
             chat["messages"].append(asst_msg)
 
@@ -1087,29 +1199,38 @@ class MockHandler(BaseHTTPRequestHandler):
                 "generated_assistant_message": answer_text,
                 "generation_time": 1.25,
                 "history": chat["messages"],
-                "last_state": [
-                    {
-                        "rag_message_state": {
-                            "sse_answer": {"id": answer_id},
-                            "sse_response": {
-                                "detailed_results_json": {
-                                    "1": {
-                                        "document_name": "doc-a.pdf",
-                                        "page_number": 2,
-                                        "text_str": "Fragment dokumentu ofertowego",
-                                        "score": 0.95,
-                                    }
-                                }
-                            },
-                        }
-                    }
-                ],
+                "last_state": [msg_state],
             }
             return self._send(_ok(rag_response))
         if ep == "delete_chat":
-            chat_id = int(body.get("chat_id", 0))
-            MOCK_CHATS.pop(chat_id, None)
-            return self._send(_ok({"deleted": True}))
+            ids = list(body.get("chat_ids[]") or [])
+            if body.get("chat_id") is not None:
+                ids.append(body.get("chat_id"))
+            deleted_chats = 0
+            not_found = []
+            for cid in ids:
+                try:
+                    cid_int = int(cid)
+                except (TypeError, ValueError):
+                    continue
+                if MOCK_CHATS.pop(cid_int, None) is not None:
+                    deleted_chats += 1
+                else:
+                    not_found.append(cid_int)
+            return self._send(
+                _ok(
+                    {
+                        "deleted": {
+                            "chats": deleted_chats,
+                            "messages": deleted_chats * 2,
+                            "message_states": deleted_chats,
+                            "rag_states": deleted_chats,
+                            "content_supervisor_states": 0,
+                        },
+                        "not_found": {"chat_ids": not_found},
+                    }
+                )
+            )
         return self._send(_ok({}))
 
 

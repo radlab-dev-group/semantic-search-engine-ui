@@ -55,7 +55,12 @@
     </form>
   {% endif %}
 
-  <a class="kb-bar__search" href="/search{{ kb_query }}">
-    {{ t('kb.open_search') }} <span aria-hidden="true">→</span>
-  </a>
+  <div class="kb-bar__actions">
+    <a class="kb-bar__search" href="/search{{ kb_query }}">
+      {{ t('kb.open_search') }} <span aria-hidden="true">→</span>
+    </a>
+    <a class="kb-bar__chat" href="/chat{{ kb_query }}">
+      {{ t('kb.open_chat') }} <span aria-hidden="true">→</span>
+    </a>
+  </div>
 </div>

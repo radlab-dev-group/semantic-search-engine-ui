@@ -16,6 +16,10 @@
 
       <div class="btn-row">
         <a class="btn btn-primary" href="/search">{{ t('home.open_search') }} <span aria-hidden="true">→</span></a>
+        <a class="btn btn--chat" href="/chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          {{ t('home.open_chat') }} <span aria-hidden="true">→</span>
+        </a>
         <a class="btn btn--ghost" href="/collections">{{ t('home.browse_collections') }}</a>
       </div>
 
@@ -23,6 +27,7 @@
         <li><span class="chip-dot chip-dot--teal" aria-hidden="true"></span>{{ t('home.chip_dense') }}</li>
         <li><span class="chip-dot chip-dot--violet" aria-hidden="true"></span>{{ t('home.chip_rerank') }}</li>
         <li><span class="chip-dot chip-dot--pink" aria-hidden="true"></span>{{ t('home.chip_rag') }}</li>
+        <li><span class="chip-dot chip-dot--blue" aria-hidden="true"></span>{{ t('home.chip_chat') }}</li>
       </ul>
     </div>
 
@@ -122,6 +127,12 @@
       <h3>{{ t('home.feature_search') }}</h3>
       <p>{{ t('home.feature_search_text') }}</p>
       <span class="feature__link">{{ t('home.feature_search_link') }} <span aria-hidden="true">→</span></span>
+    </a>
+    <a class="feature" href="/chat">
+      <span class="feature__step">{{ t('home.step_chat') }}</span>
+      <h3>{{ t('home.feature_chat') }}</h3>
+      <p>{{ t('home.feature_chat_text') }}</p>
+      <span class="feature__link">{{ t('home.feature_chat_link') }} <span aria-hidden="true">→</span></span>
     </a>
   </section>
 {% endblock %}

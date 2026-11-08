@@ -40,7 +40,12 @@ from starlette.responses import (
 )
 
 from core import constants, i18n
-from core.answers import build_answer, extract_results, render_plain
+from core.answers import (
+    build_answer,
+    extract_results,
+    extract_state_results,
+    render_plain,
+)
 from core.api import SemanticSearchEngineAPI
 from core.markdown import render_markdown
 from core.state_store import (
@@ -217,7 +222,10 @@ def parse_chunking(value) -> dict | None:
     max_tokens = as_int(value.get(MAX_TOKENS_KEY))
     if max_tokens is None:
         return None
-    return {MAX_TOKENS_KEY: max_tokens, OVERLAP_KEY: as_int(value.get(OVERLAP_KEY)) or 0}
+    return {
+        MAX_TOKENS_KEY: max_tokens,
+        OVERLAP_KEY: as_int(value.get(OVERLAP_KEY)) or 0,
+    }
 
 
 def collection_chunking(metadata) -> dict:
@@ -256,7 +264,11 @@ def fetch_chunking_defaults(token: str) -> dict | None:
     if not isinstance(result, dict) or not result.get("status"):
         return None
     body = result.get("body") or {}
-    return parse_chunking(body.get("chunking_defaults")) if isinstance(body, dict) else None
+    return (
+        parse_chunking(body.get("chunking_defaults"))
+        if isinstance(body, dict)
+        else None
+    )
 
 
 def chunking_error(result) -> dict | None:
@@ -589,7 +601,13 @@ def fetch_manage_collection_context(token: str, collection_name: str = "") -> di
 # Preview of a whole document: the engine may return it as one text or as the
 # pieces it is built of (its pages, or the text chunks of the index).
 # --------------------------------------------------------------------------- #
-DOCUMENT_TEXT_KEYS = ("content", "text", "text_str", "page_content", "document_content")
+DOCUMENT_TEXT_KEYS = (
+    "content",
+    "text",
+    "text_str",
+    "page_content",
+    "document_content",
+)
 DOCUMENT_PIECE_LIST_KEYS = ("pages", "texts", "chunks")
 DOCUMENT_PIECE_NUMBER_KEYS = (
     "page",
@@ -953,7 +971,9 @@ def _history_results(entry: dict) -> tuple:
 
 
 def _history_answers(entry: dict) -> list:
-    return [answer for answer in entry.get("answers") or [] if isinstance(answer, dict)]
+    return [
+        answer for answer in entry.get("answers") or [] if isinstance(answer, dict)
+    ]
 
 
 def _history_generated_answer(entry: dict) -> dict | None:
@@ -991,9 +1011,7 @@ def history_row(entry) -> dict | None:
         "snippets": _size(detailed),
         "answered": answer is not None,
         "rate_value": rated.get("rate_value") if rated else None,
-        "rate_value_max": (
-            rated.get("rate_value_max") if rated else None
-        )
+        "rate_value_max": (rated.get("rate_value_max") if rated else None)
         or constants.MAX_VAL_RATING_GENERATIVE_ANSWER,
     }
 
@@ -1022,7 +1040,9 @@ def fetch_search_history(token: str, collection_name: str) -> list | None:
 def chat_history_row(entry: dict) -> dict | None:
     if not isinstance(entry, dict):
         return None
-    chat_id = entry.get("chat_id") if entry.get("chat_id") is not None else entry.get("id")
+    chat_id = (
+        entry.get("chat_id") if entry.get("chat_id") is not None else entry.get("id")
+    )
     if chat_id is None:
         return None
     history_msgs = entry.get("chat_history") or entry.get("messages") or []
@@ -1032,10 +1052,17 @@ def chat_history_row(entry: dict) -> dict | None:
     first_user_msg = ""
     for msg in history_msgs:
         if isinstance(msg, dict) and msg.get("role") == "user":
-            first_user_msg = str(msg.get("text") or msg.get("user_message") or "").strip()
+            first_user_msg = str(
+                msg.get("text") or msg.get("user_message") or ""
+            ).strip()
             break
 
-    title = str(entry.get("title") or entry.get("query") or first_user_msg or f"Czat #{chat_id}").strip()
+    title = str(
+        entry.get("title")
+        or entry.get("query")
+        or first_user_msg
+        or f"Czat #{chat_id}"
+    ).strip()
     created_raw = entry.get("created_on")
     if not created_raw and history_msgs and isinstance(history_msgs[0], dict):
         created_raw = history_msgs[0].get("date_time")
@@ -1057,7 +1084,9 @@ def chat_history_row(entry: dict) -> dict | None:
     }
 
 
-def fetch_chat_history(token: str, collection_name: str | None = None) -> list | None:
+def fetch_chat_history(
+    token: str, collection_name: str | None = None
+) -> list | None:
     """Chats of the user; ``None`` when unavailable."""
     try:
         response = sse_api_engine.list_chats(token=token)
@@ -1071,7 +1100,8 @@ def fetch_chat_history(token: str, collection_name: str | None = None) -> list |
     rows = [row for row in map(chat_history_row, raw_history) if row]
     if collection_name:
         rows = [
-            row for row in rows
+            row
+            for row in rows
             if row.get("collection_name") in (None, "", collection_name)
         ]
     # newest first: ISO timestamps sort lexicographically, ids break ties
@@ -1089,9 +1119,133 @@ def fetch_chat_by_id(token: str, chat_id: int) -> dict | None:
     body = response.get("body") if isinstance(response.get("body"), dict) else {}
     raw_history = body.get("history") or body.get("chats") or []
     for item in raw_history:
-        if isinstance(item, dict) and (item.get("chat_id") == chat_id or item.get("id") == chat_id):
+        if isinstance(item, dict) and (
+            item.get("chat_id") == chat_id or item.get("id") == chat_id
+        ):
             return chat_history_row(item)
     return None
+
+
+def _parse_generation_seconds(raw_val) -> float | None:
+    if raw_val is None or raw_val == "":
+        return None
+    if isinstance(raw_val, (int, float)):
+        return float(raw_val) if float(raw_val) > 0 else None
+    text = str(raw_val).strip()
+    if not text:
+        return None
+    try:
+        val = float(text)
+        return val if val > 0 else None
+    except ValueError:
+        pass
+    parts = text.split(":")
+    if len(parts) == 3:
+        try:
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            seconds = float(parts[2])
+            total = hours * 3600 + minutes * 60 + seconds
+            return round(total, 2) if total > 0 else None
+        except ValueError:
+            return None
+    return None
+
+
+def format_chat_history_messages(raw_messages: list) -> list[dict]:
+    """Turn serialized chat_history messages into display dicts with footnotes and sources."""
+    by_id: dict[int, dict] = {}
+    for m in raw_messages or []:
+        if isinstance(m, dict) and m.get("id") is not None:
+            try:
+                by_id[int(m["id"])] = m
+            except (TypeError, ValueError):
+                pass
+
+    messages: list[dict] = []
+    last_user_state = None
+    for m in raw_messages or []:
+        if not isinstance(m, dict):
+            continue
+        role = m.get("role", "user")
+        text = str(m.get("text") or m.get("user_message") or "")
+        date_time = format_created_on_time(m.get("date_time"))
+
+        if role == "user":
+            last_user_state = m.get("state")
+            messages.append(
+                {
+                    "id": m.get("id"),
+                    "role": role,
+                    "text": text,
+                    "html": render_plain(text),
+                    "date_time": date_time,
+                }
+            )
+        else:
+            state = m.get("state")
+            if not state and m.get("prev_message") is not None:
+                try:
+                    prev_m = by_id.get(int(m["prev_message"]))
+                    if prev_m:
+                        state = prev_m.get("state")
+                except (TypeError, ValueError):
+                    pass
+            if not state:
+                state = last_user_state
+            last_user_state = None
+
+            fragments, answer_id, _rag_ran = extract_state_results(state)
+            rag = (
+                (state or {}).get("rag_message_state")
+                if isinstance(state, dict)
+                else None
+            )
+            ans_obj = rag.get("sse_answer") if isinstance(rag, dict) else None
+            rate_value = (
+                ans_obj.get("rate_value") if isinstance(ans_obj, dict) else None
+            )
+
+            gen_time = _parse_generation_seconds(m.get("generation_time"))
+            if gen_time is None and isinstance(ans_obj, dict):
+                gen_time = _parse_generation_seconds(ans_obj.get("generation_time"))
+
+            if fragments:
+                built = build_answer(text, fragments)
+                messages.append(
+                    {
+                        "id": m.get("id"),
+                        "role": role,
+                        "text": text,
+                        "html": built["html"],
+                        "plain": built["plain"],
+                        "groups": built["groups"],
+                        "documents_used": built["documents_used"],
+                        "fragments_count": built["fragments"],
+                        "answer_id": answer_id,
+                        "rate_value": rate_value,
+                        "generation_time": gen_time,
+                        "date_time": date_time,
+                    }
+                )
+            else:
+                messages.append(
+                    {
+                        "id": m.get("id"),
+                        "role": role,
+                        "text": text,
+                        "html": render_plain(text),
+                        "plain": text,
+                        "groups": [],
+                        "documents_used": 0,
+                        "fragments_count": 0,
+                        "answer_id": answer_id,
+                        "rate_value": rate_value,
+                        "generation_time": gen_time,
+                        "date_time": date_time,
+                    }
+                )
+    return messages
 
 
 # --------------------------------------------------------------------------- #
@@ -1314,7 +1468,10 @@ def new_collection_submit(request: Request, form: FormData = Depends(parsed_form
     # defaults (app.js flags it; the values rendered with the form are the
     # fallback), otherwise the collection follows the defaults of the engine
     submitted = parse_chunking(
-        {MAX_TOKENS_KEY: form.get(MAX_TOKENS_KEY), OVERLAP_KEY: form.get(OVERLAP_KEY)}
+        {
+            MAX_TOKENS_KEY: form.get(MAX_TOKENS_KEY),
+            OVERLAP_KEY: form.get(OVERLAP_KEY),
+        }
     )
     rendered = parse_chunking(
         {
@@ -1352,9 +1509,9 @@ def new_collection_submit(request: Request, form: FormData = Depends(parsed_form
     # The engine answers with the chunking the collection was created with
     body = result.get("body") if isinstance(result.get("body"), dict) else {}
     created = dict(collection_params)
-    created["chunking"] = parse_chunking(body.get("chunking")) or collection_params.get(
-        "chunking"
-    )
+    created["chunking"] = parse_chunking(
+        body.get("chunking")
+    ) or collection_params.get("chunking")
     if "strict_chunking" in body:
         created["strict_chunking"] = bool(body.get("strict_chunking"))
 
@@ -1478,9 +1635,7 @@ def document_preview_page(request: Request):
 
 
 @app.post("/collections/manage/add-text", include_in_schema=False)
-def manage_add_text_submit(
-    request: Request, form: FormData = Depends(parsed_form)
-):
+def manage_add_text_submit(request: Request, form: FormData = Depends(parsed_form)):
     redirect = require_login(request)
     if redirect is not None:
         return redirect
@@ -1657,9 +1812,9 @@ def manage_visibility_submit(
                 {
                     "status": False,
                     "error": t("manage.visibility_error"),
-                    "errors": result.get("errors", [])
-                    if isinstance(result, dict)
-                    else [],
+                    "errors": (
+                        result.get("errors", []) if isinstance(result, dict) else []
+                    ),
                 },
                 status_code=502,
             )
@@ -1670,7 +1825,11 @@ def manage_visibility_submit(
     changed = [name for name in doc_names if name not in not_found]
     updated = body.get("updated_documents", len(changed))
     message = t.plural(
-        "manage.visibility_enabled" if use_in_search else "manage.visibility_disabled",
+        (
+            "manage.visibility_enabled"
+            if use_in_search
+            else "manage.visibility_disabled"
+        ),
         updated,
     )
 
@@ -1737,16 +1896,19 @@ def manage_delete_texts_submit(
         deleted={
             "title": t.plural("manage.deleted_texts", texts_count),
             "items": [
-                f"#{chunk_id}" for chunk_id in chunk_ids
+                f"#{chunk_id}"
+                for chunk_id in chunk_ids
                 if str(chunk_id) not in not_found
             ],
             "stats": [t.plural("manage.deleted_vectors", vectors_count)],
-            "note": t(
-                "manage.not_found",
-                ids=", ".join(f"#{chunk_id}" for chunk_id in sorted(not_found)),
-            )
-            if not_found
-            else "",
+            "note": (
+                t(
+                    "manage.not_found",
+                    ids=", ".join(f"#{chunk_id}" for chunk_id in sorted(not_found)),
+                )
+                if not_found
+                else ""
+            ),
         },
     )
 
@@ -2068,7 +2230,9 @@ def pop_pending_generation(request: Request, generation_id: str) -> dict | None:
 def search_generate(request: Request, form: FormData = Depends(parsed_form)):
     """Generative answer of an already rendered search, as HTML fragments."""
     if require_login(request) is not None:
-        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+        return JSONResponse(
+            {"status": False, "error": "unauthorized"}, status_code=401
+        )
 
     t = translator(request)
 
@@ -2112,9 +2276,7 @@ def search_generate(request: Request, form: FormData = Depends(parsed_form)):
         )
 
     qa_gen_results = result.get("body") or {}
-    set_state(
-        request, **{LAST_QUERY_RESPONSE_ID: qa_gen_results.get("response_id")}
-    )
+    set_state(request, **{LAST_QUERY_RESPONSE_ID: qa_gen_results.get("response_id")})
     return fragment(
         qa_gen_results=qa_gen_results,
         qa_gen_results_time=format_generation_time(
@@ -2159,7 +2321,9 @@ def search_history_panel(
 ):
     """History panel of a collection (HTML fragment, used when it changes)."""
     if require_login(request) is not None:
-        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+        return JSONResponse(
+            {"status": False, "error": "unauthorized"}, status_code=401
+        )
     history = fetch_search_history(get_token(request), collection_name)
     html = templates.env.get_template("partials/search_history.html").render(
         t=translator(request),
@@ -2221,7 +2385,9 @@ def search_history_entry(request: Request, query_response_id: int):
     error = None
     try:
         stats = prepare_stats_dataframe(stats_raw) if stats_raw else []
-        detailed = prepare_detailed_results_dataframe(detailed_raw) if detailed_raw else []
+        detailed = (
+            prepare_detailed_results_dataframe(detailed_raw) if detailed_raw else []
+        )
     except Exception as exc:  # noqa: BLE001
         logger.exception("Cannot prepare results dataframes of a history entry")
         stats, detailed = [], []
@@ -2295,18 +2461,9 @@ def chat_page(request: Request):
         chat_obj = fetch_chat_by_id(token, active_chat_id)
         if chat_obj:
             active_chat_title = chat_obj["title"]
-            for m in chat_obj.get("chat_history", []):
-                if isinstance(m, dict):
-                    role = m.get("role", "user")
-                    text = m.get("text") or m.get("user_message") or ""
-                    html_content = render_plain(text)
-                    active_chat_messages.append({
-                        "id": m.get("id"),
-                        "role": role,
-                        "text": text,
-                        "html": html_content,
-                        "date_time": format_created_on_time(m.get("date_time")),
-                    })
+            active_chat_messages = format_chat_history_messages(
+                chat_obj.get("chat_history", [])
+            )
 
     chat_history = fetch_chat_history(token, collection_name)
 
@@ -2339,7 +2496,10 @@ def conversational_search_redirect(request: Request):
 
 @app.get("/chat/history", include_in_schema=False)
 def chat_history_panel(
-    request: Request, collection_name: str = "", collection_label: str = ""
+    request: Request,
+    collection_name: str = "",
+    collection_label: str = "",
+    active_chat_id: str = "",
 ):
     """Panel of the chats for the chosen collection, reloaded by JS."""
     redirect = require_login(request)
@@ -2360,6 +2520,7 @@ def chat_history_panel(
             "selected_collection": collection_name,
             "selected_collection_label": collection_label or collection_name,
             "chat_history_open": bool(history),
+            "active_chat_id": as_int(active_chat_id),
         },
     )
 
@@ -2368,41 +2529,35 @@ def chat_history_panel(
 def chat_messages_json(request: Request, chat_id: int):
     redirect = require_login(request)
     if redirect is not None:
-        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+        return JSONResponse(
+            {"status": False, "error": "unauthorized"}, status_code=401
+        )
 
     token = get_token(request)
     chat_obj = fetch_chat_by_id(token, chat_id)
     if not chat_obj:
         return JSONResponse({"status": False, "error": "not_found"}, status_code=404)
 
-    messages = []
-    for m in chat_obj.get("chat_history", []):
-        if isinstance(m, dict):
-            role = m.get("role", "user")
-            text = m.get("text") or m.get("user_message") or ""
-            html_content = render_plain(text)
-            messages.append({
-                "id": m.get("id"),
-                "role": role,
-                "text": text,
-                "html": html_content,
-                "date_time": format_created_on_time(m.get("date_time")),
-            })
+    messages = format_chat_history_messages(chat_obj.get("chat_history", []))
 
-    return JSONResponse({
-        "status": True,
-        "chat_id": chat_id,
-        "title": chat_obj["title"],
-        "messages": messages,
-        "collection_name": chat_obj.get("collection_name"),
-    })
+    return JSONResponse(
+        {
+            "status": True,
+            "chat_id": chat_id,
+            "title": chat_obj["title"],
+            "messages": messages,
+            "collection_name": chat_obj.get("collection_name"),
+        }
+    )
 
 
 @app.post("/chat/ask", include_in_schema=False)
 async def chat_ask(request: Request):
     redirect = require_login(request)
     if redirect is not None:
-        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+        return JSONResponse(
+            {"status": False, "error": "unauthorized"}, status_code=401
+        )
 
     token = get_token(request)
     content_type = request.headers.get("content-type", "")
@@ -2410,11 +2565,15 @@ async def chat_ask(request: Request):
     if "application/json" in content_type:
         body_json = await request.json()
         question = str(body_json.get("question") or "").strip()
-        active_chat_id = as_int(body_json.get("active_chat_id") or body_json.get("chat_id"))
+        active_chat_id = as_int(
+            body_json.get("active_chat_id") or body_json.get("chat_id")
+        )
         collection_name = str(body_json.get("collection_name") or "").strip()
         prompt = str(body_json.get("prompt") or "").strip()
         search_options = body_json.get("search_options") or {}
-        answer_options = body_json.get("options") or body_json.get("answer_options") or {}
+        answer_options = (
+            body_json.get("options") or body_json.get("answer_options") or {}
+        )
     else:
         form = await request.form()
         question = str(form.get("question") or "").strip()
@@ -2427,7 +2586,9 @@ async def chat_ask(request: Request):
         remember_search_params(request, form)
 
     if not question:
-        return JSONResponse({"status": False, "error": "empty_question"}, status_code=400)
+        return JSONResponse(
+            {"status": False, "error": "empty_question"}, status_code=400
+        )
 
     # Ensure a valid generative_model is set if none was selected
     if not answer_options.get("generative_model"):
@@ -2480,15 +2641,31 @@ async def chat_ask(request: Request):
             )
         except Exception as exc:
             logger.exception("Failed to create new chat")
-            return JSONResponse({"status": False, "error": str(exc)}, status_code=502)
+            return JSONResponse(
+                {"status": False, "error": str(exc)}, status_code=502
+            )
 
         if not isinstance(new_chat_res, dict) or new_chat_res.get("status") is False:
-            errors = new_chat_res.get("errors", []) if isinstance(new_chat_res, dict) else []
-            err_msg = errors[0].get("message") if errors and isinstance(errors[0], dict) else "Failed to start chat"
+            errors = (
+                new_chat_res.get("errors", [])
+                if isinstance(new_chat_res, dict)
+                else []
+            )
+            err_msg = (
+                errors[0].get("message")
+                if errors and isinstance(errors[0], dict)
+                else "Failed to start chat"
+            )
             return JSONResponse({"status": False, "error": err_msg}, status_code=502)
 
-        body = new_chat_res.get("body") if isinstance(new_chat_res.get("body"), dict) else {}
-        chat_id = body.get("chat", {}).get("id") or body.get("chat_id") or body.get("id")
+        body = (
+            new_chat_res.get("body")
+            if isinstance(new_chat_res.get("body"), dict)
+            else {}
+        )
+        chat_id = (
+            body.get("chat", {}).get("id") or body.get("chat_id") or body.get("id")
+        )
         if not chat_id:
             chat_id = 1
 
@@ -2509,7 +2686,11 @@ async def chat_ask(request: Request):
 
     if not isinstance(msg_res, dict) or msg_res.get("status") is False:
         errors = msg_res.get("errors", []) if isinstance(msg_res, dict) else []
-        err_msg = errors[0].get("message") if errors and isinstance(errors[0], dict) else "Failed to get answer"
+        err_msg = (
+            errors[0].get("message")
+            if errors and isinstance(errors[0], dict)
+            else "Failed to get answer"
+        )
         return JSONResponse({"status": False, "error": err_msg}, status_code=502)
 
     msg_body = msg_res.get("body") if isinstance(msg_res.get("body"), dict) else {}
@@ -2517,32 +2698,40 @@ async def chat_ask(request: Request):
     assistant_text = str(
         msg_body.get("generated_assistant_message")
         or msg_body.get("assistant_message")
-        or (msg_body.get("history", [])[-1].get("text") if msg_body.get("history") else "")
+        or (
+            msg_body.get("history", [])[-1].get("text")
+            if msg_body.get("history")
+            else ""
+        )
         or ""
     )
 
     built = build_answer(assistant_text, fragments)
 
-    return JSONResponse({
-        "status": True,
-        "chat_id": int(chat_id),
-        "answer_id": answer_id,
-        "assistant_message": assistant_text,
-        "html": built["html"],
-        "plain": built["plain"],
-        "groups": built["groups"],
-        "documents_used": built["documents_used"],
-        "fragments_count": built["fragments"],
-        "generation_time": msg_body.get("generation_time"),
-        "title": question[:80],
-    })
+    return JSONResponse(
+        {
+            "status": True,
+            "chat_id": int(chat_id),
+            "answer_id": answer_id,
+            "assistant_message": assistant_text,
+            "html": built["html"],
+            "plain": built["plain"],
+            "groups": built["groups"],
+            "documents_used": built["documents_used"],
+            "fragments_count": built["fragments"],
+            "generation_time": msg_body.get("generation_time"),
+            "title": question[:80],
+        }
+    )
 
 
 @app.post("/chat/delete", include_in_schema=False)
 async def chat_delete(request: Request):
     redirect = require_login(request)
     if redirect is not None:
-        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+        return JSONResponse(
+            {"status": False, "error": "unauthorized"}, status_code=401
+        )
 
     token = get_token(request)
     chat_id = None
@@ -2555,13 +2744,29 @@ async def chat_delete(request: Request):
         chat_id = as_int(form.get("chat_id") or form.get("id"))
 
     if not chat_id:
-        return JSONResponse({"status": False, "error": "missing_chat_id"}, status_code=400)
+        return JSONResponse(
+            {"status": False, "error": "missing_chat_id"}, status_code=400
+        )
 
     try:
-        del_res = sse_api_engine.delete_chat(token=token, chat_id=chat_id, lang=get_language(request))
+        del_res = sse_api_engine.delete_chat(
+            token=token, chat_id=chat_id, lang=get_language(request)
+        )
     except Exception as exc:
         logger.exception("Failed to delete chat")
         return JSONResponse({"status": False, "error": str(exc)}, status_code=502)
+
+    if not isinstance(del_res, dict) or del_res.get("status") is False:
+        errors = del_res.get("errors", []) if isinstance(del_res, dict) else []
+        err_msg = (
+            errors[0].get("message") or errors[0].get("msg")
+            if errors and isinstance(errors[0], dict)
+            else "Failed to delete chat"
+        )
+        return JSONResponse(
+            {"status": False, "error": err_msg, "result": del_res},
+            status_code=502,
+        )
 
     return JSONResponse({"status": True, "chat_id": chat_id, "result": del_res})
 
@@ -2570,7 +2775,9 @@ async def chat_delete(request: Request):
 async def chat_rate(request: Request):
     redirect = require_login(request)
     if redirect is not None:
-        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+        return JSONResponse(
+            {"status": False, "error": "unauthorized"}, status_code=401
+        )
 
     token = get_token(request)
     content_type = request.headers.get("content-type", "")
@@ -2578,17 +2785,23 @@ async def chat_rate(request: Request):
         body = await request.json()
         answer_id = as_int(body.get("answer_id") or body.get("response_id"))
         rate_value = as_int(body.get("rate_value"))
-        rate_value_max = as_int(body.get("rate_value_max") or constants.MAX_VAL_RATING_GENERATIVE_ANSWER)
+        rate_value_max = as_int(
+            body.get("rate_value_max") or constants.MAX_VAL_RATING_GENERATIVE_ANSWER
+        )
         rate_comment = str(body.get("rate_comment") or "").strip()
     else:
         form = await request.form()
         answer_id = as_int(form.get("answer_id") or form.get("response_id"))
         rate_value = as_int(form.get("rate_value"))
-        rate_value_max = as_int(form.get("rate_value_max") or constants.MAX_VAL_RATING_GENERATIVE_ANSWER)
+        rate_value_max = as_int(
+            form.get("rate_value_max") or constants.MAX_VAL_RATING_GENERATIVE_ANSWER
+        )
         rate_comment = str(form.get("rate_comment") or "").strip()
 
     if not answer_id or rate_value is None:
-        return JSONResponse({"status": False, "error": "invalid_parameters"}, status_code=400)
+        return JSONResponse(
+            {"status": False, "error": "invalid_parameters"}, status_code=400
+        )
 
     try:
         res = sse_api_engine.set_rating_for_generative_answer(

@@ -52,7 +52,14 @@ def _flatten(tree: dict, prefix: str = "") -> dict:
 
 
 def _is_plural(value: dict) -> bool:
-    return bool(value) and set(value) <= {"zero", "one", "two", "few", "many", "other"}
+    return bool(value) and set(value) <= {
+        "zero",
+        "one",
+        "two",
+        "few",
+        "many",
+        "other",
+    }
 
 
 @lru_cache(maxsize=None)
@@ -160,5 +167,5 @@ class Translator:
         for code in (FALLBACK_LANGUAGE, DEFAULT_LANGUAGE, self.lang):
             for key, value in catalog(code).items():
                 if key.startswith(f"{prefix}."):
-                    merged[key[len(prefix) + 1:]] = value
+                    merged[key[len(prefix) + 1 :]] = value
         return merged
