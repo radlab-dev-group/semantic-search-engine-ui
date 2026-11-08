@@ -1,9 +1,10 @@
-"""Konfiguracja frontendu.
+"""Frontend configuration.
 
-Plik JSON zgodny z `ui-configuration.json` obecnego UI RadLab (sekcja `api_hosts`),
-rozszerzony o sekcje `auth`, `ui`, `timeouts`, `defaults`, `formats` i `features`.
-Ścieżka pliku: zmienna `UI_CONFIG` (domyślnie `configs/ui-configuration.json`).
-Zmienne środowiskowe nadpisują wybrane pola, żeby RadLab mógł wdrożyć obraz bez edycji pliku.
+The JSON file is compatible with the current RadLab UI `ui-configuration.json`
+(the `api_hosts` section) and adds the `auth`, `ui`, `timeouts`, `defaults`,
+`formats` and `features` sections.
+File path: the `UI_CONFIG` environment variable (defaults to `configs/ui-configuration.json`).
+Environment variables override selected fields so RadLab can deploy the image without editing the file.
 """
 
 from __future__ import annotations
@@ -58,7 +59,7 @@ class Settings:
         return next((f for f in self.formats if f["id"] == self.default_format), self.formats[0])
 
     def public(self, lang: str) -> dict[str, Any]:
-        """Część konfiguracji widoczna w przeglądarce (bez adresów i sekretów)."""
+        """Part of the configuration visible in the browser (no hosts or secrets)."""
         return {
             "lang": lang,
             "languages": self.languages,
@@ -81,7 +82,7 @@ class Settings:
 
 def _localized(value: Any, lang: str, fallback: str) -> str:
     if isinstance(value, dict):
-        return value.get(lang) or value.get("pl") or next(iter(value.values()), fallback)
+        return value.get(lang) or value.get("en") or next(iter(value.values()), fallback)
     return value or fallback
 
 
@@ -108,12 +109,12 @@ def load_settings(path: str | os.PathLike | None = None) -> Settings:
     defaults = raw.get("defaults", {})
     formats = raw.get("formats") or []
     if not formats:
-        raise ValueError("Konfiguracja musi zawierać co najmniej jeden format w sekcji 'formats'")
+        raise ValueError("Configuration must contain at least one format in the 'formats' section")
 
     secret = os.environ.get("SESSION_SECRET") or os.environ.get("UI_SECRET_KEY") or raw.get("session_secret") or ""
     if not secret:
         secret = secrets.token_urlsafe(32)
-        warnings.append("Brak SESSION_SECRET – wygenerowano losowy; sesje znikną po restarcie.")
+        warnings.append("SESSION_SECRET not set – generated a random one; sessions will be lost on restart.")
 
     return Settings(
         raw=raw,

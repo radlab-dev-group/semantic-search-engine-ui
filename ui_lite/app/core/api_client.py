@@ -1,8 +1,8 @@
-"""Klient API backendu semantic-search-engine.
+"""Client for the semantic-search-engine backend API.
 
-Wszystkie wywołania idą z serwera frontendu: backend nie ma CORS, a token zostaje po stronie serwera.
-Klient rozpakowuje envelope `{status, body}` i zamienia błędy na `ApiError` z rodzajem,
-który interfejs umie pokazać pracownikowi (sesja, brak dostępu, czas, niedostępność).
+All calls go out from the frontend server: the backend has no CORS, and the token stays on the
+server side. The client unpacks the `{status, body}` envelope and turns errors into `ApiError`
+with a kind that the interface can show the employee (session, no access, timeout, unavailable).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ log = logging.getLogger("ui.api")
 
 
 class ApiError(Exception):
-    """Błąd wywołania backendu.
+    """Backend call error.
 
     kind: auth | forbidden | timeout | unavailable | not_found | backend
     """
@@ -57,7 +57,7 @@ class ApiClient:
         json: dict[str, Any] | None = None,
         timeout: float | None = None,
     ) -> Any:
-        """Wywołuje endpoint (nazwa z sekcji `ep` konfiguracji) i zwraca `body`."""
+        """Calls an endpoint (name from the `ep` section of the configuration) and returns `body`."""
         path = self.settings.ep(endpoint)
         headers = {"Authorization": f"Token {token}"} if token else {}
         if method == "GET":
@@ -102,7 +102,7 @@ class ApiClient:
                 return payload.get("body")
             code, message = _first_error(payload)
             raise ApiError("backend", response.status_code, code, message)
-        # Endpointy bez envelope (lokalny `login` zwraca {"token": "..."}).
+        # Endpoints without an envelope (local `login` returns {"token": "..."}).
         return payload
 
 
@@ -111,7 +111,7 @@ def _first_error(payload: Any) -> tuple[str, str]:
         errors = payload.get("errors") or []
         if isinstance(errors, list) and errors and isinstance(errors[0], dict):
             first = errors[0]
-            # Backend: {"error_code": "e__data_502", "message": "<tekst w języku lang>"}
+        # Backend: {"error_code": "e__data_502", "message": "<text in the lang language>"}
             code = first.get("error_code") or first.get("code") or ""
             return str(code), str(first.get("message") or first.get("msg") or "")
         if "detail" in payload:

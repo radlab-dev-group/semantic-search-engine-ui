@@ -1,9 +1,9 @@
-"""Zamiana odpowiedzi `add_user_message` na odpowiedź do wyświetlenia.
+"""Turns the `add_user_message` response into a display answer.
 
-Przypisy przybliżone (do czasu CR-01): model dostaje polecenie, żeby po zdaniu podawał w nawiasie
-kwadratowym nazwę dokumentu (`citation_instruction` w konfiguracji). Tu dopasowujemy te nazwy
-do `detailed_results_json`, numerujemy dokumenty w kolejności pierwszego cytowania i jako stronę
-przypisu bierzemy najlepiej ocenioną stronę fragmentu z tego dokumentu.
+Approximate footnotes (until CR-01): the model receives an instruction to put the document name in
+square brackets after a sentence (`citation_instruction` in the configuration). Here we match those
+names against `detailed_results_json`, number the documents in order of first citation, and use the
+highest-scoring page of a fragment from that document as the footnote page.
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ def _norm(text: str) -> str:
 
 
 def extract_results(add_message_body: dict[str, Any]) -> tuple[list[Fragment], int | None, bool]:
-    """Fragmenty, `sse_answer.id` (do oceny) i informacja, czy RAG w ogóle zadziałał."""
+    """Fragments, `sse_answer.id` (for rating) and whether RAG ran at all."""
     states = add_message_body.get("last_state") or []
     state = states[0] if isinstance(states, list) and states else {}
     rag = (state or {}).get("rag_message_state") or None
@@ -86,7 +86,7 @@ def extract_results(add_message_body: dict[str, Any]) -> tuple[list[Fragment], i
         return [], None, False
     response = rag.get("sse_response") or {}
     detailed = response.get("detailed_results_json") or {}
-    # Backend zapisuje słownik {indeks: wynik}; po JSON klucze są tekstem. Obsługujemy też listę.
+    # The backend stores a dict {index: result}; after JSON the keys are strings. We also support a list.
     items = list(detailed.values()) if isinstance(detailed, dict) else list(detailed or [])
     fragments = []
     for item in items:
@@ -125,7 +125,7 @@ def _match(candidate: str, names: list[str]) -> str | None:
 
 
 def build_answer(text: str, fragments: list[Fragment]) -> dict[str, Any]:
-    """Tekst odpowiedzi + fragmenty → HTML z przypisami, grupy źródeł, tekst do schowka."""
+    """Answer text + fragments → HTML with footnotes, source groups, text for the clipboard."""
     by_doc: dict[str, list[Fragment]] = {}
     for f in sorted(fragments, key=lambda x: x.score, reverse=True):
         by_doc.setdefault(f.document_name, []).append(f)
@@ -139,7 +139,7 @@ def build_answer(text: str, fragments: list[Fragment]) -> dict[str, Any]:
         return order.index(name) + 1
 
     def replace(m: re.Match[str]) -> str:
-        # Jeden nawias może zawierać kilka nazw rozdzielonych średnikiem.
+        # One bracket may contain several names separated by semicolons.
         parts = [p for p in re.split(r";|\]\s*\[", m.group(1)) if p.strip()]
         found = [_match(p, names) for p in parts]
         if not any(found):
@@ -148,7 +148,7 @@ def build_answer(text: str, fragments: list[Fragment]) -> dict[str, Any]:
         return "".join(PLACEHOLDER.format(n) for n in nums)
 
     cited = CITATION_RE.sub(replace, text or "")
-    # Dokumenty niezacytowane w tekście dostają kolejne numery według trafności.
+    # Documents not cited in the text get the next numbers in relevance order.
     for name in names:
         number_for(name)
     groups = [SourceGroup(n=order.index(name) + 1, name=name, fragments=by_doc[name]) for name in order]
@@ -176,5 +176,5 @@ def build_answer(text: str, fragments: list[Fragment]) -> dict[str, Any]:
 
 
 def render_plain(text: str) -> str:
-    """Odpowiedź bez źródeł albo wiadomość z historii: sam Markdown, bez przypisów."""
+    """An answer without sources or a message from history: plain Markdown, no footnotes."""
     return _md.render(text or "")

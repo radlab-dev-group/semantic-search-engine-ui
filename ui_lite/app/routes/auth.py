@@ -1,4 +1,4 @@
-"""Logowanie lokalne (`POST login`) i przez SSO Keycloak/OAuth (`login_url`, `login` z kodem, `logout`)."""
+"""Local login (`POST login`) and SSO via Keycloak/OAuth (`login_url`, `login` with a code, `logout`)."""
 
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ async def login_sso(request: Request):
 
 @router.get("/login/callback")
 async def login_callback(request: Request, code: str = "", state: str = "", session_state: str = ""):
-    """Adres powrotu z Keycloak – RadLab ustawia go jako redirect URI klienta SSO."""
+    """Return address from Keycloak – RadLab sets it as the SSO client redirect URI."""
     if not code or not state:
         return RedirectResponse("/login?error=sso", status_code=303)
     payload = {"code": code, "state": state}

@@ -1,10 +1,11 @@
-"""Pamięć serwera frontendu na dane, których backend nie zwraca w historii.
+"""Frontend-server memory for data the backend does not return in history.
 
-- źródła i przypisy odpowiedzi (do CR-04),
-- baza wiedzy i zakres dokumentów rozmowy (do CR-05 i CR-18).
+- answer sources and footnotes (until CR-04),
+- the knowledge base and document scope of a conversation (until CR-05 and CR-18).
 
-Domyślnie w pamięci procesu z czasem życia sesji. Przy kilku procesach frontendu trzeba podmienić
-implementację na współdzieloną (np. Redis) – interfejs `SessionStore` jest do tego przygotowany.
+By default this is in-process memory with the lifetime of a session. With several frontend processes
+the implementation must be replaced by a shared one (e.g. Redis) – the `SessionStore` interface is
+ready for that.
 """
 
 from __future__ import annotations
