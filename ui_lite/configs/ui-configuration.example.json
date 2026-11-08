@@ -1,0 +1,97 @@
+{
+  "api_hosts": {
+    "semantic_search_engine": {
+      "host": "http://192.168.100.70:8271",
+      "prefix": "api",
+      "verify_tls": true,
+      "ep": {
+        "login": "login",
+        "logout": "logout",
+        "login_url": "login_url",
+        "refresh_token": "refresh_token",
+        "collections": "collections",
+        "documents": "documents",
+        "document_content": "document_content",
+        "generative_models": "generative_models",
+        "new_chat": "new_chat",
+        "add_user_message": "add_user_message",
+        "chats": "chats",
+        "rate_generative_answer": "rate_generative_answer",
+        "healthz": "healthz"
+      }
+    }
+  },
+  "auth": {
+    "mode": "local",
+    "sso_button": false
+  },
+  "ui": {
+    "default_language": "pl",
+    "languages": ["pl", "en"],
+    "brand": "radlab.dev",
+    "history_limit": 50
+  },
+  "timeouts": {
+    "default_s": 30,
+    "add_user_message_s": 150
+  },
+  "defaults": {
+    "options": {
+      "generative_model": "",
+      "percentage_rank_mass": 100,
+      "use_doc_names_in_response": true,
+      "use_rag_supervisor": true,
+      "user_msg_is_rag_question": true,
+      "use_content_supervisor": false,
+      "use_intelligent_query_rewrite": false,
+      "translate_answer": false,
+      "top_k": 50,
+      "top_p": 0.95,
+      "temperature": 0.65,
+      "typical_p": 1.0,
+      "repetition_penalty": 1.1
+    },
+    "search_options": {
+      "max_results": 8,
+      "hybrid_search": true,
+      "rerank_results": false,
+      "min_similarity": 0.5
+    },
+    "document_preview_pages": 3
+  },
+  "citation_instruction": "Po każdym zdaniu opartym na dokumentach podaj w nawiasie kwadratowym pełną nazwę dokumentu, z którego pochodzi informacja, np. [Raport roczny 2025.pdf]. Cytuj tylko dokumenty z kontekstu. Nie podawaj numerów stron.",
+  "default_format": "punkty",
+  "formats": [
+    {
+      "id": "zwiezle",
+      "label": {"pl": "Zwięźle", "en": "Brief"},
+      "description": {"pl": "2–4 zdania, najważniejsze na początku", "en": "2–4 sentences, key point first"},
+      "max_new_tokens": 300,
+      "system_prompt": "Odpowiedz zwięźle, w 2–4 zdaniach. Zacznij od najważniejszej informacji."
+    },
+    {
+      "id": "punkty",
+      "label": {"pl": "W punktach", "en": "Bullet points"},
+      "description": {"pl": "Lista najważniejszych informacji", "en": "List of key points"},
+      "max_new_tokens": 700,
+      "system_prompt": "Odpowiedz w formie listy 3–7 punktów w Markdown. Każdy punkt zaczyna się od pogrubionego hasła."
+    },
+    {
+      "id": "szczegolowo",
+      "label": {"pl": "Szczegółowo", "en": "Detailed"},
+      "description": {"pl": "Podsumowanie, sekcje, wnioski i zastrzeżenia", "en": "Summary, sections, conclusions, caveats"},
+      "max_new_tokens": 1500,
+      "system_prompt": "Odpowiedz wyczerpująco w Markdown: zacznij od 2-zdaniowego podsumowania, potem sekcje z nagłówkami (###), na końcu wnioski i informacje, których nie znaleziono w dokumentach."
+    },
+    {
+      "id": "tabela",
+      "label": {"pl": "Tabela", "en": "Table"},
+      "description": {"pl": "Zestawienie w kolumnach – do porównań", "en": "Columns – for comparisons"},
+      "max_new_tokens": 900,
+      "system_prompt": "Odpowiedz w formie tabeli Markdown. Ostatnia kolumna to źródło w nawiasie kwadratowym. Pod tabelą jedno zdanie podsumowania."
+    }
+  ],
+  "features": {
+    "chat_sections": false
+  }
+}

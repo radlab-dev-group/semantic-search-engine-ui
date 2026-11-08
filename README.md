@@ -12,7 +12,7 @@ hybrid search, generative question answering (RAG) with user rating, and search 
 ### Installation and Launch
 
 ```bash
-cd fastapi_ui
+cd ui_admin
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 bash run.sh                     # launches on http://localhost:8000
@@ -21,7 +21,7 @@ bash run.sh                     # launches on http://localhost:8000
 Alternatively, you can launch the application directly with Uvicorn:
 
 ```bash
-cd fastapi_ui
+cd ui_admin
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
@@ -70,9 +70,9 @@ file keeps working.
 Smoke tests run against a local mock backend (`tests/mock_sse_backend.py`) and validate all views, authentication, search flows, and localization:
 
 ```bash
-cd fastapi_ui
+cd ui_admin
 .venv/bin/pip install httpx
 .venv/bin/python tests/smoke_test.py
 ```
 
-For more details on application architecture, endpoints, and components, see [`fastapi_ui/README.md`](fastapi_ui/README.md).
+For more details on application architecture, endpoints, and components, see [`ui_admin/README.md`](ui_admin/README.md).
