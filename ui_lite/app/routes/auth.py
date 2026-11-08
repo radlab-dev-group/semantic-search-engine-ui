@@ -13,15 +13,26 @@ from app.routes.common import lang_of, templates
 router = APIRouter()
 
 
-def _start_session(request: Request, token: str, user: str, refresh: str | None = None) -> None:
+def _start_session(
+    request: Request, token: str, user: str, refresh: str | None = None
+) -> None:
     lang = lang_of(request)
     request.session.clear()
-    request.session.update({"token": token, "user": user, "sid": secrets.token_urlsafe(16), "lang": lang})
+    request.session.update(
+        {
+            "token": token,
+            "user": user,
+            "sid": secrets.token_urlsafe(16),
+            "lang": lang,
+        }
+    )
     if refresh:
         request.session["refresh_token"] = refresh
 
 
-def _login_page(request: Request, error: str = "", status: int = 200) -> HTMLResponse:
+def _login_page(
+    request: Request, error: str = "", status: int = 200
+) -> HTMLResponse:
     s = request.app.state.settings
     lang = lang_of(request)
     return templates.TemplateResponse(
@@ -50,17 +61,30 @@ async def login_form(request: Request, error: str = "") -> HTMLResponse:
 
 
 @router.post("/login")
-async def login_local(request: Request, username: str = Form(""), password: str = Form("")):
+async def login_local(
+    request: Request, username: str = Form(""), password: str = Form("")
+):
     i18n, lang = request.app.state.i18n, lang_of(request)
     if not username.strip() or not password:
         return _login_page(request, i18n.t(lang, "login.error.empty"), 400)
     try:
         body = await request.app.state.api.call(
-            "POST", "login", lang=lang, json={"username": username.strip(), "password": password}
+            "POST",
+            "login",
+            lang=lang,
+            json={"username": username.strip(), "password": password},
         )
     except ApiError as exc:
-        key = "unavailable" if exc.kind in {"unavailable", "timeout"} else "credentials"
-        return _login_page(request, i18n.t(lang, f"login.error.{key}"), 401 if key == "credentials" else 503)
+        key = (
+            "unavailable"
+            if exc.kind in {"unavailable", "timeout"}
+            else "credentials"
+        )
+        return _login_page(
+            request,
+            i18n.t(lang, f"login.error.{key}"),
+            401 if key == "credentials" else 503,
+        )
     token = (body or {}).get("token") if isinstance(body, dict) else None
     if not token:
         return _login_page(request, i18n.t(lang, "login.error.credentials"), 401)
@@ -71,7 +95,9 @@ async def login_local(request: Request, username: str = Form(""), password: str 
 @router.get("/login/sso")
 async def login_sso(request: Request):
     try:
-        body = await request.app.state.api.call("POST", "login_url", lang=lang_of(request), json={})
+        body = await request.app.state.api.call(
+            "POST", "login_url", lang=lang_of(request), json={}
+        )
     except ApiError:
         return RedirectResponse("/login?error=unavailable", status_code=303)
     url = (body or {}).get("login_url") if isinstance(body, dict) else None
@@ -81,7 +107,9 @@ async def login_sso(request: Request):
 
 
 @router.get("/login/callback")
-async def login_callback(request: Request, code: str = "", state: str = "", session_state: str = ""):
+async def login_callback(
+    request: Request, code: str = "", state: str = "", session_state: str = ""
+):
     """Return address from Keycloak – RadLab sets it as the SSO client redirect URI."""
     if not code or not state:
         return RedirectResponse("/login?error=sso", status_code=303)
@@ -89,13 +117,20 @@ async def login_callback(request: Request, code: str = "", state: str = "", sess
     if session_state:
         payload["session_state"] = session_state
     try:
-        body = await request.app.state.api.call("POST", "login", lang=lang_of(request), json=payload)
+        body = await request.app.state.api.call(
+            "POST", "login", lang=lang_of(request), json=payload
+        )
     except ApiError:
         return RedirectResponse("/login?error=sso", status_code=303)
     body = body if isinstance(body, dict) else {}
     if not body.get("token"):
         return RedirectResponse("/login?error=sso", status_code=303)
-    _start_session(request, str(body["token"]), str(body.get("username") or ""), body.get("refresh_token"))
+    _start_session(
+        request,
+        str(body["token"]),
+        str(body.get("username") or ""),
+        body.get("refresh_token"),
+    )
     return RedirectResponse("/", status_code=303)
 
 
@@ -104,7 +139,9 @@ async def logout(request: Request):
     token = request.session.get("token")
     if token and request.session.get("refresh_token"):
         try:
-            await request.app.state.api.call("POST", "logout", token=token, lang=lang_of(request), json={})
+            await request.app.state.api.call(
+                "POST", "logout", token=token, lang=lang_of(request), json={}
+            )
         except ApiError:
             pass
     sid = request.session.get("sid")
@@ -119,4 +156,7 @@ async def logout(request: Request):
 @router.get("/lang/{code}")
 async def set_language(request: Request, code: str, next: str = "/"):
     request.session["lang"] = request.app.state.i18n.pick(code)
-    return RedirectResponse(next if next.startswith("/") and not next.startswith("//") else "/", status_code=303)
+    return RedirectResponse(
+        next if next.startswith("/") and not next.startswith("//") else "/",
+        status_code=303,
+    )

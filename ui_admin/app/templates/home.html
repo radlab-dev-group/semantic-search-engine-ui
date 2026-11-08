@@ -16,6 +16,10 @@
 
       <div class="btn-row">
         <a class="btn btn-primary" href="/search">{{ t('home.open_search') }} <span aria-hidden="true">→</span></a>
+        <a class="btn btn--chat" href="/chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          {{ t('home.open_chat') }} <span aria-hidden="true">→</span>
+        </a>
         <a class="btn btn--ghost" href="/collections">{{ t('home.browse_collections') }}</a>
       </div>
 
@@ -23,6 +27,7 @@
         <li><span class="chip-dot chip-dot--teal" aria-hidden="true"></span>{{ t('home.chip_dense') }}</li>
         <li><span class="chip-dot chip-dot--violet" aria-hidden="true"></span>{{ t('home.chip_rerank') }}</li>
         <li><span class="chip-dot chip-dot--pink" aria-hidden="true"></span>{{ t('home.chip_rag') }}</li>
+        <li><span class="chip-dot chip-dot--blue" aria-hidden="true"></span>{{ t('home.chip_chat') }}</li>
       </ul>
     </div>
 
@@ -105,23 +110,49 @@
   </section>
 
   <section class="feature-grid" aria-label="{{ t('home.workspace') }}">
-    <a class="feature" href="/collections">
-      <span class="feature__step">{{ t('home.step_setup') }}</span>
+    <a class="feature feature--teal" href="/collections">
+      <div class="feature__top">
+        <span class="feature__icon feature__icon--teal" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg>
+        </span>
+        <span class="feature__step">{{ t('home.step_setup') }}</span>
+      </div>
       <h3>{{ t('home.feature_collection') }}</h3>
       <p>{{ t('home.feature_collection_text') }}</p>
       <span class="feature__link">{{ t('home.feature_collection_link') }} <span aria-hidden="true">→</span></span>
     </a>
-    <a class="feature" href="/documents/upload">
-      <span class="feature__step">{{ t('home.step_index') }}</span>
+    <a class="feature feature--blue" href="/documents/upload">
+      <div class="feature__top">
+        <span class="feature__icon feature__icon--blue" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M12 17v-6M9.5 13.5 12 11l2.5 2.5"/></svg>
+        </span>
+        <span class="feature__step">{{ t('home.step_index') }}</span>
+      </div>
       <h3>{{ t('home.feature_upload') }}</h3>
       <p>{{ t('home.feature_upload_text') }}</p>
       <span class="feature__link">{{ t('home.feature_upload_link') }} <span aria-hidden="true">→</span></span>
     </a>
-    <a class="feature" href="/search">
-      <span class="feature__step">{{ t('home.step_discover') }}</span>
+    <a class="feature feature--violet" href="/search">
+      <div class="feature__top">
+        <span class="feature__icon feature__icon--violet" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
+        </span>
+        <span class="feature__step">{{ t('home.step_discover') }}</span>
+      </div>
       <h3>{{ t('home.feature_search') }}</h3>
       <p>{{ t('home.feature_search_text') }}</p>
       <span class="feature__link">{{ t('home.feature_search_link') }} <span aria-hidden="true">→</span></span>
+    </a>
+    <a class="feature feature--pink" href="/chat">
+      <div class="feature__top">
+        <span class="feature__icon feature__icon--pink" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>
+        </span>
+        <span class="feature__step">{{ t('home.step_chat') }}</span>
+      </div>
+      <h3>{{ t('home.feature_chat') }}</h3>
+      <p>{{ t('home.feature_chat_text') }}</p>
+      <span class="feature__link">{{ t('home.feature_chat_link') }} <span aria-hidden="true">→</span></span>
     </a>
   </section>
 {% endblock %}

@@ -16,7 +16,9 @@ from typing import Any
 
 from markdown_it import MarkdownIt
 
-_md = MarkdownIt("commonmark", {"html": False, "linkify": False, "typographer": False}).enable("table")
+_md = MarkdownIt(
+    "commonmark", {"html": False, "linkify": False, "typographer": False}
+).enable("table")
 
 CITATION_RE = re.compile(r"\s?\[([^\[\]\n]{3,240})\]")
 PLACEHOLDER = "⁣FN{}⁣"
@@ -57,7 +59,8 @@ class SourceGroup:
             "page": self.best.page,
             "quote": self.best.text,
             "fragments": [
-                {"page": f.page, "text": f.text, "left": f.left, "right": f.right} for f in self.fragments
+                {"page": f.page, "text": f.text, "left": f.left, "right": f.right}
+                for f in self.fragments
             ],
         }
 
@@ -73,11 +76,13 @@ def filetype(name: str) -> str:
 
 def _norm(text: str) -> str:
     text = unicodedata.normalize("NFKC", text).lower()
-    text = stem(text.strip().strip('"„”\'«»').strip())
+    text = stem(text.strip().strip("\"„”'«»").strip())
     return re.sub(r"[\s_\-–—]+", " ", text).strip()
 
 
-def extract_results(add_message_body: dict[str, Any]) -> tuple[list[Fragment], int | None, bool]:
+def extract_results(
+    add_message_body: dict[str, Any],
+) -> tuple[list[Fragment], int | None, bool]:
     """Fragments, `sse_answer.id` (for rating) and whether RAG ran at all."""
     states = add_message_body.get("last_state") or []
     state = states[0] if isinstance(states, list) and states else {}
@@ -87,7 +92,11 @@ def extract_results(add_message_body: dict[str, Any]) -> tuple[list[Fragment], i
     response = rag.get("sse_response") or {}
     detailed = response.get("detailed_results_json") or {}
     # The backend stores a dict {index: result}; after JSON the keys are strings. We also support a list.
-    items = list(detailed.values()) if isinstance(detailed, dict) else list(detailed or [])
+    items = (
+        list(detailed.values())
+        if isinstance(detailed, dict)
+        else list(detailed or [])
+    )
     fragments = []
     for item in items:
         if not isinstance(item, dict) or not item.get("document_name"):
@@ -151,17 +160,20 @@ def build_answer(text: str, fragments: list[Fragment]) -> dict[str, Any]:
     # Documents not cited in the text get the next numbers in relevance order.
     for name in names:
         number_for(name)
-    groups = [SourceGroup(n=order.index(name) + 1, name=name, fragments=by_doc[name]) for name in order]
+    groups = [
+        SourceGroup(n=order.index(name) + 1, name=name, fragments=by_doc[name])
+        for name in order
+    ]
     group_by_n = {g.n: g for g in groups}
 
     rendered = _md.render(cited)
 
     def to_button(m: re.Match[str]) -> str:
         g = group_by_n[int(m.group(1))]
-        label = html.escape(f"{g.n}: {stem(g.name)}" + (f", s. {g.best.page}" if g.best.page else ""))
-        return (
-            f'<button type="button" class="fn approx" data-fn="{g.n}" aria-label="Przypis {label}">{g.n}</button>'
+        label = html.escape(
+            f"{g.n}: {stem(g.name)}" + (f", s. {g.best.page}" if g.best.page else "")
         )
+        return f'<button type="button" class="fn approx" data-fn="{g.n}" aria-label="Przypis {label}">{g.n}</button>'
 
     html_out = PLACEHOLDER_RE.sub(to_button, rendered)
     plain = PLACEHOLDER_RE.sub(lambda m: f"[{m.group(1)}]", cited).strip()

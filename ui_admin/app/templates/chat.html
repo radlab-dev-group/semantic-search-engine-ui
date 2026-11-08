@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('chat.meta_title') }}{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+
+{% block content %}
+  <header class="page-header">
+    <div>
+      <p class="card__eyebrow">{{ t('chat.eyebrow') }}</p>
+      <h1>{{ t('chat.heading') }}</h1>
+      <p class="subtitle">{{ t('chat.subtitle') }}</p>
+    </div>
+    {% set current_step = 4 %}
+    {% include "partials/stepper.html" %}
+  </header>
+
+  {% include "partials/messages.html" %}
+
+  {% if not collections or collections | length == 0 %}
+    <div class="card">
+      <div class="empty-state">
+        <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6"/><path d="M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3"/></svg></span>
+        <p>{{ t('search.no_collections') }}</p>
+        <div class="btn-row btn-row--center">
+          <a class="btn btn-primary" href="/collections">{{ t('search.create_collection') }}</a>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="search-layout search-layout--results search-layout--chat">
+      <div class="search-layout__form">
+        <aside class="sidebar search-layout__side">
+          <button type="button"
+                  class="params-rail"
+                  data-params-toggle
+                  aria-expanded="true"
+                  title="{{ t('params.show') }}"
+                  aria-label="{{ t('params.show') }}">
+            <span class="params-rail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m12 9 3 3-3 3"/></svg>
+            </span>
+            <span class="params-rail__label">{{ t('params.eyebrow') }}</span>
+          </button>
+          <form id="search-params-form" method="get" action="/chat">
+            {% include "partials/search_params.html" %}
+          </form>
+        </aside>
+
+        <div class="stack search-layout__query">
+          {% set active = (collections | selectattr('name', 'equalto', selected_collection) | list | first) if selected_collection else none %}
+          <div class="coll-banner{% if not active %} is-empty{% endif %}" data-collection-banner>
+            <span class="coll-banner__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.75"/><path d="M5 6v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75V6"/><path d="M5 12v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6"/></svg></span>
+            <div class="coll-banner__body">
+              <p class="coll-banner__eyebrow">{{ t('search.banner_eyebrow') }}</p>
+              <div class="coll-banner__filled">
+                <p class="coll-banner__name">
+                  <strong data-banner-name{% if active %} title="{{ active.display_name }}"{% endif %}>{{ active.display_name if active else '' }}</strong>
+                  <span class="mono coll-banner__id" data-banner-id{% if active and active.name != active.display_name %} title="{{ active.name }}"{% else %} hidden{% endif %}>{{ active.name if active else '' }}</span>
+                </p>
+                <p class="coll-banner__desc{% if not (active and active.description) %} is-muted{% endif %}" data-banner-desc{% if active and active.description %} title="{{ active.description }}"{% endif %}>{{ active.description if active and active.description else t('collections.no_description') }}</p>
+                <p class="coll-banner__meta">
+                  <span class="coll-banner__fact" data-banner-docs-wrap>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+                    <span data-banner-docs>{{ t.plural('history.documents', documents | length) }}</span>
+                  </span>
+                  <span class="coll-banner__fact" data-banner-date-wrap{% if not (active and active.created_on) %} hidden{% endif %}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                    <span data-banner-date>{{ t('collections.created_on', date=active.created_on) if active and active.created_on else '' }}</span>
+                  </span>
+                </p>
+              </div>
+              <p class="coll-banner__empty">{{ t('search.banner_none') }}</p>
+            </div>
+            <div class="coll-banner__actions">
+              <button type="button"
+                      class="btn btn--ghost btn--sm coll-banner__params-btn"
+                      data-params-toggle
+                      aria-expanded="true"
+                      title="{{ t('params.show') }}"
+                      aria-label="{{ t('params.show') }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m12 9 3 3-3 3"/></svg>
+                <span>{{ t('params.toggle_short') }}</span>
+              </button>
+              <a class="btn btn--ghost btn--sm" href="/collections/manage{% if active %}?collection_name={{ active.name | urlencode }}{% endif %}" data-banner-manage title="{{ t('search.banner_documents_title') }}">{{ t('search.banner_documents') }}</a>
+              <button type="button" class="btn btn--ghost btn--sm" data-banner-change title="{{ t('search.banner_change_title') }}">{{ t('search.banner_change') }}</button>
+            </div>
+          </div>
+
+          <div class="chat-layout">
+          {# Chat History panel #}
+          <div id="chat-history-container" class="chat-layout__history" data-chat-history-container>
+            {% include "partials/chat_history.html" %}
+          </div>
+
+          {# Chat Card #}
+          <section class="card chat-card chat-layout__main" data-chat-container aria-label="{{ t('chat.heading') }}">
+            <div class="chat-card__head">
+              <div class="chat-card__title-box">
+                <span class="chat-card__status-dot" aria-hidden="true"></span>
+                <h2 class="chat-card__title" data-chat-header-title>{{ active_chat_title or t('chat.new_chat_title') }}</h2>
+                {% set init_msg_count = (active_chat_messages | length) if active_chat_messages else 0 %}
+                <span class="tabs__count{% if init_msg_count == 0 %} is-hidden{% endif %}" data-chat-msg-count>{{ init_msg_count }}</span>
+              </div>
+              <div class="chat-card__actions">
+                <button type="button" class="btn btn--ghost btn--sm" data-chat-new title="{{ t('chat.new_chat') }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  {{ t('chat.new_chat') }}
+                </button>
+              </div>
+            </div>
+
+            {# Chat Messages Feed #}
+            <div class="chat-feed" data-chat-feed tabindex="0" role="log" aria-live="polite">
+              {# Welcome/Empty State #}
+              <div class="chat-empty{% if active_chat_messages and active_chat_messages | length > 0 %} is-hidden{% endif %}" data-chat-empty>
+                <div class="chat-empty__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <h3 class="chat-empty__title">{{ t('chat.empty_title') }}</h3>
+                <p class="chat-empty__text">{{ t('chat.empty_text') }}</p>
+                {% if sample_questions %}
+                  <div class="chat-empty__samples">
+                    <span class="chat-empty__samples-label">{{ t('chat.sample_questions') }}:</span>
+                    <div class="chat-empty__chips">
+                      {% for q in sample_questions %}
+                        <button type="button" class="chat-empty__chip" data-sample-question="{{ q }}">{{ q }}</button>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+
+              {# Pre-loaded messages if active chat exists #}
+              {% if active_chat_messages %}
+                {% for msg in active_chat_messages %}
+                  <div class="chat-msg chat-msg--{{ msg.role }}" data-msg-role="{{ msg.role }}">
+                    <div class="chat-msg__avatar" aria-hidden="true">
+                      {% if msg.role == 'user' %}
+                        <span>{{ (username or 'U')[:1] | upper }}</span>
+                      {% else %}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><rect x="4" y="8" width="16" height="12" rx="2"/><circle cx="9" cy="14" r="1.5"/><circle cx="15" cy="14" r="1.5"/></svg>
+                      {% endif %}
+                    </div>
+                    <div class="chat-msg__content">
+                      <div class="chat-msg__header">
+                        <span class="chat-msg__author">{% if msg.role == 'user' %}{{ username or t('chat.user_label') }}{% else %}{{ t('chat.assistant_label') }}{% endif %}</span>
+                        {% if msg.date_time %}<time class="chat-msg__time">{{ msg.date_time }}</time>{% endif %}
+                        {% if msg.generation_time %}<span class="chat-msg__time">({{ msg.generation_time }}s)</span>{% endif %}
+                      </div>
+                      <div class="chat-msg__body markdown markdown-body">
+                        {{ msg.html | safe if msg.html else (msg.text | render_plain | safe) }}
+                      </div>
+                      {% if msg.groups and msg.groups | length > 0 %}
+                        {% set total_frags = msg.fragments_count if msg.fragments_count is defined and msg.fragments_count else (msg.groups | map(attribute='fragments') | map('length') | sum) %}
+                        <div class="chat-msg__sources">
+                          <details class="chat-sources-accordion">
+                            <summary class="chat-sources-accordion__summary">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chat-sources-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                              <span>{{ t('chat.sources_title') }} ({{ msg.groups | length }}){% if total_frags > (msg.groups | length) %} · {{ t.plural('chat.chunks_count', total_frags) }}{% endif %}</span>
+                            </summary>
+                            <div class="chat-sources-list">
+                              {% for g in msg.groups %}
+                                {% set frags = g.fragments if g.fragments is defined and g.fragments else [{'page': g.page, 'text': g.quote}] %}
+                                {% set multi = frags | length > 1 %}
+                                <div class="chat-source-item{% if multi %} chat-source-item--multi{% endif %}" data-source-group="{{ g.n }}" data-active-chunk="0" data-total-chunks="{{ frags | length }}">
+                                  <div class="chat-source-item__head">
+                                    <span class="chat-source-item__badge">{{ g.n }}</span>
+                                    <strong class="chat-source-item__name">{{ g.name }}</strong>
+                                    {% if g.pages and g.pages | length > 1 %}
+                                      <span class="chat-source-item__page">s. {{ g.pages | join(', ') }}</span>
+                                    {% elif g.page %}
+                                      <span class="chat-source-item__page">s. {{ g.page }}</span>
+                                    {% endif %}
+                                    {% if multi %}
+                                      <span class="chat-source-item__count">{{ t.plural('chat.chunks_count', frags | length) }}</span>
+                                      <div class="chat-source-nav" data-source-nav>
+                                        <button type="button" class="chat-source-nav__btn" data-chunk-step="-1" title="{{ t('chat.chunk_prev') }}" aria-label="{{ t('chat.chunk_prev') }}">‹</button>
+                                        <span class="chat-source-nav__pos" data-chunk-pos>1 / {{ frags | length }}</span>
+                                        <button type="button" class="chat-source-nav__btn" data-chunk-step="1" title="{{ t('chat.chunk_next') }}" aria-label="{{ t('chat.chunk_next') }}">›</button>
+                                        <button type="button" class="chat-source-nav__all" data-chunk-toggle-all data-label-show="{{ t('chat.chunk_show_all', n=frags | length) }}" data-label-hide="{{ t('chat.chunk_hide_all') }}">{{ t('chat.chunk_show_all', n=frags | length) }}</button>
+                                      </div>
+                                    {% endif %}
+                                    {% if selected_collection %}
+                                      <a href="/collections/documents/preview?collection_name={{ selected_collection | urlencode }}&document_name={{ g.name | urlencode }}{% if g.page %}#page-{{ g.page }}{% endif %}" target="_blank" rel="noopener" class="chat-source-item__preview-link" data-source-preview-link data-base-href="/collections/documents/preview?collection_name={{ selected_collection | urlencode }}&document_name={{ g.name | urlencode }}" title="{{ t('hits.open_document') }}">↗</a>
+                                    {% endif %}
+                                  </div>
+                                  {% if multi %}
+                                    <div class="chat-source-chips" role="tablist" aria-label="{{ g.name }}">
+                                      {% for f in frags %}
+                                        <button type="button" class="chat-source-chip{% if loop.first %} is-active{% endif %}" data-chunk-select="{{ loop.index0 }}" role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}">
+                                          #{{ loop.index }}{% if f.page %} · s. {{ f.page }}{% elif f.chunk is defined and f.chunk is not none %} · chunk {{ f.chunk }}{% endif %}
+                                        </button>
+                                      {% endfor %}
+                                    </div>
+                                  {% endif %}
+                                  <div class="chat-source-chunks" data-source-chunks>
+                                    {% for f in frags %}
+                                      <div class="chat-source-chunk{% if loop.first %} is-active{% endif %}" data-source-chunk="{{ loop.index0 }}" data-chunk-page="{{ f.page or '' }}">
+                                        {% if multi %}
+                                          <div class="chat-source-chunk__meta">
+                                            <span class="chat-source-chunk__num">#{{ loop.index }}</span>
+                                            {% if f.page %}<span class="chat-source-chunk__tag">{{ t('hits.page') }} {{ f.page }}</span>{% endif %}
+                                            {% if f.chunk is defined and f.chunk is not none %}<span class="chat-source-chunk__tag">{{ t('hits.chunk') }} {{ f.chunk }}</span>{% endif %}
+                                            {% if f.score is defined and f.score %}<span class="chat-source-chunk__score">{{ '%.3f' | format(f.score) }}</span>{% endif %}
+                                          </div>
+                                        {% endif %}
+                                        {% if f.text %}
+                                          <p class="chat-source-item__quote">{% if f.left is defined and f.left %}<span class="chat-source-chunk__ctx">…{{ f.left }} </span>{% endif %}{{ f.text }}{% if f.right is defined and f.right %}<span class="chat-source-chunk__ctx"> {{ f.right }}…</span>{% endif %}</p>
+                                        {% endif %}
+                                      </div>
+                                    {% endfor %}
+                                  </div>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          </details>
+                        </div>
+                      {% endif %}
+                      {% if msg.role != 'user' %}
+                        <div class="chat-msg__actions">
+                          <button type="button" class="btn btn--ghost btn--xs" data-copy-answer data-plain-text="{{ msg.plain or msg.text }}" title="{{ t('chat.copy') }}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            <span>{{ t('chat.copy') }}</span>
+                          </button>
+                          {% if msg.groups and msg.groups | length > 0 %}
+                            <button type="button" class="btn btn--ghost btn--xs" data-copy-with-sources data-plain-text="{{ msg.plain or msg.text }}" title="{{ t('chat.copy_with_sources') }}">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+                              <span>{{ t('chat.copy_with_sources') }}</span>
+                            </button>
+                          {% endif %}
+                          {% if msg.answer_id %}
+                            <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn{% if msg.rate_value == 1 %} is-active{% endif %}" data-rate-btn="1" data-answer-id="{{ msg.answer_id }}" title="{{ t('chat.rate_up') }}" aria-label="{{ t('chat.rate_up') }}">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                            </button>
+                            <button type="button" class="btn btn--ghost btn--xs btn--icon chat-rate-btn{% if msg.rate_value == 0 %} is-active{% endif %}" data-rate-btn="0" data-answer-id="{{ msg.answer_id }}" title="{{ t('chat.rate_down') }}" aria-label="{{ t('chat.rate_down') }}">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                            </button>
+                          {% endif %}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              {% endif %}
+
+              {# Waiting / Thinking Indicator #}
+              <div class="chat-msg chat-msg--assistant chat-msg--waiting is-hidden" data-chat-waiting aria-hidden="true">
+                <div class="chat-msg__avatar" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><rect x="4" y="8" width="16" height="12" rx="2"/><circle cx="9" cy="14" r="1.5"/><circle cx="15" cy="14" r="1.5"/></svg>
+                </div>
+                <div class="chat-msg__content">
+                  <div class="chat-msg__header">
+                    <span class="chat-msg__author">{{ t('chat.assistant_label') }}</span>
+                    <span class="chat-msg__timer" data-chat-timer>0 s</span>
+                  </div>
+                  <div class="chat-waiting-box">
+                    <div class="typing-indicator" aria-label="{{ t('chat.generating') }}">
+                      <span></span><span></span><span></span>
+                    </div>
+                    <span class="chat-waiting-box__label">{{ t('chat.generating') }}</span>
+                    <button type="button" class="btn btn--ghost btn--xs chat-waiting-box__stop" data-chat-stop title="{{ t('chat.stop') }}">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                      {{ t('chat.stop') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {# Chat Input Bar #}
+            <div class="chat-input-bar" data-chat-input-bar>
+              <form class="chat-input-form" data-chat-form>
+                <input type="hidden" name="active_chat_id" id="active_chat_id" value="{{ active_chat_id or '' }}">
+                <div class="chat-input-box">
+                  <textarea class="chat-input-box__textarea"
+                            name="question"
+                            id="chat-question-input"
+                            placeholder="{{ t('chat.input_placeholder') }}"
+                            rows="1"
+                            autocomplete="off"
+                            data-chat-input
+                            required></textarea>
+                  <div class="chat-input-box__actions">
+                    <button type="submit" class="btn btn-primary btn--icon chat-input-box__send" data-chat-send title="{{ t('chat.send_title') }}" aria-label="{{ t('chat.send_title') }}">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                      <span class="spinner is-hidden" data-chat-spinner aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </div>
+                <div class="chat-input-bar__hint">
+                  <span class="chat-input-bar__key-hint">{{ t('chat.input_keyboard_hint') }}</span>
+                  <span class="chat-input-bar__params-hint">⚡ {{ t('chat.params_applied_hint') }}</span>
+                </div>
+              </form>
+            </div>
+          </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

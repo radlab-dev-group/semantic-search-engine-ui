@@ -33,7 +33,9 @@
         "indexing_status": "api/indexing_status",
         "filter_options": "api/filter_options",
         "new_chat": "api/new_chat",
-        "add_user_message": "api/add_user_message"
+        "add_user_message": "api/add_user_message",
+        "chats": "api/chats",
+        "delete_chat": "api/delete_chat"
       }
     }
   }

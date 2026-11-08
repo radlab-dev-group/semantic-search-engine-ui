@@ -21,7 +21,10 @@ APP_DIR = Path(__file__).resolve().parent
 log = logging.getLogger("ui")
 
 
-def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> FastAPI:
     settings = settings or get_settings()
     for warning in settings.warnings:
         log.warning(warning)
@@ -31,11 +34,19 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
         yield
         await app.state.api.close()
 
-    app = FastAPI(title="RadLab RAG chat", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    app = FastAPI(
+        title="RadLab RAG chat",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=lifespan,
+    )
     app.state.settings = settings
     app.state.api = ApiClient(settings, transport=transport)
     app.state.store = MemoryStore(ttl_s=settings.session_max_age)
-    app.state.i18n = Translator(APP_DIR / "locales", settings.languages, settings.default_language)
+    app.state.i18n = Translator(
+        APP_DIR / "locales", settings.languages, settings.default_language
+    )
     app.state.model_cache = {}
 
     app.add_middleware(

@@ -17,7 +17,8 @@
   "nav": {
     "home": "Home",
     "knowledge_base": "Knowledge base",
-    "search": "Search engine"
+    "search": "Search engine",
+    "chat": "Chat"
   },
   "kb": {
     "eyebrow": "Knowledge base",
@@ -27,7 +28,8 @@
     "tab_add": "Add content",
     "working_on": "Collection",
     "switch": "Switch",
-    "open_search": "Search in collection"
+    "open_search": "Search in collection",
+    "open_chat": "Chat with collection"
   },
   "stepper": {
     "label": "Pipeline step {current} of {total}",
@@ -36,7 +38,9 @@
     "index": "Index",
     "index_hint": "chunk · embed",
     "search": "Search",
-    "search_hint": "retrieve · answer"
+    "search_hint": "retrieve · answer",
+    "chat": "Chat",
+    "chat_hint": "converse · cite"
   },
   "messages": {
     "error_processing": "Error occurred while processing",
@@ -54,30 +58,32 @@
   "home": {
     "title": "SSSUI · Semantic search engine",
     "eyebrow": "SSSUI · Simple Semantic Search UI",
-    "hero_title_html": "Search by <span class=\"text-gradient\">meaning</span>,<br>not by keywords.",
-    "lead": "Your documents become vectors in a shared embedding space. Ask a question in natural language — the engine finds the nearest passages, reranks them and writes an answer grounded in your sources.",
+    "hero_title_html": "Search by <span class=\"text-gradient\">meaning</span>,<br>chat with your documents.",
+    "lead": "Your documents become vectors in a shared embedding space. Ask a single question in the search engine or hold a multi-turn conversation in chat — the engine finds the nearest passages, reranks them and writes an answer grounded in your sources.",
     "command_placeholder": "Ask your documents anything…",
     "open_search": "Open search engine",
+    "open_chat": "Open chat",
     "browse_collections": "Browse collections",
-    "capabilities": "Search capabilities",
-    "chip_dense": "Dense retrieval",
+    "capabilities": "Search and chat capabilities",
+    "chip_dense": "Dense & hybrid retrieval",
     "chip_rerank": "Cross-encoder reranking",
     "chip_rag": "Generative answers (RAG)",
+    "chip_chat": "Conversational chat with citations",
     "vs_title": "embedding space",
     "vs_query": "query",
     "vs_page": "p. {page}",
     "vs_chunk": "chunk {chunk}",
     "how_it_works": "How it works",
-    "pipeline_title": "From raw files to grounded answers",
-    "pipeline_lead": "Every collection runs the same retrieval-augmented pipeline on the engine side.",
+    "pipeline_title": "From raw files to grounded answers and chat",
+    "pipeline_lead": "Every collection runs the same retrieval-augmented pipeline on the engine side — across both search and conversational chat.",
     "stage_chunk": "Chunk",
     "stage_chunk_text": "Text is cleaned, denoised and split into overlapping token windows.",
     "stage_embed": "Embed",
     "stage_embed_text": "Each chunk becomes a dense vector stored in an IVF / HNSW index.",
     "stage_rerank": "Retrieve & rerank",
     "stage_rerank_text": "Nearest neighbours of your query are re-scored by a cross-encoder.",
-    "stage_generate": "Generate",
-    "stage_generate_text": "An LLM summarises the top passages into an answer you can rate.",
+    "stage_generate": "Generate & chat",
+    "stage_generate_text": "An LLM summarises top passages with citations and supports multi-turn dialogue.",
     "workspace": "Workspace",
     "step_setup": "01 · Set up",
     "feature_collection": "Build a collection",
@@ -87,10 +93,14 @@
     "feature_upload": "Add your documents",
     "feature_upload_text": "Upload PDF, DOCX, TXT, HTML, MD or ZIP files and tune chunk size and overlap.",
     "feature_upload_link": "Upload documents",
-    "step_discover": "03 · Discover",
-    "feature_search": "Ask better questions",
+    "step_discover": "03 · Search",
+    "feature_search": "Search your knowledge base",
     "feature_search_text": "Filter by category or document, rerank results and generate grounded answers.",
-    "feature_search_link": "Open search"
+    "feature_search_link": "Open search",
+    "step_chat": "04 · Chat",
+    "feature_chat": "Chat with a collection",
+    "feature_chat_text": "Hold multi-turn conversations grounded in your documents with full retrieval parameter control, citations and chat history.",
+    "feature_chat_link": "Open chat"
   },
   "login": {
     "title": "SSE - Log in",
@@ -148,6 +158,7 @@
     "deleted_success": "Collection “{name}” has been deleted.",
     "upload": "Add content",
     "upload_title": "Upload documents or paste text into this collection",
+    "chat": "Chat",
     "search": "Search",
     "empty": "There are no collections yet — create the first one below and upload documents to it.",
     "new_eyebrow": "New vector index",
@@ -331,6 +342,7 @@
     "tokens_per_chunk": "Tokens per chunk",
     "overlap_tokens": "Overlap tokens",
     "search_in_collection": "Search in this collection",
+    "chat_with_collection": "Chat with this collection",
     "no_collections": "You do not have any collections of documents yet — create one to start indexing.",
     "create_collection": "Create a new collection",
     "add_files": "Add files to collection",
@@ -478,6 +490,9 @@
   },
   "params": {
     "eyebrow": "Search parameters",
+    "hide": "Hide parameters",
+    "show": "Show parameters",
+    "toggle_short": "Parameters",
     "reset": "Restore defaults",
     "reset_title": "Forget the options of the last search and use the default values",
     "reset_confirm": "Are you sure you want to restore default search parameters? Custom options will be reset.",
@@ -558,7 +573,10 @@
     "context_after": "After",
     "show_context": "Show full context",
     "markdown": "Markdown",
-    "markdown_title": "Render the passages as Markdown (off — plain text)"
+    "markdown_title": "Render the passages as Markdown (off — plain text)",
+    "doc_chunk_position": "{current}/{total} in doc",
+    "prev_doc_chunk": "Previous matching passage in this document",
+    "next_doc_chunk": "Next matching passage in this document"
   },
   "board": {
     "summary": {
@@ -669,7 +687,16 @@
     "indexing_dismiss": "Close indexing information",
     "indexing_active_badge": "{percent}%",
     "indexing_done_badge": "Completed",
-    "collections_page": "page {page} of {total}"
+    "collections_page": "page {page} of {total}",
+    "chat_chunks_count": {
+      "one": "{n} chunk",
+      "other": "{n} chunks"
+    },
+    "chat_chunk_prev": "Previous chunk",
+    "chat_chunk_next": "Next chunk",
+    "chat_chunk_show_all": "Show all ({n})",
+    "chat_chunk_hide_all": "Hide list",
+    "chat_new_title": "New conversation"
   },
   "indexing": {
     "title": "Indexing progress",
@@ -698,5 +725,61 @@
     "doc_indexed": "indexed",
     "doc_failed": "indexing failed",
     "doc_skipped": "skipped"
+  },
+  "chat": {
+    "meta_title": "SSE - Chat",
+    "eyebrow": "Conversational Search",
+    "heading": "Chat",
+    "subtitle": "Have a multi-turn conversation grounded in your collection's documents, using all advanced search parameters.",
+    "step_hint": "chat · RAG",
+    "history_title": "Conversation history",
+    "collection_title": "Collection",
+    "new_chat": "New chat",
+    "new_chat_title": "New conversation",
+    "no_history": "No previous conversations in this collection.",
+    "filter_placeholder": "Filter conversations…",
+    "filter_label": "Filter conversation history",
+    "open_chat": "Open conversation",
+    "untitled": "Untitled conversation",
+    "messages_count": {
+      "one": "{n} message",
+      "few": "{n} messages",
+      "many": "{n} messages",
+      "other": "{n} messages"
+    },
+    "delete": "Delete",
+    "delete_title": "Delete this conversation from history",
+    "delete_confirm": "Are you sure you want to delete this conversation from history?",
+    "empty_title": "Start a new conversation",
+    "empty_text": "Ask a question and the model will generate an answer grounded in your collection documents using sidebar parameters.",
+    "sample_questions": "Sample questions",
+    "user_label": "You",
+    "assistant_label": "Assistant",
+    "generating": "Generating answer…",
+    "stop": "Stop",
+    "input_placeholder": "Type a message… (Enter to send, Shift+Enter for new line)",
+    "send_title": "Send message",
+    "input_keyboard_hint": "Enter to send, Shift+Enter for new line",
+    "params_applied_hint": "Search and generation parameters from sidebar are applied",
+    "sources_title": "Sources",
+    "chunks_count": {
+      "one": "{n} chunk",
+      "other": "{n} chunks"
+    },
+    "chunk_prev": "Previous chunk",
+    "chunk_next": "Next chunk",
+    "chunk_show_all": "All ({n})",
+    "chunk_hide_all": "Hide list",
+    "copy": "Copy",
+    "copy_with_sources": "Copy with sources",
+    "copied": "Copied!",
+    "rate_up": "Good answer",
+    "rate_down": "Poor answer",
+    "rate_title": "Rate answer",
+    "rate_comment_label": "Comment (optional)",
+    "rate_submit": "Submit rating",
+    "rate_success": "Thank you for your rating!",
+    "error_empty_question": "Please enter a question before sending.",
+    "error_chat_failed": "Failed to get an answer from the assistant."
   }
 }

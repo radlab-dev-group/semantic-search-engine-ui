@@ -27,12 +27,41 @@ PRZ = "Przewodnik po AI dla administracji publicznej.pdf"
 ZAS = "Zasady informowania o wykorzystaniu systemów AI.pdf"
 
 COLLECTIONS = [
-    {"id": 1, "name": "regulacje_ai", "display_name": "Regulacje AI", "description": "Ustawy, przewodniki i raporty o AI w administracji", "created_on": "2026-10-01T10:00:00Z", "metadata_json": None, "document_count": 6, "active_document_count": 6},
-    {"id": 2, "name": "polityki_hr", "display_name": "Polityki HR", "description": "Regulaminy i procedury kadrowe", "created_on": "2026-10-02T10:00:00Z", "metadata_json": None, "document_count": 3, "active_document_count": 3},
+    {
+        "id": 1,
+        "name": "regulacje_ai",
+        "display_name": "Regulacje AI",
+        "description": "Ustawy, przewodniki i raporty o AI w administracji",
+        "created_on": "2026-10-01T10:00:00Z",
+        "metadata_json": None,
+        "document_count": 6,
+        "active_document_count": 6,
+    },
+    {
+        "id": 2,
+        "name": "polityki_hr",
+        "display_name": "Polityki HR",
+        "description": "Regulaminy i procedury kadrowe",
+        "created_on": "2026-10-02T10:00:00Z",
+        "metadata_json": None,
+        "document_count": 3,
+        "active_document_count": 3,
+    },
 ]
 DOCUMENTS = {
-    "regulacje_ai": ["Akt w sprawie sztucznej inteligencji.pdf", PRZ, RAD, "Słownik pojęć AI.md", "Wytyczne zakupowe dla systemów AI.docx", ZAS],
-    "polityki_hr": ["Regulamin pracy.pdf", "Regulamin pracy zdalnej.docx", "Procedura delegacji zagranicznych.pdf"],
+    "regulacje_ai": [
+        "Akt w sprawie sztucznej inteligencji.pdf",
+        PRZ,
+        RAD,
+        "Słownik pojęć AI.md",
+        "Wytyczne zakupowe dla systemów AI.docx",
+        ZAS,
+    ],
+    "polityki_hr": [
+        "Regulamin pracy.pdf",
+        "Regulamin pracy zdalnej.docx",
+        "Procedura delegacji zagranicznych.pdf",
+    ],
 }
 PAGES = {
     RAD: {
@@ -44,16 +73,58 @@ PAGES = {
         26: "Przed wdrożeniem systemu AI urząd przeprowadza ocenę skutków dla praw podstawowych. Wyniki oceny urząd przekazuje organowi nadzoru rynku.",
         31: "Kontrola i audyt programów operacyjnych wykorzystujących AI obejmują przegląd dokumentacji technicznej. Audyt prowadzi się co najmniej raz w roku.",
     },
-    ZAS: {5: "Osoba, która wchodzi w interakcję z systemem AI, musi zostać o tym poinformowana najpóźniej w momencie pierwszego kontaktu."},
+    ZAS: {
+        5: "Osoba, która wchodzi w interakcję z systemem AI, musi zostać o tym poinformowana najpóźniej w momencie pierwszego kontaktu."
+    },
 }
 TOTAL_PAGES = {RAD: 92, PRZ: 58, ZAS: 12}
 
 RESULTS = [
-    {"document_name": RAD, "page_number": 14, "text_str": "Urzędy przestrzegają zasady poufności informacji i danych uzyskanych podczas wykonywania swoich zadań", "left_context": "Organy administracji, które wdrażają systemy AI, są traktowane jako podmioty stosujące.", "right_context": "", "score": 0.031, "score_normalized": 0.94},
-    {"document_name": PRZ, "page_number": 26, "text_str": "Przed wdrożeniem systemu AI urząd przeprowadza ocenę skutków dla praw podstawowych.", "left_context": "", "right_context": "Wyniki oceny urząd przekazuje organowi nadzoru rynku.", "score": 0.029, "score_normalized": 0.88},
-    {"document_name": ZAS, "page_number": 5, "text_str": "Osoba, która wchodzi w interakcję z systemem AI, musi zostać o tym poinformowana", "left_context": "", "right_context": "", "score": 0.027, "score_normalized": 0.77},
-    {"document_name": PRZ, "page_number": 31, "text_str": "Kontrola i audyt programów operacyjnych wykorzystujących AI obejmują przegląd dokumentacji technicznej.", "left_context": "", "right_context": "Audyt prowadzi się co najmniej raz w roku.", "score": 0.025, "score_normalized": 0.72},
-    {"document_name": RAD, "page_number": 44, "text_str": "Każde państwo członkowskie wyznacza co najmniej jeden organ notyfikujący.", "left_context": "", "right_context": "", "score": 0.024, "score_normalized": 0.81},
+    {
+        "document_name": RAD,
+        "page_number": 14,
+        "text_str": "Urzędy przestrzegają zasady poufności informacji i danych uzyskanych podczas wykonywania swoich zadań",
+        "left_context": "Organy administracji, które wdrażają systemy AI, są traktowane jako podmioty stosujące.",
+        "right_context": "",
+        "score": 0.031,
+        "score_normalized": 0.94,
+    },
+    {
+        "document_name": PRZ,
+        "page_number": 26,
+        "text_str": "Przed wdrożeniem systemu AI urząd przeprowadza ocenę skutków dla praw podstawowych.",
+        "left_context": "",
+        "right_context": "Wyniki oceny urząd przekazuje organowi nadzoru rynku.",
+        "score": 0.029,
+        "score_normalized": 0.88,
+    },
+    {
+        "document_name": ZAS,
+        "page_number": 5,
+        "text_str": "Osoba, która wchodzi w interakcję z systemem AI, musi zostać o tym poinformowana",
+        "left_context": "",
+        "right_context": "",
+        "score": 0.027,
+        "score_normalized": 0.77,
+    },
+    {
+        "document_name": PRZ,
+        "page_number": 31,
+        "text_str": "Kontrola i audyt programów operacyjnych wykorzystujących AI obejmują przegląd dokumentacji technicznej.",
+        "left_context": "",
+        "right_context": "Audyt prowadzi się co najmniej raz w roku.",
+        "score": 0.025,
+        "score_normalized": 0.72,
+    },
+    {
+        "document_name": RAD,
+        "page_number": 44,
+        "text_str": "Każde państwo członkowskie wyznacza co najmniej jeden organ notyfikujący.",
+        "left_context": "",
+        "right_context": "",
+        "score": 0.024,
+        "score_normalized": 0.81,
+    },
 ]
 ANSWERS = {
     "bullets": (
@@ -73,7 +144,11 @@ ANSWERS = {
     "brief": f"Urząd musi chronić dane przekazywane do AI [{RAD}], przed wdrożeniem ocenić skutki [{PRZ}] i informować ludzi, że rozmawiają z AI [{ZAS}].",
 }
 CHATS: dict[int, dict[str, Any]] = {}
-REQUIRED_OPTIONS = ("generative_model", "percentage_rank_mass", "use_doc_names_in_response")
+REQUIRED_OPTIONS = (
+    "generative_model",
+    "percentage_rank_mass",
+    "use_doc_names_in_response",
+)
 
 
 def ok(body: Any) -> JSONResponse:
@@ -81,7 +156,10 @@ def ok(body: Any) -> JSONResponse:
 
 
 def err(status: int, code: str, message: str) -> JSONResponse:
-    return JSONResponse({"status": False, "errors": [{"error_code": code, "message": message}]}, status_code=status)
+    return JSONResponse(
+        {"status": False, "errors": [{"error_code": code, "message": message}]},
+        status_code=status,
+    )
 
 
 async def log(request: Request) -> dict[str, Any]:
@@ -91,7 +169,13 @@ async def log(request: Request) -> dict[str, Any]:
             body = await request.json()
         except ValueError:
             body = {}
-    entry = {"method": request.method, "path": request.url.path, "params": dict(request.query_params), "json": body, "auth": request.headers.get("authorization")}
+    entry = {
+        "method": request.method,
+        "path": request.url.path,
+        "params": dict(request.query_params),
+        "json": body,
+        "auth": request.headers.get("authorization"),
+    }
     REQUEST_LOG.append(entry)
     return entry
 
@@ -124,7 +208,9 @@ async def login(request: Request):
 @app.post("/api/login_url")
 async def login_url(request: Request):
     await log(request)
-    return ok({"login_url": "http://localhost:8000/login/callback?code=mock&state=mock"})
+    return ok(
+        {"login_url": "http://localhost:8000/login/callback?code=mock&state=mock"}
+    )
 
 
 @app.post("/api/refresh_token")
@@ -170,9 +256,27 @@ async def document_content(request: Request):
     total = TOTAL_PAGES.get(name, 4)
     start, size = int(p.get("from_page") or 1), int(p.get("max_pages") or 200)
     numbers = list(range(start, min(total, start + size - 1) + 1))
-    pages = [{"page": n, "content": PAGES.get(name, {}).get(n, f"{name} – treść strony {n}."), "chunks": 1} for n in numbers]
+    pages = [
+        {
+            "page": n,
+            "content": PAGES.get(name, {}).get(n, f"{name} – treść strony {n}."),
+            "chunks": 1,
+        }
+        for n in numbers
+    ]
     truncated = numbers[-1] < total if numbers else False
-    return ok({"document_id": 1, "document_name": name, "pages": pages, "content": "\n\n".join(x["content"] for x in pages), "from_page": start, "total_pages": total, "truncated": truncated, "next_page": numbers[-1] + 1 if truncated else None})
+    return ok(
+        {
+            "document_id": 1,
+            "document_name": name,
+            "pages": pages,
+            "content": "\n\n".join(x["content"] for x in pages),
+            "from_page": start,
+            "total_pages": total,
+            "truncated": truncated,
+            "next_page": numbers[-1] + 1 if truncated else None,
+        }
+    )
 
 
 @app.get("/api/generative_models")
@@ -190,12 +294,31 @@ async def new_chat(request: Request):
         return err(401, "e__auth_401", "Unauthorized")
     chat_id = next(_ids)
     CHATS[chat_id] = {"collection": e["json"].get("collection_name"), "messages": []}
-    return ok({"chat": {"id": chat_id, "organisation_user": 1, "collection": 1, "created_at": now(), "options": e["json"].get("options")}})
+    return ok(
+        {
+            "chat": {
+                "id": chat_id,
+                "organisation_user": 1,
+                "collection": 1,
+                "created_at": now(),
+                "options": e["json"].get("options"),
+            }
+        }
+    )
 
 
 def _message(chat_id: int, role: str, text: str) -> dict[str, Any]:
     msgs = CHATS[chat_id]["messages"]
-    m = {"id": next(_ids), "chat": chat_id, "role": role, "text": text, "text_translated": None, "number": len(msgs) + 1, "date_time": now(), "generation_time": None}
+    m = {
+        "id": next(_ids),
+        "chat": chat_id,
+        "role": role,
+        "text": text,
+        "text_translated": None,
+        "number": len(msgs) + 1,
+        "date_time": now(),
+        "generation_time": None,
+    }
     msgs.append(m)
     return m
 
@@ -215,21 +338,52 @@ async def add_user_message(request: Request):
     question = data.get("user_message", "")
     _message(chat_id, "user", question)
     allowed = (data.get("search_options") or {}).get("documents")
-    results = [] if any(k in question.lower() for k in ("licencj", "licence")) else [r for r in RESULTS if not allowed or r["document_name"] in allowed]
+    results = (
+        []
+        if any(k in question.lower() for k in ("licencj", "licence"))
+        else [r for r in RESULTS if not allowed or r["document_name"] in allowed]
+    )
     prompt = (data.get("system_prompt") or "").lower()
-    fmt = "table" if "markdown table" in prompt else "brief" if "answer briefly" in prompt else "bullets"
+    fmt = (
+        "table"
+        if "markdown table" in prompt
+        else "brief" if "answer briefly" in prompt else "bullets"
+    )
     if results:
         text = ANSWERS[fmt]
-        state = [{"id": next(_ids), "content_supervisor_state": None, "rag_message_state": {
-            "id": next(_ids),
-            "sse_response": {"id": next(_ids), "detailed_results_json": {str(i): r for i, r in enumerate(results)}, "general_stats_json": {r["document_name"]: {} for r in results}},
-            "sse_answer": {"id": next(_ids), "generated_answer": text},
-        }}]
+        state = [
+            {
+                "id": next(_ids),
+                "content_supervisor_state": None,
+                "rag_message_state": {
+                    "id": next(_ids),
+                    "sse_response": {
+                        "id": next(_ids),
+                        "detailed_results_json": {
+                            str(i): r for i, r in enumerate(results)
+                        },
+                        "general_stats_json": {
+                            r["document_name"]: {} for r in results
+                        },
+                    },
+                    "sse_answer": {"id": next(_ids), "generated_answer": text},
+                },
+            }
+        ]
     else:
-        text = "Ceny licencji zależą zwykle od liczby użytkowników i zakresu wdrożenia."
+        text = (
+            "Ceny licencji zależą zwykle od liczby użytkowników i zakresu wdrożenia."
+        )
         state = None
     _message(chat_id, "assistant", text)
-    return ok({"generation_time": 12.4, "history": CHATS[chat_id]["messages"], "last_state": state, "generated_assistant_message": text})
+    return ok(
+        {
+            "generation_time": 12.4,
+            "history": CHATS[chat_id]["messages"],
+            "last_state": state,
+            "generated_assistant_message": text,
+        }
+    )
 
 
 @app.get("/api/chats")
@@ -237,7 +391,18 @@ async def chats(request: Request):
     e = await log(request)
     if not authorized(e):
         return err(401, "e__auth_401", "Unauthorized")
-    return ok({"history": [{"chat_id": cid, "is_read_only": False, "chat_history": c["messages"]} for cid, c in CHATS.items()]})
+    return ok(
+        {
+            "history": [
+                {
+                    "chat_id": cid,
+                    "is_read_only": False,
+                    "chat_history": c["messages"],
+                }
+                for cid, c in CHATS.items()
+            ]
+        }
+    )
 
 
 @app.post("/api/rate_generative_answer")
@@ -246,6 +411,8 @@ async def rate(request: Request):
     if not authorized(e):
         return err(401, "e__auth_401", "Unauthorized")
     d = e["json"]
-    if any(k not in d for k in ("answer_response_id", "rate_value", "rate_value_max")):
+    if any(
+        k not in d for k in ("answer_response_id", "rate_value", "rate_value_max")
+    ):
         return err(400, "e__data_501", "Missing required parameters")
     return ok({})

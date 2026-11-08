@@ -14,7 +14,9 @@ class Translator:
         self.texts: dict[str, dict[str, str]] = {}
         for lang in languages:
             path = directory / f"{lang}.json"
-            self.texts[lang] = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+            self.texts[lang] = (
+                json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+            )
 
     def pick(self, lang: str | None) -> str:
         return lang if lang in self.languages else self.default

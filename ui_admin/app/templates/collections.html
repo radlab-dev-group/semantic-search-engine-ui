@@ -98,9 +98,13 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                   {{ t('collections.upload') }}
                 </a>
-                <a class="btn btn-primary btn--sm" href="/search?collection_name={{ coll.name | urlencode }}">
+                <a class="btn btn-primary btn--sm collection__action--search" href="/search?collection_name={{ coll.name | urlencode }}">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
                   {{ t('collections.search') }}
+                </a>
+                <a class="btn btn--chat btn--sm collection__action--chat" href="/chat?collection_name={{ coll.name | urlencode }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  {{ t('collections.chat') }}
                 </a>
               </span>
             </div>

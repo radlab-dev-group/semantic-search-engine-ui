@@ -17,7 +17,8 @@
   "nav": {
     "home": "Start",
     "knowledge_base": "Baza wiedzy",
-    "search": "Wyszukiwarka"
+    "search": "Wyszukiwarka",
+    "chat": "Chat"
   },
   "kb": {
     "eyebrow": "Baza wiedzy",
@@ -27,7 +28,8 @@
     "tab_add": "Dodaj treść",
     "working_on": "Kolekcja",
     "switch": "Przełącz",
-    "open_search": "Szukaj w kolekcji"
+    "open_search": "Szukaj w kolekcji",
+    "open_chat": "Czatuj z kolekcją"
   },
   "stepper": {
     "label": "Etap {current} z {total}",
@@ -36,7 +38,9 @@
     "index": "Indeksowanie",
     "index_hint": "chunki · embeddingi",
     "search": "Wyszukiwanie",
-    "search_hint": "wyniki · odpowiedź"
+    "search_hint": "wyniki · odpowiedź",
+    "chat": "Chat",
+    "chat_hint": "rozmowa · źródła"
   },
   "messages": {
     "error_processing": "Wystąpił błąd podczas przetwarzania",
@@ -54,30 +58,32 @@
   "home": {
     "title": "SSSUI · Wyszukiwarka semantyczna",
     "eyebrow": "SSSUI · Simple Semantic Search UI",
-    "hero_title_html": "Szukaj po <span class=\"text-gradient\">znaczeniu</span>,<br>nie po słowach kluczowych.",
-    "lead": "Twoje dokumenty stają się wektorami we wspólnej przestrzeni embeddingów. Zadaj pytanie językiem naturalnym — silnik znajdzie najbliższe fragmenty, uszereguje je ponownie i napisze odpowiedź opartą na Twoich źródłach.",
+    "hero_title_html": "Szukaj po <span class=\"text-gradient\">znaczeniu</span>,<br>rozmawiaj ze swoimi dokumentami.",
+    "lead": "Twoje dokumenty stają się wektorami we wspólnej przestrzeni embeddingów. Zadaj pytanie w wyszukiwarce lub prowadź wieloetapową rozmowę na czacie — silnik znajdzie najbliższe fragmenty, uszereguje je ponownie i napisze odpowiedź ze wskazaniem źródeł.",
     "command_placeholder": "Zapytaj o cokolwiek ze swoich dokumentów…",
     "open_search": "Otwórz wyszukiwarkę",
+    "open_chat": "Otwórz czat",
     "browse_collections": "Przeglądaj kolekcje",
-    "capabilities": "Możliwości wyszukiwania",
-    "chip_dense": "Wyszukiwanie gęste",
+    "capabilities": "Możliwości wyszukiwania i czatu",
+    "chip_dense": "Wyszukiwanie gęste i hybrydowe",
     "chip_rerank": "Reranking cross-encoderem",
     "chip_rag": "Odpowiedzi generatywne (RAG)",
+    "chip_chat": "Konwersacyjny czat ze źródłami",
     "vs_title": "przestrzeń embeddingów",
     "vs_query": "zapytanie",
     "vs_page": "s. {page}",
     "vs_chunk": "chunk {chunk}",
     "how_it_works": "Jak to działa",
-    "pipeline_title": "Od surowych plików do odpowiedzi opartych na źródłach",
-    "pipeline_lead": "Każda kolekcja przechodzi po stronie silnika ten sam pipeline wyszukiwania wspomaganego generowaniem (RAG).",
+    "pipeline_title": "Od surowych plików do odpowiedzi i rozmowy ze źródłami",
+    "pipeline_lead": "Każda kolekcja przechodzi po stronie silnika ten sam pipeline wyszukiwania wspomaganego generowaniem (RAG) — w wyszukiwarce i na czacie.",
     "stage_chunk": "Podział",
     "stage_chunk_text": "Tekst jest czyszczony, odszumiany i dzielony na zachodzące na siebie okna tokenów.",
     "stage_embed": "Embedding",
     "stage_embed_text": "Każdy chunk staje się gęstym wektorem zapisanym w indeksie IVF / HNSW.",
     "stage_rerank": "Wyszukanie i reranking",
     "stage_rerank_text": "Najbliżsi sąsiedzi zapytania są ponownie oceniani przez cross-encoder.",
-    "stage_generate": "Generowanie",
-    "stage_generate_text": "LLM streszcza najlepsze fragmenty w odpowiedź, którą możesz ocenić.",
+    "stage_generate": "Generowanie i czat",
+    "stage_generate_text": "LLM streszcza najlepsze fragmenty w odpowiedź z przypisami i prowadzi wieloturowy dialog.",
     "workspace": "Obszar roboczy",
     "step_setup": "01 · Konfiguracja",
     "feature_collection": "Utwórz kolekcję",
@@ -87,10 +93,14 @@
     "feature_upload": "Dodaj dokumenty",
     "feature_upload_text": "Wgraj pliki PDF, DOCX, TXT, HTML, MD lub ZIP i dostosuj rozmiar chunków oraz ich zakładkę.",
     "feature_upload_link": "Wgraj dokumenty",
-    "step_discover": "03 · Odkrywanie",
-    "feature_search": "Zadawaj lepsze pytania",
+    "step_discover": "03 · Wyszukiwanie",
+    "feature_search": "Przeszukuj bazę wiedzy",
     "feature_search_text": "Filtruj po kategorii lub dokumencie, sortuj wyniki rerankerem i generuj odpowiedzi oparte na źródłach.",
-    "feature_search_link": "Otwórz wyszukiwarkę"
+    "feature_search_link": "Otwórz wyszukiwarkę",
+    "step_chat": "04 · Chat",
+    "feature_chat": "Rozmawiaj z kolekcją",
+    "feature_chat_text": "Prowadź konwersację w kontekście dokumentów z pełną kontrolą parametrów wyszukiwania, przypisami i historią rozmów.",
+    "feature_chat_link": "Otwórz czat"
   },
   "login": {
     "title": "SSE - logowanie",
@@ -150,6 +160,7 @@
     "deleted_success": "Kolekcja „{name}” została usunięta.",
     "upload": "Dodaj treść",
     "upload_title": "Wgraj dokumenty lub wklej tekst do tej kolekcji",
+    "chat": "Chat",
     "search": "Szukaj",
     "empty": "Nie ma jeszcze żadnych kolekcji — utwórz pierwszą poniżej i wgraj do niej dokumenty.",
     "new_eyebrow": "Nowy indeks wektorowy",
@@ -357,6 +368,7 @@
     "tokens_per_chunk": "Tokenów w chunku",
     "overlap_tokens": "Tokenów zakładki",
     "search_in_collection": "Szukaj w tej kolekcji",
+    "chat_with_collection": "Czatuj z tą kolekcją",
     "no_collections": "Nie masz jeszcze żadnych kolekcji dokumentów — utwórz kolekcję, aby zacząć indeksowanie.",
     "create_collection": "Utwórz nową kolekcję",
     "add_files": "Dodaj pliki do kolekcji",
@@ -510,6 +522,9 @@
   },
   "params": {
     "eyebrow": "Parametry wyszukiwania",
+    "hide": "Ukryj parametry",
+    "show": "Pokaż parametry",
+    "toggle_short": "Parametry",
     "reset": "Przywróć domyślne",
     "reset_title": "Zapomnij opcje ostatniego wyszukiwania i użyj wartości domyślnych",
     "reset_confirm": "Czy na pewno chcesz przywrócić domyślne parametry wyszukiwania? Opcje ostatniego wyszukiwania zostaną zresetowane.",
@@ -594,7 +609,10 @@
     "context_after": "Dalej",
     "show_context": "Pokaż cały kontekst",
     "markdown": "Markdown",
-    "markdown_title": "Formatuj fragmenty jako Markdown (wyłączone — zwykły tekst)"
+    "markdown_title": "Formatuj fragmenty jako Markdown (wyłączone — zwykły tekst)",
+    "doc_chunk_position": "{current}/{total} w dok.",
+    "prev_doc_chunk": "Poprzedni znaleziony fragment w tym dokumencie",
+    "next_doc_chunk": "Następny znaleziony fragment w tym dokumencie"
   },
   "board": {
     "summary": {
@@ -723,7 +741,18 @@
     "indexing_dismiss": "Zamknij informację o indeksacji",
     "indexing_active_badge": "{percent}%",
     "indexing_done_badge": "Ukończono",
-    "collections_page": "strona {page} z {total}"
+    "collections_page": "strona {page} z {total}",
+    "chat_chunks_count": {
+      "one": "{n} fragment",
+      "few": "{n} fragmenty",
+      "many": "{n} fragmentów",
+      "other": "{n} fragmentu"
+    },
+    "chat_chunk_prev": "Poprzedni fragment",
+    "chat_chunk_next": "Następny fragment",
+    "chat_chunk_show_all": "Pokaż wszystkie ({n})",
+    "chat_chunk_hide_all": "Zwiń listę",
+    "chat_new_title": "Nowa rozmowa"
   },
   "indexing": {
     "title": "Postęp indeksowania",
@@ -752,5 +781,63 @@
     "doc_indexed": "zaindeksowany",
     "doc_failed": "błąd indeksacji",
     "doc_skipped": "pominięty"
+  },
+  "chat": {
+    "meta_title": "SSE - Chat",
+    "eyebrow": "Conversational Search",
+    "heading": "Chat",
+    "subtitle": "Prowadź wieloetapową rozmowę na podstawie dokumentów z wybranej kolekcji, korzystając ze wszystkich parametrów wyszukiwania.",
+    "step_hint": "rozmowa · RAG",
+    "history_title": "Historia rozmów",
+    "collection_title": "Kolekcja",
+    "new_chat": "Nowy czat",
+    "new_chat_title": "Nowa rozmowa",
+    "no_history": "Brak wcześniejszych rozmów w tej kolekcji.",
+    "filter_placeholder": "Filtruj rozmowy…",
+    "filter_label": "Filtruj historię rozmów",
+    "open_chat": "Otwórz rozmowę",
+    "untitled": "Rozmowa bez tytułu",
+    "messages_count": {
+      "one": "{n} wiadomość",
+      "few": "{n} wiadomości",
+      "many": "{n} wiadomości",
+      "other": "{n} wiadomości"
+    },
+    "delete": "Usuń",
+    "delete_title": "Usuń tę rozmowę z historii",
+    "delete_confirm": "Czy na pewno usunąć tę rozmowę z historii?",
+    "empty_title": "Rozpocznij nową rozmowę",
+    "empty_text": "Zadaj pytanie, a model wygeneruje odpowiedź opartą na dokumentach z wybranej kolekcji z uwzględnieniem parametrów z panelu bocznego.",
+    "sample_questions": "Przykładowe pytania",
+    "user_label": "Ty",
+    "assistant_label": "Asystent",
+    "generating": "Generowanie odpowiedzi…",
+    "stop": "Zatrzymaj",
+    "input_placeholder": "Napisz wiadomość… (Enter aby wysłać, Shift+Enter dla nowej linii)",
+    "send_title": "Wyślij wiadomość",
+    "input_keyboard_hint": "Enter wysyła, Shift+Enter tworzy nowy wiersz",
+    "params_applied_hint": "Parametry z panelu bocznego są aktywne",
+    "sources_title": "Źródła",
+    "chunks_count": {
+      "one": "{n} fragment",
+      "few": "{n} fragmenty",
+      "many": "{n} fragmentów",
+      "other": "{n} fragmentu"
+    },
+    "chunk_prev": "Poprzedni fragment",
+    "chunk_next": "Następny fragment",
+    "chunk_show_all": "Wszystkie ({n})",
+    "chunk_hide_all": "Zwiń listę",
+    "copy": "Kopiuj",
+    "copy_with_sources": "Kopiuj ze źródłami",
+    "copied": "Skopiowano!",
+    "rate_up": "Dobra odpowiedź",
+    "rate_down": "Zła odpowiedź",
+    "rate_title": "Oceń odpowiedź",
+    "rate_comment_label": "Komentarz (opcjonalnie)",
+    "rate_submit": "Zapisz ocenę",
+    "rate_success": "Dziękujemy za ocenę!",
+    "error_empty_question": "Wpisz treść pytania przed wysłaniem.",
+    "error_chat_failed": "Nie udało się uzyskać odpowiedzi od asystenta."
   }
 }
