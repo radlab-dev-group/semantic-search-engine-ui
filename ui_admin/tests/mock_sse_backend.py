@@ -15,6 +15,49 @@ from urllib.parse import parse_qs, urlparse
 
 VALID_CREDENTIALS = {"user": "pass"}
 
+MOCK_CHATS = {
+    1: {
+        "id": 1,
+        "collection_name": "user_col",
+        "title": "Jak wygląda proces ofertowy?",
+        "created_on": "2026-10-24T15:04:05.123456Z",
+        "messages": [
+            {
+                "id": 1,
+                "role": "user",
+                "text": "Jak wygląda proces ofertowy?",
+                "date_time": "2026-10-24T15:04:05.123456Z",
+            },
+            {
+                "id": 2,
+                "role": "assistant",
+                "text": "Proces ofertowy składa się z przygotowania oferty i jej akceptacji [doc-a.pdf].",
+                "date_time": "2026-10-24T15:04:08.123456Z",
+            },
+        ],
+    },
+    2: {
+        "id": 2,
+        "collection_name": "user_kol",
+        "title": "Pytanie w innej kolekcji",
+        "created_on": "2026-10-25T10:00:00Z",
+        "messages": [
+            {
+                "id": 1,
+                "role": "user",
+                "text": "Pytanie w innej kolekcji",
+                "date_time": "2026-10-25T10:00:00Z",
+            },
+            {
+                "id": 2,
+                "role": "assistant",
+                "text": "Odpowiedź w innej kolekcji.",
+                "date_time": "2026-10-25T10:00:03Z",
+            },
+        ],
+    },
+}
+
 # Generative models answer with Markdown, so the fake backend does the same.
 GENEATIVE_ANSWER = """## Podsumowanie
 
@@ -797,6 +840,21 @@ class MockHandler(BaseHTTPRequestHandler):
                     }
                 )
             )
+        if ep == "chats":
+            query_col = query.get("collection_name")
+            history = []
+            for chat_id, chat in sorted(MOCK_CHATS.items(), key=lambda x: x[0], reverse=True):
+                if query_col and chat.get("collection_name") not in (None, "", query_col):
+                    continue
+                history.append({
+                    "chat_id": chat_id,
+                    "collection_name": chat.get("collection_name"),
+                    "title": chat.get("title"),
+                    "created_on": chat.get("created_on"),
+                    "is_read_only": False,
+                    "chat_history": chat["messages"],
+                })
+            return self._send(_ok({"history": history}))
         return self._send(_ok({}))
 
     def do_POST(self):  # noqa: N802
@@ -977,6 +1035,81 @@ class MockHandler(BaseHTTPRequestHandler):
                 response_body["async"] = True
                 response_body.pop("indexed_chunks")
             return self._send(_ok(response_body))
+        if ep == "new_chat":
+            chat_id = max(MOCK_CHATS.keys(), default=0) + 1
+            col = body.get("collection_name", "user_col")
+            MOCK_CHATS[chat_id] = {
+                "id": chat_id,
+                "collection_name": col,
+                "title": "",
+                "created_on": "2026-11-08T19:00:00Z",
+                "options": body.get("options", {}),
+                "search_options": body.get("search_options", {}),
+                "messages": [],
+            }
+            return self._send(_ok({"chat": {"id": chat_id}}))
+        if ep == "add_user_message":
+            chat_id = int(body.get("chat_id", 1))
+            if chat_id not in MOCK_CHATS:
+                col = body.get("collection_name", "user_col")
+                MOCK_CHATS[chat_id] = {
+                    "id": chat_id,
+                    "collection_name": col,
+                    "title": "",
+                    "created_on": "2026-11-08T19:00:00Z",
+                    "options": body.get("options", {}),
+                    "search_options": body.get("search_options", {}),
+                    "messages": [],
+                }
+            chat = MOCK_CHATS[chat_id]
+            question = body.get("user_message", "")
+            if not chat["title"]:
+                chat["title"] = question[:80]
+            user_msg = {
+                "id": len(chat["messages"]) + 1,
+                "role": "user",
+                "text": question,
+                "date_time": "2026-11-08T19:00:00Z",
+            }
+            chat["messages"].append(user_msg)
+
+            answer_text = f"Odpowiedź na pytanie: {question} na podstawie [doc-a.pdf]."
+            answer_id = 200 + len(chat["messages"])
+            asst_msg = {
+                "id": answer_id,
+                "role": "assistant",
+                "text": answer_text,
+                "date_time": "2026-11-08T19:00:03Z",
+            }
+            chat["messages"].append(asst_msg)
+
+            rag_response = {
+                "generated_assistant_message": answer_text,
+                "generation_time": 1.25,
+                "history": chat["messages"],
+                "last_state": [
+                    {
+                        "rag_message_state": {
+                            "sse_answer": {"id": answer_id},
+                            "sse_response": {
+                                "detailed_results_json": {
+                                    "1": {
+                                        "document_name": "doc-a.pdf",
+                                        "page_number": 2,
+                                        "text_str": "Fragment dokumentu ofertowego",
+                                        "score": 0.95,
+                                    }
+                                }
+                            },
+                        }
+                    }
+                ],
+            }
+            return self._send(_ok(rag_response))
+        if ep == "delete_chat":
+            chat_id = int(body.get("chat_id", 0))
+            MOCK_CHATS.pop(chat_id, None)
+            return self._send(_ok({"deleted": True}))
         return self._send(_ok({}))
 
 

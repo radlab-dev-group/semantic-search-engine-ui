@@ -17,7 +17,8 @@
   "nav": {
     "home": "Start",
     "knowledge_base": "Baza wiedzy",
-    "search": "Wyszukiwarka"
+    "search": "Wyszukiwarka",
+    "chat": "Chat"
   },
   "kb": {
     "eyebrow": "Baza wiedzy",
@@ -150,6 +151,7 @@
     "deleted_success": "Kolekcja „{name}” została usunięta.",
     "upload": "Dodaj treść",
     "upload_title": "Wgraj dokumenty lub wklej tekst do tej kolekcji",
+    "chat": "Chat",
     "search": "Szukaj",
     "empty": "Nie ma jeszcze żadnych kolekcji — utwórz pierwszą poniżej i wgraj do niej dokumenty.",
     "new_eyebrow": "Nowy indeks wektorowy",
@@ -752,5 +754,52 @@
     "doc_indexed": "zaindeksowany",
     "doc_failed": "błąd indeksacji",
     "doc_skipped": "pominięty"
+  },
+  "chat": {
+    "meta_title": "SSE - Chat",
+    "eyebrow": "Conversational Search",
+    "heading": "Chat",
+    "subtitle": "Prowadź wieloetapową rozmowę na podstawie dokumentów z wybranej kolekcji, korzystając ze wszystkich parametrów wyszukiwania.",
+    "step_hint": "rozmowa · RAG",
+    "history_title": "Historia rozmów",
+    "collection_title": "Kolekcja",
+    "new_chat": "Nowy czat",
+    "new_chat_title": "Nowa rozmowa",
+    "no_history": "Brak wcześniejszych rozmów w tej kolekcji.",
+    "filter_placeholder": "Filtruj rozmowy…",
+    "filter_label": "Filtruj historię rozmów",
+    "open_chat": "Otwórz rozmowę",
+    "untitled": "Rozmowa bez tytułu",
+    "messages_count": {
+      "one": "{n} wiadomość",
+      "few": "{n} wiadomości",
+      "many": "{n} wiadomości",
+      "other": "{n} wiadomości"
+    },
+    "delete_title": "Usuń rozmowę",
+    "delete_confirm": "Czy na pewno chcesz usunąć tę rozmowę z historii?",
+    "empty_title": "Rozpocznij nową rozmowę",
+    "empty_text": "Zadaj pytanie, a model wygeneruje odpowiedź opartą na dokumentach z wybranej kolekcji z uwzględnieniem parametrów z panelu bocznego.",
+    "sample_questions": "Przykładowe pytania",
+    "user_label": "Ty",
+    "assistant_label": "Asystent",
+    "generating": "Generowanie odpowiedzi…",
+    "stop": "Zatrzymaj",
+    "input_placeholder": "Napisz wiadomość… (Enter aby wysłać, Shift+Enter dla nowej linii)",
+    "send_title": "Wyślij wiadomość",
+    "input_keyboard_hint": "Enter wysyła, Shift+Enter tworzy nowy wiersz",
+    "params_applied_hint": "Parametry z panelu bocznego są aktywne",
+    "sources_title": "Źródła",
+    "copy": "Kopiuj",
+    "copy_with_sources": "Kopiuj ze źródłami",
+    "copied": "Skopiowano!",
+    "rate_up": "Dobra odpowiedź",
+    "rate_down": "Zła odpowiedź",
+    "rate_title": "Oceń odpowiedź",
+    "rate_comment_label": "Komentarz (opcjonalnie)",
+    "rate_submit": "Zapisz ocenę",
+    "rate_success": "Dziękujemy za ocenę!",
+    "error_empty_question": "Wpisz treść pytania przed wysłaniem.",
+    "error_chat_failed": "Nie udało się uzyskać odpowiedzi od asystenta."
   }
 }

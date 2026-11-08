@@ -895,6 +895,7 @@ def main() -> int:
             and "Moje dokumenty" in response.text,
             str(response.status_code),
         )
+
         def collection_card(html, name) -> str:
             """The HTML of one collection card, found by the link of its button."""
             chunks = [
@@ -949,10 +950,19 @@ def main() -> int:
             f', engine: {len(COLLECTIONS)}',
         )
         check(
-            "collections list links to upload and search of a collection",
+            "collections list links to upload, chat and search of a collection",
             'href="/documents/upload?collection_name=user_col"' in response.text
+            and 'href="/chat?collection_name=user_col"' in response.text
             and 'href="/search?collection_name=user_col"' in response.text,
             "",
+        )
+
+        response_alias = client.get("/collection")
+        check(
+            "/collection route renders collections page",
+            response_alias.status_code == 200
+            and "user_col" in response_alias.text,
+            str(response_alias.status_code),
         )
         check(
             "collections list can be filtered by name",
@@ -2283,12 +2293,97 @@ def main() -> int:
                 for url in [
                     "/home",
                     "/search",
+                    "/chat",
                     "/collections/new",
                     "/collections/manage",
                     "/documents/upload",
                 ]
             ),
             "",
+        )
+
+        # --- Conversational search (Chat) ---------------------------------- #
+        chat_html = client.get("/chat?collection_name=user_col").text
+        check(
+            "chat page renders with navigation, collection banner, history and params",
+            'href="/chat"' in chat_html
+            and "data-chat-container" in chat_html
+            and "data-chat-history" in chat_html
+            and 'name="collection_name"' in chat_html
+            and 'name="hybrid_search"' in chat_html
+            and 'name="rerank_results"' in chat_html
+            and 'name="use_qa_generative"' in chat_html
+            and 'data-chat-input' in chat_html,
+            "",
+        )
+        conv_redirect = client.get("/conversational?collection_name=user_col", follow_redirects=False)
+        check(
+            "conversational aliases redirect to /chat",
+            conv_redirect.status_code == 303
+            and conv_redirect.headers.get("location") == "/chat?collection_name=user_col",
+            str(conv_redirect.headers),
+        )
+
+        chat_hist_partial = client.get("/chat/history?collection_name=user_col").text
+        check(
+            "chat history partial returns history items",
+            "data-chat-history" in chat_hist_partial
+            and "Jak wygląda proces ofertowy?" in chat_hist_partial,
+            "",
+        )
+
+        chat_msgs_res = client.get("/chat/messages/1")
+        chat_msgs_json = chat_msgs_res.json()
+        check(
+            "chat messages endpoint returns history messages",
+            chat_msgs_json.get("status") is True
+            and len(chat_msgs_json.get("messages", [])) == 2
+            and "Proces ofertowy" in chat_msgs_json["messages"][1]["text"],
+            str(chat_msgs_json),
+        )
+
+        ask_res = client.post(
+            "/chat/ask",
+            data={
+                "collection_name": "user_col",
+                "question": "Jak działa proces?",
+                "results_count": "5",
+                "hybrid_search": "on",
+                "use_qa_generative": "on",
+            },
+        )
+        ask_json = ask_res.json()
+        check(
+            "chat ask endpoint generates answer with footnotes and sources",
+            ask_json.get("status") is True
+            and ask_json.get("chat_id") is not None
+            and "fn-badge" in ask_json.get("html", "")
+            and len(ask_json.get("groups", [])) > 0
+            and ask_json["groups"][0]["name"] == "doc-a.pdf",
+            str(ask_json),
+        )
+
+        rate_chat_res = client.post(
+            "/chat/rate",
+            json={
+                "answer_id": ask_json.get("answer_id") or 201,
+                "rate_value": 1,
+            },
+        )
+        check(
+            "chat rate endpoint succeeds",
+            rate_chat_res.json().get("status") is True,
+            str(rate_chat_res.text),
+        )
+
+        del_chat_res = client.post(
+            "/chat/delete",
+            json={"chat_id": ask_json.get("chat_id")},
+        )
+        check(
+            "chat delete endpoint succeeds",
+            del_chat_res.json().get("status") is True,
+            str(del_chat_res.text),
         )
         # --- Interface language (pl / en) ---------------------------------- #
         check_i18n(client)

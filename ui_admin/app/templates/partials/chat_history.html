@@ -1,0 +1,61 @@
+{#- Chats of the user for the selected collection, newest first. Rendered
+    with the chat page and reloaded by /chat/history when another collection is chosen. -#}
+<section class="history" data-chat-history aria-label="{{ t('chat.history_title') }}">
+  <details class="history__box"{% if chat_history_open or (chat_history and chat_history | length > 0) %} open{% endif %} data-chat-history-box>
+    <summary class="history__summary">
+      <span class="history__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+      <span class="history__title">{{ t('chat.history_title') }}</span>
+      {% if chat_history %}<span class="tabs__count" data-chat-history-count>{{ chat_history | length }}</span>{% endif %}
+      {% if selected_collection %}<span class="history__collection" title="{{ t('chat.collection_title') }} ({{ selected_collection }})">{{ selected_collection_label or selected_collection }}</span>{% endif %}
+    </summary>
+
+    <div class="history__body">
+      <div class="chat-history__actions">
+        <button type="button" class="btn btn--outline btn--sm chat-history__btn-new" data-chat-new>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          {{ t('chat.new_chat') }}
+        </button>
+      </div>
+
+      {% if not selected_collection %}
+        <p class="muted history__note">{{ t('history.choose_collection') }}</p>
+      {% elif chat_history is none %}
+        <p class="muted history__note">{{ t('history.unavailable') }}</p>
+      {% elif not chat_history %}
+        <p class="muted history__note">{{ t('chat.no_history') }}</p>
+      {% else %}
+        {% if chat_history | length > 4 %}
+          <input type="search" class="history__filter" placeholder="{{ t('chat.filter_placeholder') }}" aria-label="{{ t('chat.filter_label') }}" data-chat-history-filter>
+        {% endif %}
+        <ol class="history__list" data-chat-history-list>
+          {% for item in chat_history %}
+            {% set current = active_chat_id is defined and item.id == active_chat_id %}
+            <li data-chat-item data-chat-id="{{ item.id }}" data-query="{{ item.title | lower }}">
+              <div class="history__entry">
+                <a class="history__item{% if current %} is-current{% endif %}" href="/chat?chat_id={{ item.id }}{% if selected_collection %}&collection={{ selected_collection | urlencode }}{% endif %}" data-load-chat="{{ item.id }}"{% if current %} aria-current="true"{% endif %} title="{{ t('chat.open_chat') }}">
+                  <span class="history__query">{{ item.title or t('chat.untitled') }}</span>
+                  {% if item.created_on %}
+                    <span class="history__date" title="{{ t('history.created_title') }}">{{ item.created_on }}</span>
+                  {% endif %}
+                  <span class="history__meta">
+                    <span class="history__tag">{{ t.plural('chat.messages_count', item.messages_count) }}</span>
+                    {% if current %}<span class="history__tag history__tag--current">{{ t('history.current') }}</span>{% endif %}
+                  </span>
+                </a>
+                <button type="button"
+                        class="btn btn--danger-ghost btn--sm btn--icon history__delete"
+                        data-delete-chat="{{ item.id }}"
+                        data-confirm="{{ t('chat.delete_confirm') }}"
+                        data-confirm-title="{{ t('chat.delete_title') }}"
+                        data-confirm-ok="{{ t('confirm.ok') }}"
+                        data-confirm-items="{{ item.title or t('chat.untitled') }}"
+                        title="{{ t('chat.delete_title') }}" aria-label="{{ t('chat.delete_title') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l.9 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12"/><path d="M10 11v5.5M14 11v5.5"/></svg></button>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+        <p class="muted history__note" data-chat-history-nomatch hidden>{{ t('history.no_match') }}</p>
+      {% endif %}
+    </div>
+  </details>
+</section>

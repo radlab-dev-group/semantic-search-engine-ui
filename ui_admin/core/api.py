@@ -224,6 +224,18 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             self.filter_options = api_config.semantic_search_engine_endpoints.get(
                 "filter_options", "api/filter_options"
             )
+            self.new_chat = api_config.semantic_search_engine_endpoints.get(
+                "new_chat", "api/new_chat"
+            )
+            self.add_user_message = api_config.semantic_search_engine_endpoints.get(
+                "add_user_message", "api/add_user_message"
+            )
+            self.chats = api_config.semantic_search_engine_endpoints.get(
+                "chats", "api/chats"
+            )
+            self.delete_chat = api_config.semantic_search_engine_endpoints.get(
+                "delete_chat", "api/delete_chat"
+            )
 
     def __init__(self, config_path: str = "configs/ui-configuration.json"):
         self._api_config = ApiConfiguration(config_path=config_path)
@@ -610,6 +622,92 @@ class SemanticSearchEngineAPI(BaseApiInterface):
             api_function=self._engine_ep.indexing_status,
             params=params,
             data=None,
+        )
+        return response
+
+    def new_chat(
+        self,
+        token: str,
+        collection_name: str,
+        options: dict | None = None,
+        search_options: dict | None = None,
+        lang: str | None = None,
+    ):
+        """Start a new chat session."""
+        payload: dict = {"collection_name": collection_name}
+        if options is not None:
+            payload["options"] = options
+        if search_options is not None:
+            payload["search_options"] = search_options
+        if lang:
+            payload["lang"] = lang
+        response = self.general_call_post(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.new_chat,
+            params=None,
+            json_data=payload,
+        )
+        return response
+
+    def add_user_message(
+        self,
+        token: str,
+        chat_id: int,
+        user_message: str,
+        options: dict | None = None,
+        search_options: dict | None = None,
+        system_prompt: str | None = None,
+        collection_name: str | None = None,
+        lang: str | None = None,
+    ):
+        """Send a user message in a chat and get assistant response."""
+        payload: dict = {
+            "chat_id": int(chat_id),
+            "user_message": user_message,
+        }
+        if options is not None:
+            payload["options"] = options
+        if search_options is not None:
+            payload["search_options"] = search_options
+        if system_prompt is not None:
+            payload["system_prompt"] = system_prompt
+        if collection_name is not None:
+            payload["collection_name"] = collection_name
+        if lang:
+            payload["lang"] = lang
+        response = self.general_call_post(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.add_user_message,
+            params=None,
+            json_data=payload,
+        )
+        return response
+
+    def list_chats(self, token: str, lang: str | None = None):
+        """Fetch list of user chats from backend."""
+        params = {"lang": lang} if lang else None
+        response = self.general_call_get(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.chats,
+            params=params,
+            data=None,
+        )
+        return response
+
+    def delete_chat(self, token: str, chat_id: int, lang: str | None = None):
+        """Delete a chat session."""
+        payload = {"chat_id": int(chat_id)}
+        if lang:
+            payload["lang"] = lang
+        response = self.general_call_post(
+            token=token,
+            api_call_url=self._api_host,
+            api_function=self._engine_ep.delete_chat,
+            params=None,
+            json_data=payload,
         )
         return response
 

@@ -40,6 +40,7 @@ from starlette.responses import (
 )
 
 from core import constants, i18n
+from core.answers import build_answer, extract_results, render_plain
 from core.api import SemanticSearchEngineAPI
 from core.markdown import render_markdown
 from core.state_store import (
@@ -79,6 +80,7 @@ templates.env.globals["languages"] = i18n.LANGUAGES
 # Engine answers arrive as Markdown; render_markdown() escapes raw HTML, so the
 # result can be marked safe (see core/markdown.py).
 templates.env.filters["markdown"] = lambda text: Markup(render_markdown(text))
+templates.env.filters["render_plain"] = lambda text: Markup(render_plain(text))
 
 # Single API client shared by all routes (mirrors pages/src/constants.py)
 sse_api_engine = SemanticSearchEngineAPI(config_path=CONFIG_PATH)
@@ -1017,6 +1019,72 @@ def fetch_search_history(token: str, collection_name: str) -> list | None:
     return rows[:HISTORY_LIMIT]
 
 
+def chat_history_row(entry: dict) -> dict | None:
+    if not isinstance(entry, dict):
+        return None
+    chat_id = entry.get("chat_id") if entry.get("chat_id") is not None else entry.get("id")
+    if chat_id is None:
+        return None
+    history_msgs = entry.get("chat_history") or entry.get("messages") or []
+    if not isinstance(history_msgs, list):
+        history_msgs = []
+
+    first_user_msg = ""
+    for msg in history_msgs:
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            first_user_msg = str(msg.get("text") or msg.get("user_message") or "").strip()
+            break
+
+    title = str(entry.get("title") or entry.get("query") or first_user_msg or f"Czat #{chat_id}").strip()
+    created_raw = entry.get("created_on")
+    if not created_raw and history_msgs and isinstance(history_msgs[0], dict):
+        created_raw = history_msgs[0].get("date_time")
+
+    return {
+        "id": chat_id,
+        "title": title,
+        "created_on": format_created_on_time(created_raw),
+        "collection_name": entry.get("collection_name") or entry.get("collection"),
+        "messages_count": len(history_msgs),
+        "chat_history": history_msgs,
+    }
+
+
+def fetch_chat_history(token: str, collection_name: str | None = None) -> list | None:
+    """Chats of the user; ``None`` when unavailable."""
+    try:
+        response = sse_api_engine.list_chats(token=token)
+    except Exception:  # noqa: BLE001
+        logger.exception("Cannot fetch chat history")
+        return None
+    if not isinstance(response, dict) or response.get("status") is False:
+        return None
+    body = response.get("body") if isinstance(response.get("body"), dict) else {}
+    raw_history = body.get("history") or body.get("chats") or []
+    rows = [row for row in map(chat_history_row, raw_history) if row]
+    if collection_name:
+        rows = [
+            row for row in rows
+            if row.get("collection_name") in (None, "", collection_name)
+        ]
+    return rows[:HISTORY_LIMIT]
+
+
+def fetch_chat_by_id(token: str, chat_id: int) -> dict | None:
+    try:
+        response = sse_api_engine.list_chats(token=token)
+    except Exception:
+        return None
+    if not isinstance(response, dict) or response.get("status") is False:
+        return None
+    body = response.get("body") if isinstance(response.get("body"), dict) else {}
+    raw_history = body.get("history") or body.get("chats") or []
+    for item in raw_history:
+        if isinstance(item, dict) and (item.get("chat_id") == chat_id or item.get("id") == chat_id):
+            return chat_history_row(item)
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # Routes
 # --------------------------------------------------------------------------- #
@@ -1179,6 +1247,7 @@ def render_collections_page(request: Request, **context) -> HTMLResponse:
     )
 
 
+@app.get("/collection", include_in_schema=False)
 @app.get("/collections", include_in_schema=False)
 def collections_page(request: Request):
     redirect = require_login(request)
@@ -2188,6 +2257,343 @@ def search_history_entry(request: Request, query_response_id: int):
         rated_comment=answer.get("rate_comment") or "",
         **data,
     )
+
+
+# --- Conversational Search (Chat) ------------------------------------------- #
+@app.get("/chat", include_in_schema=False)
+def chat_page(request: Request):
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    params = get_search_params(request)
+    collection_name = (
+        request.query_params.get("collection_name")
+        or request.query_params.get("collection")
+        or params.value("collection_name", "")
+    )
+    token = get_token(request)
+    data = fetch_page_context(token, collection_name)
+    if "error" in data:
+        return render_api_error(request, data["error"])
+
+    active_chat_id_raw = request.query_params.get("chat_id")
+    active_chat_id = as_int(active_chat_id_raw)
+    active_chat_title = None
+    active_chat_messages = []
+
+    if active_chat_id:
+        chat_obj = fetch_chat_by_id(token, active_chat_id)
+        if chat_obj:
+            active_chat_title = chat_obj["title"]
+            for m in chat_obj.get("chat_history", []):
+                if isinstance(m, dict):
+                    role = m.get("role", "user")
+                    text = m.get("text") or m.get("user_message") or ""
+                    html_content = render_plain(text)
+                    active_chat_messages.append({
+                        "id": m.get("id"),
+                        "role": role,
+                        "text": text,
+                        "html": html_content,
+                        "date_time": format_created_on_time(m.get("date_time")),
+                    })
+
+    chat_history = fetch_chat_history(token, collection_name)
+
+    sample_questions = [
+        "Jakie są najważniejsze informacje w tej kolekcji?",
+        "Podsumuj główne ustalenia i procedury.",
+        "Czym różnią się opisane w dokumentach procesy?",
+    ]
+
+    return render_page(
+        request,
+        "chat.html",
+        selected_collection=collection_name,
+        search_params=params.for_collection(collection_name),
+        chat_history=chat_history,
+        active_chat_id=active_chat_id,
+        active_chat_title=active_chat_title,
+        active_chat_messages=active_chat_messages,
+        sample_questions=sample_questions,
+        **data,
+    )
+
+
+@app.get("/conversational", include_in_schema=False)
+@app.get("/conversational-search", include_in_schema=False)
+def conversational_search_redirect(request: Request):
+    query_str = ("?" + str(request.url.query)) if request.url.query else ""
+    return RedirectResponse(url="/chat" + query_str, status_code=303)
+
+
+@app.get("/chat/history", include_in_schema=False)
+def chat_history_panel(
+    request: Request, collection_name: str = "", collection_label: str = ""
+):
+    """Panel of the chats for the chosen collection, reloaded by JS."""
+    redirect = require_login(request)
+    if redirect is not None:
+        return redirect
+
+    token = get_token(request)
+    collection_name = str(collection_name or "").strip()
+    history = fetch_chat_history(token, collection_name)
+    t = translator(request)
+    return templates.TemplateResponse(
+        request,
+        "partials/chat_history.html",
+        {
+            "t": t,
+            "lang": t.lang,
+            "chat_history": history,
+            "selected_collection": collection_name,
+            "selected_collection_label": collection_label or collection_name,
+            "chat_history_open": bool(history),
+        },
+    )
+
+
+@app.get("/chat/messages/{chat_id}", include_in_schema=False)
+def chat_messages_json(request: Request, chat_id: int):
+    redirect = require_login(request)
+    if redirect is not None:
+        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+
+    token = get_token(request)
+    chat_obj = fetch_chat_by_id(token, chat_id)
+    if not chat_obj:
+        return JSONResponse({"status": False, "error": "not_found"}, status_code=404)
+
+    messages = []
+    for m in chat_obj.get("chat_history", []):
+        if isinstance(m, dict):
+            role = m.get("role", "user")
+            text = m.get("text") or m.get("user_message") or ""
+            html_content = render_plain(text)
+            messages.append({
+                "id": m.get("id"),
+                "role": role,
+                "text": text,
+                "html": html_content,
+                "date_time": format_created_on_time(m.get("date_time")),
+            })
+
+    return JSONResponse({
+        "status": True,
+        "chat_id": chat_id,
+        "title": chat_obj["title"],
+        "messages": messages,
+        "collection_name": chat_obj.get("collection_name"),
+    })
+
+
+@app.post("/chat/ask", include_in_schema=False)
+async def chat_ask(request: Request):
+    redirect = require_login(request)
+    if redirect is not None:
+        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+
+    token = get_token(request)
+    content_type = request.headers.get("content-type", "")
+
+    if "application/json" in content_type:
+        body_json = await request.json()
+        question = str(body_json.get("question") or "").strip()
+        active_chat_id = as_int(body_json.get("active_chat_id") or body_json.get("chat_id"))
+        collection_name = str(body_json.get("collection_name") or "").strip()
+        prompt = str(body_json.get("prompt") or "").strip()
+        search_options = body_json.get("search_options") or {}
+        answer_options = body_json.get("options") or body_json.get("answer_options") or {}
+    else:
+        form = await request.form()
+        question = str(form.get("question") or "").strip()
+        active_chat_id = as_int(form.get("active_chat_id") or form.get("chat_id"))
+        collection_name = str(form.get("collection_name") or "").strip()
+        prompt = str(form.get("prompt") or "").strip()
+        options = parse_search_form(form)
+        search_options = options["search_options"]
+        answer_options = options["answer_options"]
+        remember_search_params(request, form)
+
+    if not question:
+        return JSONResponse({"status": False, "error": "empty_question"}, status_code=400)
+
+    # Ensure a valid generative_model is set if none was selected
+    if not answer_options.get("generative_model"):
+        models = fetch_generative_models(token)
+        if models:
+            answer_options["generative_model"] = models[0]
+
+    # Ensure default RAG/chat flags expected by conversational engine
+    answer_options.setdefault("use_qa_generative", True)
+    answer_options.setdefault("use_rag_supervisor", True)
+    answer_options.setdefault("user_msg_is_rag_question", True)
+    answer_options.setdefault("use_doc_names_in_response", True)
+
+    # Ensure citation instruction in system prompt like in ui_lite
+    citation_instruction = (
+        "After each sentence based on the documents, give the full name of the document "
+        "the information comes from in square brackets, e.g. [Annual report 2025.pdf]. "
+        "Cite only documents from the context. Do not give page numbers."
+    )
+    if prompt:
+        system_prompt = f"{prompt}\n\n{citation_instruction}"
+    else:
+        system_prompt = citation_instruction
+
+    if not collection_name:
+        data = fetch_collection_rows(token)
+        colls = data.get("collections", [])
+        if colls:
+            collection_name = colls[0]["name"]
+
+    chat_id = active_chat_id
+    if chat_id:
+        chat_obj = fetch_chat_by_id(token, chat_id)
+        if (
+            chat_obj
+            and chat_obj.get("collection_name")
+            and collection_name
+            and chat_obj.get("collection_name") != collection_name
+        ):
+            chat_id = None
+
+    if not chat_id:
+        try:
+            new_chat_res = sse_api_engine.new_chat(
+                token=token,
+                collection_name=collection_name,
+                options=answer_options,
+                search_options=search_options,
+                lang=get_language(request),
+            )
+        except Exception as exc:
+            logger.exception("Failed to create new chat")
+            return JSONResponse({"status": False, "error": str(exc)}, status_code=502)
+
+        if not isinstance(new_chat_res, dict) or new_chat_res.get("status") is False:
+            errors = new_chat_res.get("errors", []) if isinstance(new_chat_res, dict) else []
+            err_msg = errors[0].get("message") if errors and isinstance(errors[0], dict) else "Failed to start chat"
+            return JSONResponse({"status": False, "error": err_msg}, status_code=502)
+
+        body = new_chat_res.get("body") if isinstance(new_chat_res.get("body"), dict) else {}
+        chat_id = body.get("chat", {}).get("id") or body.get("chat_id") or body.get("id")
+        if not chat_id:
+            chat_id = 1
+
+    try:
+        msg_res = sse_api_engine.add_user_message(
+            token=token,
+            chat_id=int(chat_id),
+            user_message=question,
+            options=answer_options,
+            search_options=search_options,
+            system_prompt=system_prompt,
+            collection_name=collection_name if collection_name else None,
+            lang=get_language(request),
+        )
+    except Exception as exc:
+        logger.exception("Failed to send user message to chat")
+        return JSONResponse({"status": False, "error": str(exc)}, status_code=502)
+
+    if not isinstance(msg_res, dict) or msg_res.get("status") is False:
+        errors = msg_res.get("errors", []) if isinstance(msg_res, dict) else []
+        err_msg = errors[0].get("message") if errors and isinstance(errors[0], dict) else "Failed to get answer"
+        return JSONResponse({"status": False, "error": err_msg}, status_code=502)
+
+    msg_body = msg_res.get("body") if isinstance(msg_res.get("body"), dict) else {}
+    fragments, answer_id, rag_ran = extract_results(msg_body)
+    assistant_text = str(
+        msg_body.get("generated_assistant_message")
+        or msg_body.get("assistant_message")
+        or (msg_body.get("history", [])[-1].get("text") if msg_body.get("history") else "")
+        or ""
+    )
+
+    built = build_answer(assistant_text, fragments)
+
+    return JSONResponse({
+        "status": True,
+        "chat_id": int(chat_id),
+        "answer_id": answer_id,
+        "assistant_message": assistant_text,
+        "html": built["html"],
+        "plain": built["plain"],
+        "groups": built["groups"],
+        "documents_used": built["documents_used"],
+        "fragments_count": built["fragments"],
+        "generation_time": msg_body.get("generation_time"),
+        "title": question[:80],
+    })
+
+
+@app.post("/chat/delete", include_in_schema=False)
+async def chat_delete(request: Request):
+    redirect = require_login(request)
+    if redirect is not None:
+        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+
+    token = get_token(request)
+    chat_id = None
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = await request.json()
+        chat_id = as_int(body.get("chat_id") or body.get("id"))
+    else:
+        form = await request.form()
+        chat_id = as_int(form.get("chat_id") or form.get("id"))
+
+    if not chat_id:
+        return JSONResponse({"status": False, "error": "missing_chat_id"}, status_code=400)
+
+    try:
+        del_res = sse_api_engine.delete_chat(token=token, chat_id=chat_id, lang=get_language(request))
+    except Exception as exc:
+        logger.exception("Failed to delete chat")
+        return JSONResponse({"status": False, "error": str(exc)}, status_code=502)
+
+    return JSONResponse({"status": True, "chat_id": chat_id, "result": del_res})
+
+
+@app.post("/chat/rate", include_in_schema=False)
+async def chat_rate(request: Request):
+    redirect = require_login(request)
+    if redirect is not None:
+        return JSONResponse({"status": False, "error": "unauthorized"}, status_code=401)
+
+    token = get_token(request)
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = await request.json()
+        answer_id = as_int(body.get("answer_id") or body.get("response_id"))
+        rate_value = as_int(body.get("rate_value"))
+        rate_value_max = as_int(body.get("rate_value_max") or constants.MAX_VAL_RATING_GENERATIVE_ANSWER)
+        rate_comment = str(body.get("rate_comment") or "").strip()
+    else:
+        form = await request.form()
+        answer_id = as_int(form.get("answer_id") or form.get("response_id"))
+        rate_value = as_int(form.get("rate_value"))
+        rate_value_max = as_int(form.get("rate_value_max") or constants.MAX_VAL_RATING_GENERATIVE_ANSWER)
+        rate_comment = str(form.get("rate_comment") or "").strip()
+
+    if not answer_id or rate_value is None:
+        return JSONResponse({"status": False, "error": "invalid_parameters"}, status_code=400)
+
+    try:
+        res = sse_api_engine.set_rating_for_generative_answer(
+            token=token,
+            answer_response_id=answer_id,
+            rate_value=rate_value,
+            rate_value_max=rate_value_max,
+            rate_comment=rate_comment,
+        )
+    except Exception as exc:
+        logger.exception("Failed to rate answer")
+        return JSONResponse({"status": False, "error": str(exc)}, status_code=502)
+
+    return JSONResponse({"status": True, "result": res})
 
 
 # --- JSON endpoints (used by the page JS) ----------------------------------- #

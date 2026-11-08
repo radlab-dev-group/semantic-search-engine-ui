@@ -17,7 +17,8 @@
   "nav": {
     "home": "Home",
     "knowledge_base": "Knowledge base",
-    "search": "Search engine"
+    "search": "Search engine",
+    "chat": "Chat"
   },
   "kb": {
     "eyebrow": "Knowledge base",
@@ -148,6 +149,7 @@
     "deleted_success": "Collection “{name}” has been deleted.",
     "upload": "Add content",
     "upload_title": "Upload documents or paste text into this collection",
+    "chat": "Chat",
     "search": "Search",
     "empty": "There are no collections yet — create the first one below and upload documents to it.",
     "new_eyebrow": "New vector index",
@@ -698,5 +700,52 @@
     "doc_indexed": "indexed",
     "doc_failed": "indexing failed",
     "doc_skipped": "skipped"
+  },
+  "chat": {
+    "meta_title": "SSE - Chat",
+    "eyebrow": "Conversational Search",
+    "heading": "Chat",
+    "subtitle": "Have a multi-turn conversation grounded in your collection's documents, using all advanced search parameters.",
+    "step_hint": "chat · RAG",
+    "history_title": "Conversation history",
+    "collection_title": "Collection",
+    "new_chat": "New chat",
+    "new_chat_title": "New conversation",
+    "no_history": "No previous conversations in this collection.",
+    "filter_placeholder": "Filter conversations…",
+    "filter_label": "Filter conversation history",
+    "open_chat": "Open conversation",
+    "untitled": "Untitled conversation",
+    "messages_count": {
+      "one": "{n} message",
+      "few": "{n} messages",
+      "many": "{n} messages",
+      "other": "{n} messages"
+    },
+    "delete_title": "Delete conversation",
+    "delete_confirm": "Are you sure you want to delete this conversation from history?",
+    "empty_title": "Start a new conversation",
+    "empty_text": "Ask a question and the model will generate an answer grounded in your collection documents using sidebar parameters.",
+    "sample_questions": "Sample questions",
+    "user_label": "You",
+    "assistant_label": "Assistant",
+    "generating": "Generating answer…",
+    "stop": "Stop",
+    "input_placeholder": "Type a message… (Enter to send, Shift+Enter for new line)",
+    "send_title": "Send message",
+    "input_keyboard_hint": "Enter to send, Shift+Enter for new line",
+    "params_applied_hint": "Search and generation parameters from sidebar are applied",
+    "sources_title": "Sources",
+    "copy": "Copy",
+    "copy_with_sources": "Copy with sources",
+    "copied": "Copied!",
+    "rate_up": "Good answer",
+    "rate_down": "Poor answer",
+    "rate_title": "Rate answer",
+    "rate_comment_label": "Comment (optional)",
+    "rate_submit": "Submit rating",
+    "rate_success": "Thank you for your rating!",
+    "error_empty_question": "Please enter a question before sending.",
+    "error_chat_failed": "Failed to get an answer from the assistant."
   }
 }
