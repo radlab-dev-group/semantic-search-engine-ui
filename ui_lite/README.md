@@ -86,34 +86,6 @@ matches those names against `detailed_results_json` ([app/core/answers.py](app/c
 fragment page from that document as the footnote page. The footnote has a dashed border and the note
 "the page may be approximate". If the model does not give the names, a source list remains under the answer.
 
-## API gaps that need to be filled
-
-The full list with acceptance criteria: [docs/radlab-change-requests.md](docs/radlab-change-requests.md) (the "API gaps" section).
-
-| Priority | What is missing | CR |
-|---|---|---|
-| P0 | Conversation history (questions and answers) passed to the model generating the RAG answer | CR-14 |
-| P0 | Numbered fragments and a `citations[]` field in the answer | CR-01 |
-| P0 | `text_id`, `document_id`, `char_start/end` in results; `document_content?text_id` | CR-02 |
-| P1 | `answer_source` and the `rag_only` option | CR-03 |
-| P1 | `chats?with_sources=true` | CR-04 |
-| P1 | In `chats`: `title`, `collection_name`, dates, pagination; `rename_chat`, `delete_chat` | CR-05 |
-| P1 | Sections and pinning: `chat_groups`, `move_chat`, `pin_chat` | CR-16 |
-| P1 | The document scope stored with the chat | CR-18 |
-| P1 | `system_prompt` merged with the question-template prompt, not overwritten | CR-19 |
-| P2 | `cancel_generation`, progress / streaming | CR-06 |
-| P2 | Date, type and page count in `documents` | CR-07 |
-
-## Security and deployment
-
-- The session is a signed `HttpOnly`, `SameSite=Lax` cookie; set `SESSION_HTTPS_ONLY=true` behind HTTPS.
-- Model answers are rendered from Markdown with HTML disabled, so the model cannot inject a script.
-- Fonts (Inter, Newsreader – SIL OFL 1.1) are in the repo; the page does not connect to external servers.
-- **Scaling:** the frontend keeps answer sources and the conversation base in process memory (`app/core/session_store.py`),
-  because the backend does not return them in history (CR-04, CR-05). Run a single process or sticky sessions;
-  with several replicas replace `MemoryStore` with Redis (the `SessionStore` interface).
-- The proxy in front of the frontend must allow requests of up to 150 s (`/ui-api/ask`).
-
 ## Structure
 
 ```
