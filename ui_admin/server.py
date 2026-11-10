@@ -394,6 +394,84 @@ def format_created_on_time(value) -> str:
         return text
 
 
+def collection_models(entry: dict) -> dict:
+    """Embedder and reranker model names assigned to the collection.
+
+    Checks top-level fields as well as ``metadata_json`` if present.
+    """
+    metadata = entry.get("metadata_json")
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except ValueError:
+            metadata = None
+    if not isinstance(metadata, dict):
+        metadata = {}
+
+    sources = [
+        entry,
+        entry.get("models"),
+        entry.get("vector_models"),
+        entry.get("index"),
+        entry.get("indexing"),
+        entry.get("config"),
+        metadata,
+        metadata.get("models"),
+        metadata.get("vector_models"),
+        metadata.get("index"),
+        metadata.get("indexing"),
+        metadata.get("config"),
+    ]
+
+    embedder_keys = (
+        "model_embedder",
+        "embedder",
+        "embedder_model",
+        "embedder_name",
+        "embedding_model",
+        "embeddings_model",
+        "model_embedding",
+    )
+    reranker_keys = (
+        "model_reranker",
+        "reranker",
+        "re_ranker_model",
+        "reranker_model",
+        "reranker_name",
+        "re_ranker",
+        "model_re_ranker",
+        "rerank_model",
+        "re_rank_model",
+    )
+
+    embedder = None
+    for src in sources:
+        if isinstance(src, dict):
+            for k in embedder_keys:
+                val = src.get(k)
+                if val:
+                    embedder = val
+                    break
+            if embedder:
+                break
+
+    reranker = None
+    for src in sources:
+        if isinstance(src, dict):
+            for k in reranker_keys:
+                val = src.get(k)
+                if val:
+                    reranker = val
+                    break
+            if reranker:
+                break
+
+    return {
+        "model_embedder": str(embedder).strip() if embedder else None,
+        "model_reranker": str(reranker).strip() if reranker else None,
+    }
+
+
 def collection_row(entry) -> dict | None:
     """One entry of ``collections`` as a table row.
 
@@ -418,6 +496,8 @@ def collection_row(entry) -> dict | None:
         "active_document_count": as_int(entry.get("active_document_count")),
         # chunking: None = no declaration yet (metadata_json is null)
         **collection_chunking(entry.get("metadata_json")),
+        # vector models: embedder and reranker assigned to the collection
+        **collection_models(entry),
     }
 
 
