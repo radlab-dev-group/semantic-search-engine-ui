@@ -911,6 +911,28 @@ function updateCollectionBanner(select, documentsCount = null) {
   if (dateWrap) dateWrap.hidden = !created;
   if (date) date.textContent = created ? t("banner_created", { date: created }, "Created {date}") : "";
 
+  const embedder = (option.dataset.embedder || "").trim();
+  const reranker = (option.dataset.reranker || "").trim();
+  const modelsWrap = banner.querySelector("[data-banner-models-wrap]");
+  const embedderEl = banner.querySelector("[data-banner-embedder]");
+  const rerankerEl = banner.querySelector("[data-banner-reranker]");
+  if (modelsWrap) {
+    modelsWrap.hidden = false;
+    modelsWrap.title = t("models_title", {}, "Vector models assigned to the collection: embedder and re-ranker");
+  }
+  if (embedderEl) {
+    const model = embedder || t("model_unavailable", {}, "API does not provide the model name");
+    embedderEl.textContent = t("embedder_title", { model }, `Embedder: ${model}`);
+    embedderEl.hidden = false;
+    embedderEl.title = embedderEl.textContent;
+  }
+  if (rerankerEl) {
+    const model = reranker || t("model_unavailable", {}, "API does not provide the model name");
+    rerankerEl.textContent = t("reranker_title", { model }, `Re-ranker: ${model}`);
+    rerankerEl.hidden = false;
+    rerankerEl.title = rerankerEl.textContent;
+  }
+
   if (documentsCount !== null) {
     const docs = banner.querySelector("[data-banner-docs]");
     if (docs) docs.textContent = t("sum_documents", { n: documentsCount }, "{n} documents");

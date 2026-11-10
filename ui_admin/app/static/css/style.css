@@ -3708,6 +3708,25 @@ input[type="range"]::-moz-range-thumb {
   opacity: 0.8;
 }
 
+.coll-banner__models {
+  flex-wrap: wrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  gap: 0.6rem;
+}
+
+.coll-banner__models svg {
+  color: var(--brand-500);
+  opacity: 1;
+}
+
+.coll-banner__model-embedder,
+.coll-banner__model-reranker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .coll-banner__empty {
   display: none;
   margin: 0.15rem 0 0;
@@ -7419,6 +7438,32 @@ input[type="range"]::-moz-range-thumb {
 
 .collection__chunking.is-undeclared svg {
   color: var(--text-faint);
+}
+
+/* Models of GET collections: embedder and reranker */
+.collection__models {
+  display: inline-flex;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.collection__model-embedder,
+.collection__model-reranker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.collection__models svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--brand-500);
 }
 
 /* "strict": the collection refuses other chunking than its own */
