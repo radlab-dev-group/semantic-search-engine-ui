@@ -88,6 +88,17 @@
                     <span class="badge badge--strict" title="{{ t('collections.strict_badge_title') }}">{{ t('collections.strict_badge') }}</span>
                   {% endif %}
                 </span>
+                {#- Models assigned to the collection: embedder and reranker -#}
+                <span class="collection__models" title="{{ t('collections.models_title') }}">
+                  <span class="collection__model-embedder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    <span>{{ t('collections.embedder_title', model=coll.model_embedder or t('collections.model_unavailable')) }}</span>
+                  </span>
+                  <span class="collection__model-reranker">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16"/><path d="m3.5 7.5 3.5-3.5 3.5 3.5"/><path d="M17 20V4"/><path d="m20.5 16.5-3.5 3.5-3.5-3.5"/></svg>
+                    <span>{{ t('collections.reranker_title', model=coll.model_reranker or t('collections.model_unavailable')) }}</span>
+                  </span>
+                </span>
               </span>
               <span class="collection__actions">
                 <a class="btn btn--ghost btn--sm" href="/collections/manage?collection_name={{ coll.name | urlencode }}">
