@@ -222,6 +222,8 @@ COLLECTIONS = [
         "created_on": "2026-09-30T11:20:33.123456+02:00",
         "document_count": 128,
         "active_document_count": 120,
+        "model_embedder": "embedder-a",
+        "model_reranker": "reranker-a",
         "metadata_json": {
             "chunking": {"max_tokens_in_chunk": 512, "number_of_overlap_tokens": 32},
             "strict_chunking": False,
@@ -245,6 +247,8 @@ COLLECTIONS = [
         "created_on": "2026-10-01T08:00:00Z",
         "document_count": 3,
         "active_document_count": 3,
+        "model_embedder": "embedder-b",
+        "model_reranker": "reranker-a",
         "metadata_json": {
             "chunking": {"max_tokens_in_chunk": 256, "number_of_overlap_tokens": 0},
             "strict_chunking": True,

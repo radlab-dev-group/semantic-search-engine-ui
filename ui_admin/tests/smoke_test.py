@@ -294,14 +294,40 @@ def check_chunking(client) -> None:
         "",
     )
     check(
-        "collection cards show the declared chunking and the strict badge",
+        "collection cards show the declared chunking, strict badge and vector models",
         "512 tokens · overlap 32" in page
         and "256 tokens · overlap 0" in page
         and page.count('class="badge badge--strict"') == 1
         and 'class="collection__chunking is-undeclared"' in page
-        and "chunking not declared" in page,
+        and "chunking not declared" in page
+        and "embedder-a" in page
+        and "reranker-a" in page
+        and 'class="collection__models"' in page,
         "",
     )
+
+    check(
+        "collection cards explicitly label models and explain missing API data",
+        "Embedder: embedder-a" in page
+        and "Re-ranker: reranker-a" in page
+        and "Embedder: API does not provide the model name" in page
+        and "Re-ranker: API does not provide the model name" in page,
+    )
+    for route in ("/search", "/chat"):
+        for collection, expected in (
+            ("user_col", ("Embedder: embedder-a", "Re-ranker: reranker-a")),
+            ("user_kol", (
+                "Embedder: API does not provide the model name",
+                "Re-ranker: API does not provide the model name",
+            )),
+        ):
+            html = client.get(route, params={"collection_name": collection}).text
+            check(
+                f"{route} shows model information for {collection} without hiding it",
+                'data-banner-models-wrap title=' in html
+                and all(f'>{text}</span>' in html for text in expected)
+                and not re.search(r'data-banner-(?:embedder|reranker)\s+hidden', html),
+            )
 
     # Untouched defaults: no "chunking" in the request, strict off
     response = client.post(
@@ -1647,17 +1673,17 @@ def main() -> int:
             '<option value="user_col" selected ' in response.text,
             "",
         )
-        # The options carry the description and the date for the banner
+        # The options carry the description, date and vector models for the banner
         check(
             "search offers the collections by their full (display) name",
             re.search(
                 r'<option value="user_col" selected data-description="Kolekcja '
-                r'użytkownika" data-created="2026-09-30">Moje dokumenty</option>',
+                r'użytkownika" data-created="2026-09-30" data-embedder="embedder-a" data-reranker="reranker-a">Moje dokumenty</option>',
                 response.text,
             )
             is not None
             and re.search(
-                r'<option value="user_kol"\s+data-description=""\s+data-created="[^"]*">'
+                r'<option value="user_kol"\s+data-description=""\s+data-created="[^"]*"\s+data-embedder=""\s+data-reranker="">'
                 r"user_kol</option>",
                 response.text,
             )
@@ -1713,7 +1739,12 @@ def main() -> int:
             "search page",
             response.status_code == 200
             and "user_col" in response.text
-            and "llama-8b" in response.text,
+            and "llama-8b" in response.text
+            and 'class="coll-banner__fact coll-banner__models"' in response.text
+            and "embedder-a" in response.text
+            and "reranker-a" in response.text
+            and 'data-embedder="embedder-a"' in response.text
+            and 'data-reranker="reranker-a"' in response.text,
             str(response.status_code),
         )
 
@@ -2366,7 +2397,10 @@ def main() -> int:
             and 'name="hybrid_search"' in chat_html
             and 'name="rerank_results"' in chat_html
             and 'name="use_qa_generative"' in chat_html
-            and "data-chat-input" in chat_html,
+            and "data-chat-input" in chat_html
+            and 'class="coll-banner__fact coll-banner__models"' in chat_html
+            and "embedder-a" in chat_html
+            and "reranker-a" in chat_html,
             "",
         )
         conv_redirect = client.get(

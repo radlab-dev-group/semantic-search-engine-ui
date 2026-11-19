@@ -78,6 +78,16 @@
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
                       <span data-banner-date>{{ t('collections.created_on', date=active.created_on) if active and active.created_on else '' }}</span>
                     </span>
+                    <span class="coll-banner__fact coll-banner__models" data-banner-models-wrap title="{{ t('collections.models_title') }}">
+                      <span class="coll-banner__model-embedder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                        <span class="mono" data-banner-embedder>{{ t('collections.embedder_title', model=active.model_embedder if active and active.model_embedder else t('collections.model_unavailable')) }}</span>
+                      </span>
+                      <span class="coll-banner__model-reranker">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16"/><path d="m3.5 7.5 3.5-3.5 3.5 3.5"/><path d="M17 20V4"/><path d="m20.5 16.5-3.5 3.5-3.5-3.5"/></svg>
+                        <span class="mono" data-banner-reranker>{{ t('collections.reranker_title', model=active.model_reranker if active and active.model_reranker else t('collections.model_unavailable')) }}</span>
+                      </span>
+                    </span>
                   </p>
                 </div>
                 <p class="coll-banner__empty">{{ t('search.banner_none') }}</p>
